@@ -1,5 +1,5 @@
 {
-  "name": "tinybase",
+  "name": "@genie-design/tinybase",
   "version": "5.1.2",
   "author": "jamesgpearce",
   "repository": "github:tinyplex/tinybase",
@@ -87,7 +87,6 @@
       "optional": true
     }
   },
-  "private": true,
   "scripts": {
     "lintFiles": "gulp lintFiles",
     "lintDocs": "gulp lintDocs",
