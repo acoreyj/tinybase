@@ -1,6 +1,6 @@
 {
-  "name": "tinybase",
-  "version": "5.1.5",
+  "name": "@genie-design/tinybase",
+  "version": "5.1.7",
   "author": "jamesgpearce",
   "repository": "github:tinyplex/tinybase",
   "license": "MIT",
@@ -21,8 +21,8 @@
   "sideEffects": false,
   "peerDependencies": {
     "@automerge/automerge-repo": "^1.2.0",
-    "@powersync/common": "^1.16.1",
     "@libsql/client": "^0.9.0",
+    "@powersync/common": "^1.16.1",
     "@sqlite.org/sqlite-wasm": "^3.46.0-build2",
     "@vlcn.io/crsqlite-wasm": "^0.16.0",
     "electric-sql": "^0.12.1",
@@ -39,6 +39,9 @@
   },
   "peerDependenciesMeta": {
     "@automerge/automerge-repo": {
+      "optional": true
+    },
+    "@cloudflare/workers-types": {
       "optional": true
     },
     "@powersync/common": {
@@ -125,9 +128,10 @@
     "@babel/preset-env": "^7.25.3",
     "@babel/preset-react": "^7.24.7",
     "@babel/preset-typescript": "^7.24.7",
-    "@powersync/react": "^1.4.0",
-    "@powersync/common": "^1.16.1",
+    "@cloudflare/workers-types": "^4.20240815.0",
     "@libsql/client": "^0.9.0",
+    "@powersync/common": "^1.16.1",
+    "@powersync/react": "^1.4.0",
     "@prettier/sync": "^0.5.2",
     "@rollup/plugin-image": "^3.0.3",
     "@rollup/plugin-replace": "^5.0.7",
