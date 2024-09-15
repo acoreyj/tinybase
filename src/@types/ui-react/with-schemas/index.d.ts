@@ -9,6 +9,14 @@ import type {
   ValueIdFromSchema,
 } from '../../_internal/store/with-schemas/index.d.ts';
 import type {
+  AnyPersister,
+  PersistedStore,
+  Persister,
+  Persists,
+  Status,
+  StatusListener,
+} from '../../persisters/with-schemas/index.d.ts';
+import type {
   BackwardCheckpointsProps,
   CellProps,
   CheckpointProps,
@@ -24,6 +32,7 @@ import type {
   LocalRowsProps,
   MetricProps,
   MetricsOrMetricsId,
+  PersisterOrPersisterId,
   ProviderProps,
   QueriesOrQueriesId,
   RelationshipsOrRelationshipsId,
@@ -36,6 +45,7 @@ import type {
   SliceProps,
   SortedTableProps,
   StoreOrStoreId,
+  SynchronizerOrSynchronizerId,
   TableProps,
   TablesProps,
   UndoOrRedoInformation,
@@ -119,7 +129,6 @@ import type {
   ResultTableListener,
 } from '../../queries/with-schemas/index.d.ts';
 import type {MergeableStore} from '../../mergeable-store/with-schemas/index.d.ts';
-import type {Persister} from '../../persisters/with-schemas/index.d.ts';
 import type {ReactElement} from 'react';
 import type {Synchronizer} from '../../synchronizers/with-schemas/index.d.ts';
 
@@ -141,6 +150,12 @@ export type WithSchemas<Schemas extends OptionalSchemas> = {
 
   /// CheckpointsOrCheckpointsId
   CheckpointsOrCheckpointsId: CheckpointsOrCheckpointsId<Schemas>;
+
+  /// PersisterOrPersisterId
+  PersisterOrPersisterId: PersisterOrPersisterId<Schemas>;
+
+  /// SynchronizerOrSynchronizerId
+  SynchronizerOrSynchronizerId: SynchronizerOrSynchronizerId<Schemas>;
 
   /// UndoOrRedoInformation
   UndoOrRedoInformation: UndoOrRedoInformation;
@@ -790,6 +805,9 @@ export type WithSchemas<Schemas extends OptionalSchemas> = {
     metricsOrMetricsId?: MetricsOrMetricsId<Schemas>,
   ) => Metrics<Schemas> | undefined;
 
+  // useProvideMetrics
+  useProvideMetrics: (metricsId: Id, metrics: Metrics<Schemas>) => void;
+
   /// useMetricIds
   useMetricIds(metricsOrMetricsId?: MetricsOrMetricsId<Schemas>): Ids;
 
@@ -824,6 +842,9 @@ export type WithSchemas<Schemas extends OptionalSchemas> = {
   useIndexesOrIndexesById: (
     indexesOrIndexesId?: IndexesOrIndexesId<Schemas>,
   ) => Indexes<Schemas> | undefined;
+
+  // useProvideIndexes
+  useProvideIndexes: (indexesId: Id, indexes: Indexes<Schemas>) => void;
 
   /// useIndexIds
   useIndexIds(indexesOrIndexesId?: IndexesOrIndexesId<Schemas>): Ids;
@@ -875,6 +896,12 @@ export type WithSchemas<Schemas extends OptionalSchemas> = {
   useRelationshipsOrRelationshipsById: (
     relationshipsOrRelationshipsId?: RelationshipsOrRelationshipsId<Schemas>,
   ) => Relationships<Schemas> | undefined;
+
+  // useProvideRelationships
+  useProvideRelationships: (
+    relationshipsId: Id,
+    relationships: Relationships<Schemas>,
+  ) => void;
 
   /// useRelationshipIds
   useRelationshipIds(
@@ -946,6 +973,9 @@ export type WithSchemas<Schemas extends OptionalSchemas> = {
   useQueriesOrQueriesById: (
     queriesOrQueriesId?: QueriesOrQueriesId<Schemas>,
   ) => Queries<Schemas> | undefined;
+
+  // useProvideQueries
+  useProvideQueries: (queriesId: Id, queries: Queries<Schemas>) => void;
 
   /// useQueryIds
   useQueryIds(queriesOrQueriesId?: QueriesOrQueriesId<Schemas>): Ids;
@@ -1096,6 +1126,12 @@ export type WithSchemas<Schemas extends OptionalSchemas> = {
     checkpointsOrCheckpointsId?: CheckpointsOrCheckpointsId<Schemas>,
   ) => Checkpoints<Schemas> | undefined;
 
+  // useProvideCheckpoints
+  useProvideCheckpoints: (
+    checkpointsId: Id,
+    checkpoints: Checkpoints<Schemas>,
+  ) => void;
+
   /// useCheckpointIds
   useCheckpointIds: (
     checkpointsOrCheckpointsId?: CheckpointsOrCheckpointsId<Schemas>,
@@ -1166,14 +1202,48 @@ export type WithSchemas<Schemas extends OptionalSchemas> = {
 
   /// useCreatePersister
   useCreatePersister: <
-    PersisterOrUndefined extends Persister<Schemas> | undefined,
+    Persist extends Persists,
+    PersisterOrUndefined extends Persister<Schemas, Persist> | undefined,
   >(
-    store: Store<Schemas> | undefined,
-    create: (store: Store<Schemas>) => Persister<Schemas> | undefined,
+    store: PersistedStore<Schemas, Persist> | undefined,
+    create: (store: PersistedStore<Schemas, Persist>) => PersisterOrUndefined,
     createDeps?: React.DependencyList,
-    destroy?: (persister: Persister<Schemas>) => void,
+    then?: (persister: Persister<Schemas, Persist>) => Promise<void>,
+    thenDeps?: React.DependencyList,
+    destroy?: (persister: Persister<Schemas, Persist>) => void,
     destroyDeps?: React.DependencyList,
   ) => PersisterOrUndefined;
+
+  /// usePersisterIds
+  usePersisterIds: () => Ids;
+
+  /// usePersister
+  usePersister: (
+    id?: Id,
+  ) => Persister<Schemas, Persists.StoreOrMergeableStore> | undefined;
+
+  /// usePersisterOrPersisterById
+  usePersisterOrPersisterById: (
+    persisterOrPersisterId?: PersisterOrPersisterId<Schemas>,
+  ) => Persister<Schemas, Persists.StoreOrMergeableStore> | undefined;
+
+  // useProvidePersister
+  useProvidePersister: (
+    persisterId: Id,
+    persister: AnyPersister<Schemas> | undefined,
+  ) => void;
+
+  /// usePersisterStatus
+  usePersisterStatus: (
+    persisterOrPersisterId?: PersisterOrPersisterId<Schemas>,
+  ) => Status;
+
+  /// usePersisterStatusListener
+  usePersisterStatusListener: (
+    listener: StatusListener<Schemas, Persists.StoreOrMergeableStore>,
+    listenerDeps?: React.DependencyList,
+    persisterOrPersisterId?: PersisterOrPersisterId<Schemas>,
+  ) => void;
 
   /// useCreateSynchronizer
   useCreateSynchronizer: <
@@ -1187,6 +1257,35 @@ export type WithSchemas<Schemas extends OptionalSchemas> = {
     destroy?: (synchronizer: Synchronizer<Schemas>) => void,
     destroyDeps?: React.DependencyList,
   ) => SynchronizerOrUndefined;
+
+  /// useSynchronizerIds
+  useSynchronizerIds: () => Ids;
+
+  /// useSynchronizer
+  useSynchronizer: (id?: Id) => Synchronizer<Schemas> | undefined;
+
+  /// useSynchronizerOrSynchronizerById
+  useSynchronizerOrSynchronizerById: (
+    synchronizerOrSynchronizerId?: SynchronizerOrSynchronizerId<Schemas>,
+  ) => Synchronizer<Schemas> | undefined;
+
+  // useProvideSynchronizer
+  useProvideSynchronizer: (
+    synchronizerId: Id,
+    synchronizer: Synchronizer<Schemas> | undefined,
+  ) => void;
+
+  /// useSynchronizerStatus
+  useSynchronizerStatus: (
+    synchronizerOrSynchronizerId?: SynchronizerOrSynchronizerId<Schemas>,
+  ) => Status;
+
+  /// useSynchronizerStatusListener
+  useSynchronizerStatusListener: (
+    listener: StatusListener<Schemas, Persists.StoreOrMergeableStore>,
+    listenerDeps?: React.DependencyList,
+    synchronizerOrSynchronizerId?: SynchronizerOrSynchronizerId<Schemas>,
+  ) => void;
 
   /// ExtraProps
   ExtraProps: ExtraProps;

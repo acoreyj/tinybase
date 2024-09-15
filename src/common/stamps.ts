@@ -44,7 +44,9 @@ export const replaceTimeHash = (oldTime: Time, newTime: Time) =>
 export const getLatestTime = (
   time1: Time | undefined,
   time2: Time | undefined,
-): Time => ((time1 ?? '') > (time2 ?? '') ? time1 : time2) ?? '';
+): Time =>
+  /*! istanbul ignore next */
+  ((time1 ?? '') > (time2 ?? '') ? time1 : time2) ?? '';
 
 export const stampUpdate = (
   stamp: Stamp<unknown, true>,

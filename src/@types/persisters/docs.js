@@ -7,8 +7,8 @@
  * Many entry points are provided (in separately installed modules), each of
  * which returns different types of Persister that can load and save a Store.
  * Between them, these allow you to store your TinyBase data locally, remotely,
- * to SQLite databases, and across synchronization boundaries with CRDT
- * frameworks.
+ * to SQLite and PostgreSQL databases, and across synchronization boundaries
+ * with CRDT frameworks.
  *
  * |Persister|Storage|Store|MergeableStore
  * |-|-|-|-|
@@ -20,6 +20,8 @@
  * |Sqlite3Persister|SQLite in Node, via [sqlite3](https://github.com/TryGhost/node-sqlite3)|Yes|Yes*
  * |SqliteWasmPersister|SQLite in a browser, via [sqlite-wasm](https://github.com/tomayac/sqlite-wasm)|Yes|Yes*
  * |ExpoSqlitePersister|SQLite in React Native, via [expo-sqlite](https://github.com/expo/expo/tree/main/packages/expo-sqlite)|Yes|Yes*
+ * |PostgresPersister|PostgreSQL, via [postgres](https://github.com/porsager/postgres)|Yes|Yes*
+ * |PglitePersister|PostgreSQL, via [PGlite](https://github.com/electric-sql/pglite)|Yes|Yes*
  * |CrSqliteWasmPersister|SQLite CRDTs, via [cr-sqlite-wasm](https://github.com/vlcn-io/cr-sqlite)|Yes|No
  * |ElectricSqlPersister|Electric SQL, via [electric-sql](https://github.com/electric-sql/electric)|Yes|No
  * |LibSqlPersister|LibSQL for Turso, via [libsql-client](https://github.com/tursodatabase/libsql-client-ts)|Yes|No
@@ -28,13 +30,18 @@
  * |AutomergePersister|Automerge CRDTs, via [automerge-repo](https://github.com/automerge/automerge-repo)|Yes|No
  * |PartyKitPersister|[PartyKit](https://www.partykit.io/), via the persister-partykit-server module|Yes|No|
  *
- * (*) Note that SQLite-based Persisters can currently only persist
- * MergeableStore data when using the JSON-based DpcJson mode, and not in a
- * tabular fashion.
+ * (*) Note that SQLite- and PostgreSQL-based Persisters can currently only
+ * persist MergeableStore data when used with the JSON-based DpcJson mode, and
+ * not when using the DpcTabular mode.
  *
  * Since persistence requirements can be different for every app, the
  * createCustomPersister function in this module can also be used to easily
  * create a fully customized way to save and load Store data.
+ *
+ * Similarly, the createCustomSqlitePersister function and
+ * createCustomPostgreSqlPersister function can be used to build Persister objects
+ * against SQLite and PostgreSQL SDKs (or forks) that are not already included
+ * with TinyBase.
  * @see Persistence guides
  * @see Countries demo
  * @see Todo App demos
@@ -44,6 +51,38 @@
  * @since v1.0.0
  */
 /// persisters
+/**
+ * The Status enum is used to indicate whether a Persister is idle, or loading or
+ * saving data.
+ *
+ * The enum is intended to be used to understand the status of the Persister in
+ * conjunction with the getStatus and addStatusListener methods.
+ *
+ * Note that a Persister cannot be loading and saving data at the same time.
+ * @category Lifecycle
+ * @since v5.3.0
+ */
+/// Status
+{
+  /**
+   * Indicates that the Persister is neither loading or saving data.
+   * @category Enum
+   * @since v5.3.0
+   */
+  /// Status.Idle
+  /**
+   * Indicates that the Persister is loading data.
+   * @category Enum
+   * @since v5.3.0
+   */
+  /// Status.Loading
+  /**
+   * Indicates that the Persister is saving data.
+   * @category Enum
+   * @since v5.3.0
+   */
+  /// Status.Saving
+}
 /**
  * The Persists enum is used to indicate whether a Persister can support a
  * regular Store, a MergeableStore, or both.
@@ -144,6 +183,21 @@
  */
 /// PersisterListener
 /**
+ * The StatusListener type describes a function that is used to listen to
+ * changes to the loading and saving status of the Persister.
+ *
+ * A StatusListener is provided when using the addStatusListener method. See
+ * that method for specific examples.
+ *
+ * When called, a StatusListener is given a reference to the Persister and the
+ * new Status: 0 means now idle, 1 means now loading, and 2 means now saving.
+ * @param persister A reference to the Persister that changed.
+ * @param status The new loading or saving Status.
+ * @category Listener
+ * @since v5.3.0
+ */
+/// StatusListener
+/**
  * The PersisterStats type describes the number of times a Persister object has
  * loaded or saved data.
  *
@@ -168,7 +222,7 @@
 }
 /**
  * The DatabasePersisterConfig type describes the configuration of a
- * database-oriented Persister, such as those for SQLite.
+ * database-oriented Persister, such as those for SQLite and PostgreSQL.
  *
  * There are two modes for persisting a Store with a database:
  *
@@ -315,8 +369,8 @@
  *
  * This configuration can only be used when the Persister is persisting a
  * regular Store. For those database-oriented Persister types that support
- * MergeableStore data, you will need to use JSON-serialization, es described
- * in the DpcJson section.
+ * MergeableStore data, you will need to use JSON-serialization, es described in
+ * the DpcJson section.
  *
  * It is important to note that both the tabular mapping in ('save') and out
  * ('load') of an underlying database are disabled by default. This is to ensure
@@ -348,6 +402,15 @@
  * See the documentation for the DpcTabularLoad, DpcTabularSave, and
  * DpcTabularValues types for more details on how to configure the tabular
  * mapping mode.
+ *
+ * Columns in SQLite database have no type, and so in this mode, the table can
+ * contain strings and numbers for Cells and Values, just as TinyBase does.
+ * Booleans, unfortunately, are stored as 0 or 1 in SQLite, and cannot be
+ * distinguished from numbers.
+ *
+ * In PostgreSQL databases, all Cell and Value columns are expected to be typed
+ * as `text`, and the strings, booleans, and numbers are all JSON-encoded by the
+ * Persister.
  *
  * The 'Dpc' prefix indicates that this type is used within the
  * DatabasePersisterConfig type.
@@ -495,6 +558,11 @@
  *   },
  * }
  * ```
+ *
+ * The example above represents what happens with a SQLite Persister. In
+ * PostgreSQL databases, all Cell and Value columns are expected to be
+ * typed as `text`, and the strings, booleans, and numbers would be JSON-encoded
+ * if you queried them.
  * @category Configuration
  * @since v4.0.0
  */
@@ -610,6 +678,10 @@
  * | cat  | 4     |
  * +------+-------+
  * ```
+ * The example above represents what happens with a SQLite Persister. In
+ * PostgreSQL databases, all Cell and Value columns are expected to be
+ * typed as `text`, and the strings, booleans, and numbers would be JSON-encoded
+ * if you queried them.
  * @category Configuration
  * @since v4.0.0
  */
@@ -1157,6 +1229,111 @@
    */
   /// Persister.isAutoSaving
   /**
+   * The getStatus method lets you find out if the Persister is currently in the
+   * process of loading or saving content.
+   *
+   * It can only be doing one or the other (or neither) at any given time. The
+   * Status enum is returned, where 0 means idle, 1 means loading, and 2 means
+   * saving.
+   *
+   * This method is only likely to be useful for Persister implementations that
+   * have asynchronous load or save operations. The status for synchronous
+   * persister media (such as browser local or session storage) will switch back
+   * to idle before you are able to query it.
+   * @returns A value of type Status indicating whether the Persister is idle,
+   * loading, or saving.
+   * @example
+   * This example creates a Persister and queries its status.
+   *
+   * ```js
+   * import {createSessionPersister} from 'tinybase/persisters/persister-browser';
+   * import {createStore} from 'tinybase';
+   *
+   * const persister = createSessionPersister(createStore(), 'pets');
+   *
+   * console.log(persister.getStatus());
+   * // -> 0
+   * ```
+   * @category Lifecycle
+   * @since v5.3.0
+   */
+  /// Persister.getStatus
+  /**
+   * The addStatusListener method registers a listener function with the
+   * Persister that will be called whenever it starts or stops loading or
+   * saving.
+   *
+   * The provided listener is a StatusListener function, and will be called with
+   * a reference to the Persister and the new Status: 0 means now idle, 1 means
+   * now loading, and 2 means now saving.
+   * @param listener The function that will be called whenever the Persister
+   * starts or stops loading or saving.
+   * @returns A unique Id for the listener that can later be used to remove it.
+   * @example
+   * This example registers a listener that responds to changes in the state of
+   * the Persister.
+   *
+   * ```js
+   * import {createSessionPersister} from 'tinybase/persisters/persister-browser';
+   * import {createStore} from 'tinybase';
+   *
+   * const persister = createSessionPersister(createStore(), 'pets');
+   *
+   * const listenerId = persister.addStatusListener((persister, status) => {
+   *   console.log(
+   *     `${persister.getStorageName()} persister status changed to ${status}`,
+   *   );
+   * });
+   *
+   * await persister.load();
+   * // -> 'pets persister status changed to 1'
+   * // -> 'pets persister status changed to 0'
+   * await persister.save();
+   * // -> 'pets persister status changed to 2'
+   * // -> 'pets persister status changed to 0'
+   *
+   * persister.delListener(listenerId);
+   * ```
+   * @category Listener
+   * @since v5.3.0
+   */
+  /// Persister.addStatusListener
+  /**
+   * The delListener method removes a listener that was previously added to the
+   * Persister.
+   *
+   * Use the Id returned by whichever method was used to add the listener. Note
+   * that the Persister may re-use this Id for future listeners added to it.
+   * @param listenerId The Id of the listener to remove.
+   * @returns A reference to the Persister.
+   * @example
+   * This example registers a listener and then removes it.
+   *
+   * ```js
+   * import {createSessionPersister} from 'tinybase/persisters/persister-browser';
+   * import {createStore} from 'tinybase';
+   *
+   * const persister = createSessionPersister(createStore(), 'pets');
+   *
+   * const listenerId = persister.addStatusListener((_persister, status) => {
+   *   console.log(`Status changed to ${status}`);
+   * });
+   *
+   * await persister.load();
+   * // -> `Status changed to 1`
+   * // -> `Status changed to 0`
+   *
+   * persister.delListener(listenerId);
+   *
+   * await persister.load();
+   * // -> undefined
+   * // The listener is not called.
+   * ```
+   * @category Listener
+   * @since v5.3.0
+   */
+  /// Persister.delListener
+  /**
    * The schedule method allows you to queue up a series of asynchronous actions
    * that must run in sequence during persistence.
    *
@@ -1183,7 +1360,8 @@
    *   getDataFromRemoteSystem,
    *   sendDataToRemoteSystem,
    * } from 'custom-remote-handlers';
-   * import {createCustomPersister, createStore} from 'tinybase';
+   * import {createCustomPersister} from 'tinybase/persisters';
+   * import {createStore} from 'tinybase';
    *
    * const store = createStore();
    * const persister = createCustomPersister(
@@ -1313,8 +1491,53 @@
   /// Persister.getStats
 }
 /**
+ * The AnyPersister type is a convenient alias for any type of Persister that
+ * can persist Store or MergeableStore objects.
+ * @category Mergeable
+ * @since v5.3.0
+ */
+/// AnyPersister
+/**
+ * The DatabaseExecuteCommand type describes a function that is used to execute
+ * commands against a database.
+ *
+ * This is only used when developing custom database-oriented Persisters, and
+ * most TinyBase users will not need to be particularly aware of it.
+ *
+ * It is modelled around the common pattern of database SDKs being able to
+ * execute commands with parameters, and have those (probably asynchronous)
+ * command executions return an array of objects, where each object represents a
+ * row.
+ * @param sql The SQL string to execute, which may include positional parameter
+ * placeholders.
+ * @param params An array of parameters to pass to the SQL command.
+ * @returns An promise of an array of objects, where each object represents a
+ * database result row (if the command was a query).
+ * @category Creation
+ * @since v5.2.0
+ */
+/// DatabaseExecuteCommand
+/**
+ * The DatabaseChangeListener type describes a function that is used to listen
+ * for changes to the data in a database.
+ *
+ * This is only used when developing custom database-oriented Persisters, and
+ * most TinyBase users will not need to be particularly aware of it.
+ *
+ * This function should be called with the name of a relevant table that has
+ * changed, possible through the use of events, triggers, or notifications,
+ * dependent on the specific database implementation.
+ * @param tableName The name of the table that has changed.
+ * @category Creation
+ * @since v5.2.0
+ */
+/// DatabaseChangeListener
+/**
  * The createCustomPersister function creates a Persister object that you can
  * configure to persist the Store in any way you wish.
+ *
+ * This is only used when developing custom Persisters, and most TinyBase users
+ * will not need to be particularly aware of it.
  *
  * As well as providing a reference to the Store to persist, you must provide
  * functions that handle how to fetch, write, and listen to, the persistence
@@ -1344,7 +1567,7 @@
  * @param addPersisterListener A function that will register a `listener`
  * listener on underlying changes to the persistence layer. You can return a
  * listening handle that will be provided again when `delPersisterListener` is
- * called.
+ * called. This function can be asynchronous.
  * @param delPersisterListener A function that will unregister the listener from
  * the underlying changes to the persistence layer. It receives whatever was
  * returned from your `addPersisterListener` implementation.
@@ -1364,7 +1587,8 @@
  * Store.
  *
  * ```js
- * import {createCustomPersister, createStore} from 'tinybase';
+ * import {createCustomPersister} from 'tinybase/persisters';
+ * import {createStore} from 'tinybase';
  *
  * const store = createStore().setTables({pets: {fido: {species: 'dog'}}});
  * let persistedJson;
@@ -1403,12 +1627,8 @@
  * MergeableStore.
  *
  * ```js
- * import {
- *   Persists,
- *   createCustomPersister,
- *   createMergeableStore,
- *   createStore,
- * } from 'tinybase';
+ * import {Persists, createCustomPersister} from 'tinybase/persisters';
+ * import {createMergeableStore, createStore} from 'tinybase';
  *
  * let persistedJson;
  * const createJsonPersister = (storeOrMergeableStore) =>
@@ -1468,3 +1688,83 @@
  * @since v1.0.0
  */
 /// createCustomPersister
+/**
+ * The createCustomSqlitePersister function creates a Persister object that you
+ * can configure to persist the Store to a SQLite database.
+ *
+ * This is only used when developing custom database-oriented Persisters, and
+ * most TinyBase users will not need to be particularly aware of it.
+ *
+ * All of the TinyBase SQLite-oriented Persister functions use this function
+ * under the covers, and so you may wish to look at those implementations for
+ * ideas on how to build your own Persister type, and as functional examples.
+ * Examine the implementation of the createSqlite3Persister function as a good
+ * starting point, for example.
+ * @param store The Store to persist.
+ * @param configOrStoreTableName A DatabasePersisterConfig object, or a string
+ * that will be used as the name of the Store's table in the database.
+ * @param executeCommand A function that will execute a command against the
+ * database.
+ * @param addChangeListener A function that will register a listener for changes
+ * to the database.
+ * @param delChangeListener A function that will unregister the listener for
+ * changes to the database.
+ * @param onSqlCommand A function that will be called for each SQL command
+ * executed against the database.
+ * @param onIgnoredError A function that will be called for errors that are
+ * ignored by the Persister.
+ * @param destroy A function that will be called to perform any extra clean up
+ * on the Persister.
+ * @param persist An integer from the Persists enum to indicate which types of
+ * Store are supported by this Persister: `1` indicates only a regular Store is
+ * supported, `2` indicates only a MergeableStore is supported, and `3`
+ * indicates that both Store and MergeableStore are supported.
+ * @param thing A reference to the database or connection that can be returned
+ * with a method, by default called `getDb`.
+ * @param getThing An optional string that will be used to get the reference to
+ * the database or connection from the Persister, defaulting to `getDb`.
+ * @returns A reference to the new SQLite-oriented Persister object.
+ * @category Creation
+ * @since v5.2.0
+ */
+/// createCustomSqlitePersister
+/**
+ * The createCustomSqlitePersister function creates a Persister object that you
+ * can configure to persist the Store to a PostgreSQL database.
+ *
+ * This is only used when developing custom database-oriented Persisters, and
+ * most TinyBase users will not need to be particularly aware of it.
+ *
+ * All of the TinyBase PostgreSQL-oriented Persister functions use this function
+ * under the covers, and so you may wish to look at those implementations for
+ * ideas on how to build your own Persister type, and as functional
+ * examples. Examine the implementation of the createPostgresPersister function
+ * as a good starting point, for example.
+ * @param store The Store to persist.
+ * @param configOrStoreTableName A DatabasePersisterConfig object, or a string
+ * that will be used as the name of the Store's table in the database.
+ * @param executeCommand A function that will execute a command against the
+ * database.
+ * @param addChangeListener A function that will register a listener for changes
+ * to the database.
+ * @param delChangeListener A function that will unregister the listener for
+ * changes to the database.
+ * @param onSqlCommand A function that will be called for each SQL command
+ * executed against the database.
+ * @param onIgnoredError A function that will be called for errors that are
+ * ignored by the Persister.
+ * @param destroy A function that will be called to perform any extra clean up
+ * on the Persister.
+ * @param persist An integer from the Persists enum to indicate which types of
+ * Store are supported by this Persister: `1` indicates only a regular Store is
+ * supported, `2` indicates only a MergeableStore is supported, and `3`
+ * indicates that both Store and MergeableStore are supported.
+ * @param thing A reference to the database or connection that can be returned
+ * with a method, by default called `getDb`.
+ * @param getThing An optional string that will be used to get the reference to
+ * the database or connection from the Persister, defaulting to `getDb`.
+ * @returns A reference to the new Persister object.
+ * @category Creation
+ * @since v5.2.0
+ */
+/// createCustomPostgreSqlPersister

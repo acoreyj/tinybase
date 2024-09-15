@@ -1,6 +1,14 @@
 /// ui-react
 
 import type {
+  AnyPersister,
+  PersistedStore,
+  Persister,
+  Persists,
+  Status,
+  StatusListener,
+} from '../persisters/index.d.ts';
+import type {
   Callback,
   Id,
   IdOrNull,
@@ -72,7 +80,6 @@ import type {
   ResultTableListener,
 } from '../queries/index.d.ts';
 import type {MergeableStore} from '../mergeable-store/index.d.ts';
-import type {Persister} from '../persisters/index.d.ts';
 import type {Synchronizer} from '../synchronizers/index.d.ts';
 
 /// StoreOrStoreId
@@ -92,6 +99,12 @@ export type QueriesOrQueriesId = Queries | Id;
 
 /// CheckpointsOrCheckpointsId
 export type CheckpointsOrCheckpointsId = Checkpoints | Id;
+
+/// PersisterOrPersisterId
+export type PersisterOrPersisterId = AnyPersister | Id;
+
+/// SynchronizerOrSynchronizerId
+export type SynchronizerOrSynchronizerId = Synchronizer | Id;
 
 /// UndoOrRedoInformation
 export type UndoOrRedoInformation = [boolean, Callback, Id | undefined, string];
@@ -600,6 +613,9 @@ export function useMetricsOrMetricsById(
   metricsOrMetricsId?: MetricsOrMetricsId,
 ): Metrics | undefined;
 
+/// useProvideMetrics
+export function useProvideMetrics(metricsId: Id, metrics: Metrics): void;
+
 /// useMetricIds
 export function useMetricIds(metricsOrMetricsId?: MetricsOrMetricsId): Ids;
 
@@ -634,6 +650,9 @@ export function useIndexes(id?: Id): Indexes | undefined;
 export function useIndexesOrIndexesById(
   indexesOrIndexesId?: IndexesOrIndexesId,
 ): Indexes | undefined;
+
+// useProvideIndexes
+export function useProvideIndexes(indexesId: Id, indexes: Indexes): void;
 
 /// useIndexIds
 export function useIndexIds(indexesOrIndexesId?: IndexesOrIndexesId): Ids;
@@ -685,6 +704,12 @@ export function useRelationships(id?: Id): Relationships | undefined;
 export function useRelationshipsOrRelationshipsById(
   relationshipsOrRelationshipsId?: RelationshipsOrRelationshipsId,
 ): Relationships | undefined;
+
+// useProvideRelationships
+export function useProvideRelationships(
+  relationshipsId: Id,
+  relationships: Relationships,
+): void;
 
 /// useRelationshipIds
 export function useRelationshipIds(
@@ -756,6 +781,9 @@ export function useQueries(id?: Id): Queries | undefined;
 export function useQueriesOrQueriesById(
   queriesOrQueriesId?: QueriesOrQueriesId,
 ): Queries | undefined;
+
+// useProvideQueries
+export function useProvideQueries(queriesId: Id, queries: Queries): void;
 
 /// useQueryIds
 export function useQueryIds(queriesOrQueriesId?: QueriesOrQueriesId): Ids;
@@ -906,6 +934,12 @@ export function useCheckpointsOrCheckpointsById(
   checkpointsOrCheckpointsId?: CheckpointsOrCheckpointsId,
 ): Checkpoints | undefined;
 
+// useProvideCheckpoints
+export function useProvideCheckpoints(
+  checkpointsId: Id,
+  checkpoints: Checkpoints,
+): void;
+
 /// useCheckpointIds
 export function useCheckpointIds(
   checkpointsOrCheckpointsId?: CheckpointsOrCheckpointsId,
@@ -972,16 +1006,48 @@ export function useCheckpointListener(
 
 /// useCreatePersister
 export function useCreatePersister<
-  PersisterOrUndefined extends Persister | undefined,
+  Persist extends Persists,
+  PersisterOrUndefined extends Persister<Persist> | undefined,
 >(
-  store: Store | undefined,
-  create: (store: Store) => PersisterOrUndefined,
+  store: PersistedStore<Persist> | undefined,
+  create: (
+    store: PersistedStore<Persist>,
+  ) => PersisterOrUndefined | Promise<PersisterOrUndefined>,
   createDeps?: React.DependencyList,
-  then?: (persister: Persister) => Promise<void>,
+  then?: (persister: Persister<Persist>) => Promise<void>,
   thenDeps?: React.DependencyList,
-  destroy?: (persister: Persister) => void,
+  destroy?: (persister: Persister<Persist>) => void,
   destroyDeps?: React.DependencyList,
 ): PersisterOrUndefined;
+
+/// usePersisterIds
+export function usePersisterIds(): Ids;
+
+/// usePersister
+export function usePersister(id?: Id): AnyPersister | undefined;
+
+/// usePersisterOrPersisterById
+export function usePersisterOrPersisterById(
+  persisterOrPersisterId?: PersisterOrPersisterId,
+): AnyPersister | undefined;
+
+// useProvidePersister
+export function useProvidePersister(
+  persisterId: Id,
+  persister: AnyPersister | undefined,
+): void;
+
+/// usePersisterStatus
+export function usePersisterStatus(
+  persisterOrPersisterId?: PersisterOrPersisterId,
+): Status;
+
+/// usePersisterStatusListener
+export function usePersisterStatusListener(
+  listener: StatusListener<Persists.StoreOrMergeableStore>,
+  listenerDeps?: React.DependencyList,
+  persisterOrPersisterId?: PersisterOrPersisterId,
+): void;
 
 /// useCreateSynchronizer
 export function useCreateSynchronizer<
@@ -993,6 +1059,35 @@ export function useCreateSynchronizer<
   destroy?: (synchronizer: Synchronizer) => void,
   destroyDeps?: React.DependencyList,
 ): SynchronizerOrUndefined;
+
+/// useSynchronizerIds
+export function useSynchronizerIds(): Ids;
+
+/// useSynchronizer
+export function useSynchronizer(id?: Id): Synchronizer | undefined;
+
+/// useSynchronizerOrSynchronizerById
+export function useSynchronizerOrSynchronizerById(
+  synchronizerOrSynchronizerId?: SynchronizerOrSynchronizerId,
+): Synchronizer | undefined;
+
+// useProvideSynchronizer
+export function useProvideSynchronizer(
+  synchronizerId: Id,
+  synchronizer: Synchronizer | undefined,
+): void;
+
+/// useSynchronizerStatus
+export function useSynchronizerStatus(
+  synchronizerOrSynchronizerId?: SynchronizerOrSynchronizerId,
+): Status;
+
+/// useSynchronizerStatusListener
+export function useSynchronizerStatusListener(
+  listener: StatusListener<Persists.MergeableStoreOnly>,
+  listenerDeps?: React.DependencyList,
+  synchronizerOrSynchronizerId?: SynchronizerOrSynchronizerId,
+): void;
 
 /// ExtraProps
 export type ExtraProps = {[propName: string]: any};
@@ -1357,6 +1452,16 @@ export type ProviderProps = {
   readonly checkpoints?: Checkpoints;
   /// ProviderProps.checkpointsById
   readonly checkpointsById?: {[checkpointsId: Id]: Checkpoints};
+  /// ProviderProps.persister
+  readonly persister?: AnyPersister;
+  /// ProviderProps.persistersById
+  readonly persistersById?: {
+    [persisterId: Id]: AnyPersister;
+  };
+  /// ProviderProps.synchronizer
+  readonly synchronizer?: Synchronizer;
+  /// ProviderProps.synchronizersById
+  readonly synchronizersById?: {[synchronizerId: Id]: Synchronizer};
 };
 
 /// ComponentReturnType

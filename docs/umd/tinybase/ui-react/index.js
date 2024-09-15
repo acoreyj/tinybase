@@ -10,6 +10,7 @@
   'use strict';
 
   const getTypeOf = (thing) => typeof thing;
+  const TINYBASE = 'tinybase';
   const EMPTY_STRING = '';
   const STRING = getTypeOf(EMPTY_STRING);
   const FUNCTION = getTypeOf(getTypeOf);
@@ -32,7 +33,9 @@
   const VALUE = 'Value';
   const VALUES = VALUE + 's';
   const VALUE_IDS = VALUE + IDS;
+  const STATUS = 'Status';
 
+  const GLOBAL = globalThis;
   const isUndefined = (thing) => thing == void 0;
   const ifNotUndefined = (value, then, otherwise) =>
     isUndefined(value) ? otherwise?.() : then(value);
@@ -42,6 +45,8 @@
   const size = (arrayOrString) => arrayOrString.length;
   const getUndefined = () => void 0;
 
+  const arrayNew = (size2, cb) =>
+    arrayMap(new Array(size2).fill(0), (_, index) => cb(index));
   const arrayEvery = (array, cb) => array.every(cb);
   const arrayIsEqual = (array1, array2) =>
     size(array1) === size(array2) &&
@@ -49,6 +54,7 @@
   const arrayMap = (array, cb) => array.map(cb);
   const arrayIsEmpty = (array) => size(array) == 0;
   const arrayFilter = (array, cb) => array.filter(cb);
+  const arrayWith = (array, index, value) => array.with(index, value);
 
   const object = Object;
   const getPrototypeOf = (obj) => object.getPrototypeOf(obj);
@@ -66,6 +72,7 @@
     );
   const objIds = object.keys;
   const objGet = (obj, id) => ifNotUndefined(obj, (obj2) => obj2[id]);
+  const objHas = (obj, id) => id in obj;
   const objDel = (obj, id) => {
     delete obj[id];
     return obj;
@@ -84,19 +91,38 @@
       )
     );
   };
+  const objEnsure = (obj, id, getDefaultValue) => {
+    if (!objHas(obj, id)) {
+      obj[id] = getDefaultValue();
+    }
+    return obj[id];
+  };
 
   const {
     createContext,
     useContext: useContext$1,
     useEffect: useEffect$1,
   } = React;
-  const Context = createContext([]);
+  var Offsets = /* @__PURE__ */ ((Offsets2) => {
+    Offsets2[(Offsets2['Store'] = 0)] = 'Store';
+    Offsets2[(Offsets2['Metrics'] = 1)] = 'Metrics';
+    Offsets2[(Offsets2['Indexes'] = 2)] = 'Indexes';
+    Offsets2[(Offsets2['Relationships'] = 3)] = 'Relationships';
+    Offsets2[(Offsets2['Queries'] = 4)] = 'Queries';
+    Offsets2[(Offsets2['Checkpoints'] = 5)] = 'Checkpoints';
+    Offsets2[(Offsets2['Persister'] = 6)] = 'Persister';
+    Offsets2[(Offsets2['Synchronizer'] = 7)] = 'Synchronizer';
+    return Offsets2;
+  })(Offsets || {});
+  const Context = objEnsure(GLOBAL, TINYBASE + '_uirc', () =>
+    createContext([]),
+  );
   const useThing = (id, offset) => {
     const contextValue = useContext$1(Context);
     return isUndefined(id)
-      ? contextValue[offset]
+      ? contextValue[offset * 2]
       : isString(id)
-        ? objGet(contextValue[offset + 1] ?? {}, id)
+        ? objGet(contextValue[offset * 2 + 1] ?? {}, id)
         : id;
   };
   const useThingOrThingById = (thingOrThingId, offset) => {
@@ -105,33 +131,66 @@
       ? thing
       : thingOrThingId;
   };
-  const useThingIds = (offset) => objIds(useContext$1(Context)[offset] ?? {});
-  const useStore = (id) => useThing(id, 0);
-  const useStoreOrStoreById = (storeOrStoreId) =>
-    useThingOrThingById(storeOrStoreId, 0);
-  const useProvideStore = (storeId, store) => {
-    const {12: addExtraStore, 13: delExtraStore} = useContext$1(Context);
+  const useProvideThing = (thingId, thing, offset) => {
+    const {16: addExtraThingById, 17: delExtraThingById} =
+      useContext$1(Context);
     useEffect$1(() => {
-      addExtraStore?.(storeId, store);
-      return () => delExtraStore?.(storeId);
-    }, [addExtraStore, storeId, store, delExtraStore]);
+      addExtraThingById?.(offset, thingId, thing);
+      return () => delExtraThingById?.(offset, thingId);
+    }, [addExtraThingById, thingId, thing, offset, delExtraThingById]);
   };
-  const useMetrics = (id) => useThing(id, 2);
+  const useThingIds = (offset) =>
+    objIds(useContext$1(Context)[offset * 2 + 1] ?? {});
+  const useStoreIds = () => useThingIds(0 /* Store */);
+  const useStore = (id) => useThing(id, 0 /* Store */);
+  const useStoreOrStoreById = (storeOrStoreId) =>
+    useThingOrThingById(storeOrStoreId, 0 /* Store */);
+  const useProvideStore = (storeId, store) =>
+    useProvideThing(storeId, store, 0 /* Store */);
+  const useMetricsIds = () => useThingIds(1 /* Metrics */);
+  const useMetrics = (id) => useThing(id, 1 /* Metrics */);
   const useMetricsOrMetricsById = (metricsOrMetricsId) =>
-    useThingOrThingById(metricsOrMetricsId, 2);
-  const useIndexes = (id) => useThing(id, 4);
+    useThingOrThingById(metricsOrMetricsId, 1 /* Metrics */);
+  const useProvideMetrics = (metricsId, metrics) =>
+    useProvideThing(metricsId, metrics, 1 /* Metrics */);
+  const useIndexesIds = () => useThingIds(2 /* Indexes */);
+  const useIndexes = (id) => useThing(id, 2 /* Indexes */);
   const useIndexesOrIndexesById = (indexesOrIndexesId) =>
-    useThingOrThingById(indexesOrIndexesId, 4);
-  const useRelationships = (id) => useThing(id, 6);
+    useThingOrThingById(indexesOrIndexesId, 2 /* Indexes */);
+  const useProvideIndexes = (indexesId, indexes) =>
+    useProvideThing(indexesId, indexes, 2 /* Indexes */);
+  const useRelationshipsIds = () => useThingIds(3 /* Relationships */);
+  const useRelationships = (id) => useThing(id, 3 /* Relationships */);
   const useRelationshipsOrRelationshipsById = (
     relationshipsOrRelationshipsId,
-  ) => useThingOrThingById(relationshipsOrRelationshipsId, 6);
-  const useQueries = (id) => useThing(id, 8);
+  ) =>
+    useThingOrThingById(relationshipsOrRelationshipsId, 3 /* Relationships */);
+  const useProvideRelationships = (relationshipsId, relationships) =>
+    useProvideThing(relationshipsId, relationships, 3 /* Relationships */);
+  const useQueriesIds = () => useThingIds(4 /* Queries */);
+  const useQueries = (id) => useThing(id, 4 /* Queries */);
   const useQueriesOrQueriesById = (queriesOrQueriesId) =>
-    useThingOrThingById(queriesOrQueriesId, 8);
-  const useCheckpoints = (id) => useThing(id, 10);
+    useThingOrThingById(queriesOrQueriesId, 4 /* Queries */);
+  const useProvideQueries = (queriesId, queries) =>
+    useProvideThing(queriesId, queries, 4 /* Queries */);
+  const useCheckpointsIds = () => useThingIds(5 /* Checkpoints */);
+  const useCheckpoints = (id) => useThing(id, 5 /* Checkpoints */);
   const useCheckpointsOrCheckpointsById = (checkpointsOrCheckpointsId) =>
-    useThingOrThingById(checkpointsOrCheckpointsId, 10);
+    useThingOrThingById(checkpointsOrCheckpointsId, 5 /* Checkpoints */);
+  const useProvideCheckpoints = (checkpointsId, checkpoints) =>
+    useProvideThing(checkpointsId, checkpoints, 5 /* Checkpoints */);
+  const usePersisterIds = () => useThingIds(6 /* Persister */);
+  const usePersister = (id) => useThing(id, 6 /* Persister */);
+  const usePersisterOrPersisterById = (persisterOrPersisterId) =>
+    useThingOrThingById(persisterOrPersisterId, 6 /* Persister */);
+  const useProvidePersister = (persisterId, persister) =>
+    useProvideThing(persisterId, persister, 6 /* Persister */);
+  const useSynchronizerIds = () => useThingIds(7 /* Synchronizer */);
+  const useSynchronizer = (id) => useThing(id, 7 /* Synchronizer */);
+  const useSynchronizerOrSynchronizerById = (synchronizerOrSynchronizerId) =>
+    useThingOrThingById(synchronizerOrSynchronizerId, 7 /* Synchronizer */);
+  const useProvideSynchronizer = (persisterId, persister) =>
+    useProvideThing(persisterId, persister, 7 /* Synchronizer */);
 
   const lower = (str) => str.toLowerCase();
   lower(LISTENER);
@@ -216,7 +275,7 @@
       /* eslint-disable-next-line react-hooks/exhaustive-deps */
       [thing, returnType, listenable, ...args],
     );
-    return useSyncExternalStore(subscribe, getResult);
+    return useSyncExternalStore(subscribe, getResult, getResult);
   };
   const useListener = (
     listenable,
@@ -294,7 +353,6 @@
     useMemo$1(create, createDeps);
   const useCreateMergeableStore = (create, createDeps = EMPTY_ARRAY) =>
     useMemo$1(create, createDeps);
-  const useStoreIds = () => useThingIds(1);
   const useHasTables = (storeOrStoreId) =>
     useListenable(
       TABLES,
@@ -940,7 +998,6 @@
     );
   const useCreateMetrics = (store, create, createDeps) =>
     useCreate(store, create, createDeps);
-  const useMetricsIds = () => useThingIds(3);
   const useMetricIds = (metricsOrMetricsId) =>
     useListenable(
       'MetricIds',
@@ -969,7 +1026,6 @@
     );
   const useCreateIndexes = (store, create, createDeps) =>
     useCreate(store, create, createDeps);
-  const useIndexesIds = () => useThingIds(5);
   const useSliceIds = (indexId, indexesOrIndexesId) =>
     useListenable(
       'SliceIds',
@@ -1019,7 +1075,6 @@
     );
   const useCreateRelationships = (store, create, createDeps) =>
     useCreate(store, create, createDeps);
-  const useRelationshipsIds = () => useThingIds(7);
   const useRelationshipIds = (relationshipsOrRelationshipsId) =>
     useListenable(
       'RelationshipIds',
@@ -1103,7 +1158,6 @@
     );
   const useCreateQueries = (store, create, createDeps) =>
     useCreate(store, create, createDeps);
-  const useQueriesIds = () => useThingIds(9);
   const useQueryIds = (queriesOrQueriesId) =>
     useListenable(
       'QueryIds',
@@ -1287,7 +1341,6 @@
     );
   const useCreateCheckpoints = (store, create, createDeps) =>
     useCreate(store, create, createDeps);
-  const useCheckpointsIds = () => useThingIds(11);
   const useCheckpointIds = (checkpointsOrCheckpointsId) =>
     useListenable(
       'CheckpointIds',
@@ -1409,14 +1462,16 @@
     const [persister, setPersister] = useState$2();
     useEffect(
       () => {
-        const persister2 = store ? create(store) : void 0;
-        setPersister(persister2);
-        if (persister2 && then) {
-          (async () => {
-            await then(persister2);
-            rerender([]);
-          })();
-        }
+        (async () => {
+          const persister2 = store ? await create(store) : void 0;
+          setPersister(persister2);
+          if (persister2 && then) {
+            (async () => {
+              await then(persister2);
+              rerender([]);
+            })();
+          }
+        })();
       },
       // eslint-disable-next-line react-hooks/exhaustive-deps
       [store, ...createDeps, ...thenDeps],
@@ -1433,6 +1488,25 @@
     );
     return persister;
   };
+  const usePersisterStatus = (persisterOrPersisterId) =>
+    useListenable(
+      STATUS,
+      usePersisterOrPersisterById(persisterOrPersisterId),
+      5 /* Number */,
+      [],
+    );
+  const usePersisterStatusListener = (
+    listener,
+    listenerDeps,
+    persisterOrPersisterId,
+  ) =>
+    useListener(
+      STATUS,
+      usePersisterOrPersisterById(persisterOrPersisterId),
+      listener,
+      listenerDeps,
+      [],
+    );
   const useCreateSynchronizer = (
     store,
     create,
@@ -1463,6 +1537,25 @@
     );
     return synchronizer;
   };
+  const useSynchronizerStatus = (synchronizerOrSynchronizerId) =>
+    useListenable(
+      STATUS,
+      useSynchronizerOrSynchronizerById(synchronizerOrSynchronizerId),
+      5 /* Number */,
+      [],
+    );
+  const useSynchronizerStatusListener = (
+    listener,
+    listenerDeps,
+    synchronizerOrSynchronizerId,
+  ) =>
+    useListener(
+      STATUS,
+      useSynchronizerOrSynchronizerById(synchronizerOrSynchronizerId),
+      listener,
+      listenerDeps,
+      [],
+    );
 
   const {
     PureComponent,
@@ -1488,6 +1581,20 @@
   ];
 
   const {useCallback, useContext, useMemo, useState} = React;
+  const mergeParentThings = (
+    offset,
+    parentValue,
+    defaultThing,
+    thingsById,
+    extraThingsById,
+  ) => [
+    defaultThing ?? parentValue[offset * 2],
+    {
+      ...parentValue[offset * 2 + 1],
+      ...thingsById,
+      ...extraThingsById[offset],
+    },
+  ];
   const tableView = (
     {
       tableId,
@@ -1614,24 +1721,39 @@
     queriesById,
     checkpoints,
     checkpointsById,
+    persister,
+    persistersById,
+    synchronizer,
+    synchronizersById,
     children,
   }) => {
     const parentValue = useContext(Context);
-    const [extraStoresById, setExtraStoresById] = useState({});
-    const addExtraStore = useCallback(
-      (id, store2) =>
-        setExtraStoresById((extraStoresById2) =>
-          objGet(extraStoresById2, id) == store2
-            ? extraStoresById2
-            : {...extraStoresById2, [id]: store2},
+    const [extraThingsById, setExtraThingsById] = useState(() =>
+      arrayNew(8, () => ({})),
+    );
+    const addExtraThingById = useCallback(
+      (thingOffset, id, thing) =>
+        setExtraThingsById((extraThingsById2) =>
+          objGet(extraThingsById2[thingOffset], id) == thing
+            ? extraThingsById2
+            : arrayWith(extraThingsById2, thingOffset, {
+                ...extraThingsById2[thingOffset],
+                [id]: thing,
+              }),
         ),
       [],
     );
-    const delExtraStore = useCallback(
-      (id) =>
-        setExtraStoresById((extraStoresById2) => ({
-          ...objDel(extraStoresById2, id),
-        })),
+    const delExtraThingById = useCallback(
+      (thingOffset, id) =>
+        setExtraThingsById((extraThingsById2) =>
+          !objHas(extraThingsById2[thingOffset], id)
+            ? extraThingsById2
+            : arrayWith(
+                extraThingsById2,
+                thingOffset,
+                objDel(extraThingsById2[thingOffset], id),
+              ),
+        ),
       [],
     );
     return /* @__PURE__ */ createElement(
@@ -1639,25 +1761,69 @@
       {
         value: useMemo(
           () => [
-            store ?? parentValue[0],
-            {...parentValue[1], ...storesById, ...extraStoresById},
-            metrics ?? parentValue[2],
-            {...parentValue[3], ...metricsById},
-            indexes ?? parentValue[4],
-            {...parentValue[5], ...indexesById},
-            relationships ?? parentValue[6],
-            {...parentValue[7], ...relationshipsById},
-            queries ?? parentValue[8],
-            {...parentValue[9], ...queriesById},
-            checkpoints ?? parentValue[10],
-            {...parentValue[11], ...checkpointsById},
-            addExtraStore,
-            delExtraStore,
+            ...mergeParentThings(
+              Offsets.Store,
+              parentValue,
+              store,
+              storesById,
+              extraThingsById,
+            ),
+            ...mergeParentThings(
+              Offsets.Metrics,
+              parentValue,
+              metrics,
+              metricsById,
+              extraThingsById,
+            ),
+            ...mergeParentThings(
+              Offsets.Indexes,
+              parentValue,
+              indexes,
+              indexesById,
+              extraThingsById,
+            ),
+            ...mergeParentThings(
+              Offsets.Relationships,
+              parentValue,
+              relationships,
+              relationshipsById,
+              extraThingsById,
+            ),
+            ...mergeParentThings(
+              Offsets.Queries,
+              parentValue,
+              queries,
+              queriesById,
+              extraThingsById,
+            ),
+            ...mergeParentThings(
+              Offsets.Checkpoints,
+              parentValue,
+              checkpoints,
+              checkpointsById,
+              extraThingsById,
+            ),
+            ...mergeParentThings(
+              Offsets.Persister,
+              parentValue,
+              persister,
+              persistersById,
+              extraThingsById,
+            ),
+            ...mergeParentThings(
+              Offsets.Synchronizer,
+              parentValue,
+              synchronizer,
+              synchronizersById,
+              extraThingsById,
+            ),
+            addExtraThingById,
+            delExtraThingById,
           ],
           [
+            extraThingsById,
             store,
             storesById,
-            extraStoresById,
             metrics,
             metricsById,
             indexes,
@@ -1668,9 +1834,13 @@
             queriesById,
             checkpoints,
             checkpointsById,
+            persister,
+            persistersById,
+            synchronizer,
+            synchronizersById,
             parentValue,
-            addExtraStore,
-            delExtraStore,
+            addExtraThingById,
+            delExtraThingById,
           ],
         ),
       },
@@ -2033,7 +2203,19 @@
   exports.useMetrics = useMetrics;
   exports.useMetricsIds = useMetricsIds;
   exports.useMetricsOrMetricsById = useMetricsOrMetricsById;
+  exports.usePersister = usePersister;
+  exports.usePersisterIds = usePersisterIds;
+  exports.usePersisterOrPersisterById = usePersisterOrPersisterById;
+  exports.usePersisterStatus = usePersisterStatus;
+  exports.usePersisterStatusListener = usePersisterStatusListener;
+  exports.useProvideCheckpoints = useProvideCheckpoints;
+  exports.useProvideIndexes = useProvideIndexes;
+  exports.useProvideMetrics = useProvideMetrics;
+  exports.useProvidePersister = useProvidePersister;
+  exports.useProvideQueries = useProvideQueries;
+  exports.useProvideRelationships = useProvideRelationships;
   exports.useProvideStore = useProvideStore;
+  exports.useProvideSynchronizer = useProvideSynchronizer;
   exports.useQueries = useQueries;
   exports.useQueriesIds = useQueriesIds;
   exports.useQueriesOrQueriesById = useQueriesOrQueriesById;
@@ -2087,6 +2269,11 @@
   exports.useStore = useStore;
   exports.useStoreIds = useStoreIds;
   exports.useStoreOrStoreById = useStoreOrStoreById;
+  exports.useSynchronizer = useSynchronizer;
+  exports.useSynchronizerIds = useSynchronizerIds;
+  exports.useSynchronizerOrSynchronizerById = useSynchronizerOrSynchronizerById;
+  exports.useSynchronizerStatus = useSynchronizerStatus;
+  exports.useSynchronizerStatusListener = useSynchronizerStatusListener;
   exports.useTable = useTable;
   exports.useTableCellIds = useTableCellIds;
   exports.useTableCellIdsListener = useTableCellIdsListener;

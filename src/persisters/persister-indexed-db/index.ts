@@ -15,7 +15,7 @@ import {
 import {arrayMap, arrayPush} from '../../common/array.ts';
 import type {Id} from '../../@types/common/index.d.ts';
 import type {PersisterListener} from '../../@types/persisters/index.d.ts';
-import {createCustomPersister} from '../index.ts';
+import {createCustomPersister} from '../common/create.ts';
 
 const OBJECT_STORE_NAMES = [T, V];
 const KEY_PATH = {keyPath: 'k'};
@@ -54,7 +54,7 @@ export const createIndexedDbPersister = ((
 ): IndexedDbPersister => {
   const forObjectStores = async (
     forObjectStore: (objectStore: IDBObjectStore, arg: any) => Promise<any>,
-    args: any[] = [],
+    params: any[] = [],
     create: 0 | 1 = 0,
   ): Promise<[any, any]> =>
     promiseNew((resolve, reject) => {
@@ -81,7 +81,7 @@ export const createIndexedDbPersister = ((
               async (objectStoreName, index) =>
                 await forObjectStore(
                   transaction.objectStore(objectStoreName),
-                  args[index],
+                  params[index],
                 ),
             ),
           );

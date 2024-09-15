@@ -42,6 +42,8 @@ export const VALUE = 'Value';
 export const VALUES = VALUE + 's';
 export const VALUE_IDS = VALUE + IDS;
 
+export const STATUS = 'Status';
+
 export const CURRENT_TARGET = 'currentTarget';
 export const _VALUE = 'value';
 
@@ -59,3 +61,6 @@ export const strStartsWith = (str: string, prefix: string) =>
 
 export const strEndsWith = (str: string, suffix: string) =>
   str.endsWith(suffix);
+
+export const strMatch = (str: string | undefined, regex: RegExp) =>
+  str?.match(regex);

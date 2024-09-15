@@ -1,32 +1,32 @@
 import type {
+  DatabaseChangeListener,
+  DatabasePersisterConfig,
+} from '../../@types/persisters/index.d.ts';
+import type {
   SqliteWasmPersister,
   createSqliteWasmPersister as createSqliteWasmPersisterDecl,
 } from '../../@types/persisters/persister-sqlite-wasm/index.d.ts';
-import {
-  UpdateListener,
-  createSqlitePersister,
-} from '../common/sqlite/create.ts';
-import type {DatabasePersisterConfig} from '../../@types/persisters/index.d.ts';
 import {IdObj} from '../../common/obj.ts';
 import type {MergeableStore} from '../../@types/mergeable-store/index.d.ts';
 import type {Store} from '../../@types/store/index.d.ts';
+import {createCustomSqlitePersister} from '../common/database/sqlite.ts';
 
 export const createSqliteWasmPersister = ((
   store: Store | MergeableStore,
   sqlite3: any,
   db: any,
   configOrStoreTableName?: DatabasePersisterConfig | string,
-  onSqlCommand?: (sql: string, args?: any[]) => void,
+  onSqlCommand?: (sql: string, params?: any[]) => void,
   onIgnoredError?: (error: any) => void,
 ): SqliteWasmPersister =>
-  createSqlitePersister(
+  createCustomSqlitePersister(
     store,
     configOrStoreTableName,
-    async (sql: string, args: any[] = []): Promise<IdObj<any>[]> =>
+    async (sql: string, params: any[] = []): Promise<IdObj<any>[]> =>
       db
-        .exec(sql, {bind: args, rowMode: 'object', returnValue: 'resultRows'})
+        .exec(sql, {bind: params, rowMode: 'object', returnValue: 'resultRows'})
         .map((row: IdObj<any>) => ({...row})),
-    (listener: UpdateListener): void =>
+    (listener: DatabaseChangeListener): void =>
       sqlite3.capi.sqlite3_update_hook(
         db,
         (_: any, _2: any, _3: any, tableName: string) => listener(tableName),
@@ -35,6 +35,7 @@ export const createSqliteWasmPersister = ((
     (): void => sqlite3.capi.sqlite3_update_hook(db, () => 0, 0),
     onSqlCommand,
     onIgnoredError,
+    () => 0,
     3, // StoreOrMergeableStore,
     db,
   ) as SqliteWasmPersister) as typeof createSqliteWasmPersisterDecl;

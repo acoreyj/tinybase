@@ -11,11 +11,11 @@ const TEST_MODULES = [
   'ui-react-dom',
   'ui-react-inspector',
   'tools',
+  'persisters',
   'persisters/persister-automerge',
   'persisters/persister-browser',
   'persisters/persister-cr-sqlite-wasm',
   'persisters/persister-electric-sql',
-  'persisters/persister-powersync',
   'persisters/persister-expo-sqlite',
   'persisters/persister-d1',
   'persisters/persister-file',
@@ -23,10 +23,14 @@ const TEST_MODULES = [
   'persisters/persister-libsql',
   'persisters/persister-partykit-client',
   'persisters/persister-partykit-server',
+  'persisters/persister-pglite',
+  'persisters/persister-postgres',
+  'persisters/persister-powersync',
   'persisters/persister-remote',
   'persisters/persister-sqlite-wasm',
   'persisters/persister-sqlite3',
   'persisters/persister-yjs',
+  'synchronizers',
   'synchronizers/synchronizer-local',
   'synchronizers/synchronizer-ws-client',
   'synchronizers/synchronizer-ws-server',
@@ -41,8 +45,6 @@ const ALL_MODULES = [
   'queries',
   'checkpoints',
   'mergeable-store',
-  'persisters',
-  'synchronizers',
   'common',
 ];
 const ALL_DEFINITIONS = [
@@ -404,7 +406,9 @@ const tsCheck = async (dir) => {
   const results = tsc
     .getPreEmitDiagnostics(
       tsc.createProgram(
-        fileNames.filter((fileName) => !fileName.startsWith('test/unit/types')),
+        fileNames.filter(
+          (fileName) => !fileName.startsWith('test/unit/core/types'),
+        ),
         options,
       ),
     )
@@ -569,7 +573,7 @@ const compileModule = async (
 
 // coverageMode = 0: none; 1: screen; 2: json; 3: html
 const test = async (
-  dir,
+  dirs,
   {coverageMode, countAsserts, puppeteer, serialTests} = {},
 ) => {
   const {default: jest} = await import('jest');
@@ -578,7 +582,7 @@ const test = async (
     results: {success},
   } = await jest.runCLI(
     {
-      roots: [dir],
+      roots: dirs,
       setupFilesAfterEnv: ['./test/jest/setup'],
       ...(puppeteer
         ? {
@@ -634,6 +638,41 @@ const test = async (
   if (coverageMode < 3) {
     await removeDir(TMP_DIR);
   }
+};
+
+const compileModulesForProd = async (fast = false) => {
+  await clearDir(DIST_DIR);
+  await copyPackageFiles(true);
+  await copyDefinitions(DIST_DIR);
+
+  await allOf(
+    [undefined, 'umd', ...(fast ? [] : ['cjs'])],
+    async (format) =>
+      await allOf(
+        [undefined, ...(fast ? [] : ['es6'])],
+        async (target) =>
+          await allModules(
+            async (module) =>
+              await allOf(
+                [undefined, 'min'],
+                async (min) =>
+                  await compileModule(
+                    module,
+                    `${DIST_DIR}/` +
+                      [format, target, min]
+                        .filter((part) => part != null)
+                        .join('/'),
+                    format,
+                    target,
+                    min,
+                  ),
+              ),
+          ),
+      ),
+  );
+
+  await compileModule('cli', DIST_DIR, undefined, undefined, undefined, true);
+  await execute(`chmod +x ${DIST_DIR}/cli/index.js`);
 };
 
 const compileDocsAndAssets = async (api = true, pages = true) => {
@@ -717,58 +756,31 @@ export const ts = async () => {
   await tsCheck('site');
 };
 
-export const compileForProd = async () => {
-  await clearDir(DIST_DIR);
-  await copyPackageFiles(true);
-  await copyDefinitions(DIST_DIR);
+export const compileForProd = async () => await compileModulesForProd();
 
-  await allOf(
-    [undefined, 'cjs', 'umd'],
-    async (format) =>
-      await allOf(
-        [undefined, 'es6'],
-        async (target) =>
-          await allModules(
-            async (module) =>
-              await allOf(
-                [undefined, 'min'],
-                async (min) =>
-                  await compileModule(
-                    module,
-                    `${DIST_DIR}/` +
-                      [format, target, min]
-                        .filter((part) => part != null)
-                        .join('/'),
-                    format,
-                    target,
-                    min,
-                  ),
-              ),
-          ),
-      ),
-  );
-
-  await compileModule('cli', DIST_DIR, undefined, undefined, undefined, true);
-  await execute(`chmod +x ${DIST_DIR}/cli/index.js`);
-};
+export const compileForProdFast = async () => await compileModulesForProd(true);
 
 export const testUnit = async () => {
-  await test('test/unit', {coverageMode: 1});
+  await test(['test/unit'], {coverageMode: 1, serialTests: true});
+};
+export const testUnitFast = async () => {
+  await test(['test/unit/core'], {coverageMode: 1});
 };
 export const testUnitCountAsserts = async () => {
-  await test('test/unit', {coverageMode: 2, countAsserts: true});
+  await test(['test/unit'], {coverageMode: 2, countAsserts: true});
 };
 export const testUnitSaveCoverage = async () => {
-  await test('test/unit', {coverageMode: 3});
+  await test(['test/unit/core'], {coverageMode: 3});
 };
 export const compileAndTestUnit = series(compileForTest, testUnit);
+export const compileAndTestUnitFast = series(compileForTest, testUnitFast);
 export const compileAndTestUnitSaveCoverage = series(
   compileForTest,
   testUnitSaveCoverage,
 );
 
 export const testPerf = async () => {
-  await test('test/perf', {serialTests: true});
+  await test(['test/perf'], {serialTests: true});
 };
 export const compileAndTestPerf = series(compileForTest, testPerf);
 
@@ -783,13 +795,13 @@ export const compileDocs = async () => await compileDocsAndAssets();
 export const compileForProdAndDocs = series(compileForProd, compileDocs);
 
 export const testE2e = async () => {
-  await test('test/e2e', {puppeteer: true});
+  await test(['test/e2e'], {puppeteer: true});
 };
 export const compileAndTestE2e = series(compileForProdAndDocs, testE2e);
 
 export const testProd = async () => {
   await execute('attw --pack dist --format table-flipped');
-  await test('test/prod');
+  await test(['test/prod']);
 };
 export const compileAndTestProd = series(compileForProdAndDocs, testProd);
 

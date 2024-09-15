@@ -14,7 +14,7 @@ import {
   objToArray,
 } from '../../common/obj.ts';
 import {T, TINYBASE, V} from '../../common/strings.ts';
-import {Doc as YDoc, YEvent, Map as YMap} from 'yjs';
+import {Doc as YDoc, type YEvent, Map as YMap} from 'yjs';
 import type {
   YjsPersister,
   createYjsPersister as createYjsPersisterDecl,
@@ -23,7 +23,7 @@ import {arrayForEach, arrayIsEmpty, arrayShift} from '../../common/array.ts';
 import {ifNotUndefined, isUndefined, size} from '../../common/other.ts';
 import type {Id} from '../../@types/common/index.d.ts';
 import type {PersisterListener} from '../../@types/persisters/index.d.ts';
-import {createCustomPersister} from '../index.ts';
+import {createCustomPersister} from '../common/create.ts';
 import {mapForEach} from '../../common/map.ts';
 
 type Observer = (events: YEvent<any>[]) => void;
@@ -165,7 +165,8 @@ const yMapMatch = (
 ): 1 | void => {
   const yMap = isUndefined(idInParent)
     ? yMapOrParent
-    : yMapOrParent.get(idInParent) ?? yMapOrParent.set(idInParent, new YMap());
+    : (yMapOrParent.get(idInParent) ??
+      yMapOrParent.set(idInParent, new YMap()));
   let changed: 1 | undefined;
   objToArray(obj, (value, id) => {
     if (set(yMap, id, value)) {

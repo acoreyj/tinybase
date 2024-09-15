@@ -52,7 +52,8 @@
  * context.
  *
  * Many hooks and components in this ui-react module take this type as a
- * parameter or a prop, allowing you to pass in either the Store or its Id.
+ * parameter or a prop, allowing you to pass in either the Metrics object or its
+ * Id.
  * @category Identity
  * @since v1.0.0
  */
@@ -70,7 +71,8 @@
  * context.
  *
  * Many hooks and components in this ui-react module take this type as a
- * parameter or a prop, allowing you to pass in either the Store or its Id.
+ * parameter or a prop, allowing you to pass in either the Indexes object or its
+ * Id.
  * @category Identity
  * @since v1.0.0
  */
@@ -88,7 +90,8 @@
  * in that context.
  *
  * Many hooks and components in this ui-react module take this type as a
- * parameter or a prop, allowing you to pass in either the Store or its Id.
+ * parameter or a prop, allowing you to pass in either the Relationships object
+ * or its Id.
  * @category Identity
  * @since v1.0.0
  */
@@ -106,7 +109,8 @@
  * context.
  *
  * Many hooks and components in this ui-react module take this type as a
- * parameter or a prop, allowing you to pass in either the Store or its Id.
+ * parameter or a prop, allowing you to pass in either the Queries object or its
+ * Id.
  * @category Identity
  * @since v2.0.0
  */
@@ -124,11 +128,49 @@
  * that context.
  *
  * Many hooks and components in this ui-react module take this type as a
- * parameter or a prop, allowing you to pass in either the Store or its Id.
+ * parameter or a prop, allowing you to pass in either the Checkpoints object or
+ * its Id.
  * @category Identity
  * @since v1.0.0
  */
 /// CheckpointsOrCheckpointsId
+/**
+ * The PersisterOrPersisterId type is used when you need to refer to a Persister
+ * object in a React hook or component.
+ *
+ * In some simple cases you will already have a direct reference to the
+ * Persister object.
+ *
+ * This module also includes a Provider component that can be used to wrap
+ * multiple Persister objects into a context that can be used throughout the
+ * app. In this case you will want to refer to a Persister object by its Id in
+ * that context.
+ *
+ * Many hooks and components in this ui-react module take this type as a
+ * parameter or a prop, allowing you to pass in either the Persister or its Id.
+ * @category Identity
+ * @since v5.3.0
+ */
+/// PersisterOrPersisterId
+/**
+ * The SynchronizerOrSynchronizerId type is used when you need to refer to a
+ * Synchronizer object in a React hook or component.
+ *
+ * In some simple cases you will already have a direct reference to the
+ * Synchronizer object.
+ *
+ * This module also includes a Provider component that can be used to wrap
+ * multiple Synchronizer objects into a context that can be used throughout the
+ * app. In this case you will want to refer to a Synchronizer object by its Id
+ * in that context.
+ *
+ * Many hooks and components in this ui-react module take this type as a
+ * parameter or a prop, allowing you to pass in either the Synchronizer or its
+ * Id.
+ * @category Identity
+ * @since v5.3.0
+ */
+/// SynchronizerOrSynchronizerId
 /**
  * The UndoOrRedoInformation type is an array that you can fetch from a
  * Checkpoints object to that indicates if and how you can move the state of the
@@ -147,8 +189,8 @@
  *
  * This type is used in hooks that create callbacks - like the
  * useSetTableCallback hook or useSetRowCallback hook - so that the Id arguments
- * of the object to set can also be dependent on the event or parameter
- * provided (as well as the object itself being set).
+ * of the object to set can also be dependent on the event or parameter provided
+ * (as well as the object itself being set).
  * @category Identity
  * @since v1.0.0
  */
@@ -5455,6 +5497,75 @@
  */
 /// useMetricsOrMetricsById
 /**
+ * The useProvideMetrics hook is used to add a Metrics object by Id to a
+ * Provider component, but imperatively from a component within it.
+ *
+ * Normally you will register a Metrics object by Id in a context by using the
+ * `metricsById` prop of the top-level Provider component. This hook, however,
+ * lets you dynamically add a new Metrics object to the context, from within a
+ * descendent component. This is useful for applications where the set of
+ * Metrics objects is not known at the time of the first render of the root
+ * Provider.
+ *
+ * A Metrics object added to the Provider context in this way will be available
+ * to other components within the context (using the useMetrics hook and so on).
+ * If you use the same Id as an existing Metrics object registration, the new
+ * one will take priority over one provided by the `metricsById` prop.
+ *
+ * Note that other components that consume a Metrics object registered like this
+ * should defend against it being undefined at first. On the first render, the
+ * other component will likely not yet have completed the registration. In the
+ * example below, we use the null-safe `useMetrics('petMetrics')?` to do this.
+ * @param metricsId The Id of the Metrics object to be registered with the
+ * Provider.
+ * @param metrics The Metrics object to be registered.
+ * @example
+ * This example creates a Provider context. A child component registers a
+ * Metrics object into it which is then consumable by a peer child component.
+ *
+ * ```jsx
+ * import {
+ *   Provider,
+ *   useCreateMetrics,
+ *   useCreateStore,
+ *   useMetrics,
+ *   useProvideMetrics,
+ * } from 'tinybase/ui-react';
+ * import {createMetrics, createStore} from 'tinybase';
+ * import React from 'react';
+ * import {createRoot} from 'react-dom/client';
+ *
+ * const App = () => (
+ *   <Provider>
+ *     <RegisterMetrics />
+ *     <ConsumeMetrics />
+ *   </Provider>
+ * );
+ * const RegisterMetrics = () => {
+ *   const store = useCreateStore(() =>
+ *     createStore().setCell('pets', 'fido', 'color', 'brown'),
+ *   );
+ *   const metrics = useCreateMetrics(store, (store) =>
+ *     createMetrics(store).setMetricDefinition('petCount', 'pets', 'count'),
+ *   );
+ *   useProvideMetrics('petMetrics', metrics);
+ *   return null;
+ * };
+ * const ConsumeMetrics = () => (
+ *   <span>{useMetrics('petMetrics')?.getMetric('petCount')}</span>
+ * );
+ *
+ * const app = document.createElement('div');
+ * const root = createRoot(app);
+ * root.render(<App />); // !act
+ * console.log(app.innerHTML);
+ * // -> '<span>1</span>'
+ * ```
+ * @category Metrics hooks
+ * @since v5.3.0
+ */
+/// useProvideMetrics
+/**
  * The useMetricIds hook gets an array of the Metric Ids registered with a
  * Metrics object, and registers a listener so that any changes to that result
  * will cause a re-render.
@@ -5985,6 +6096,82 @@
  * @since v4.1.0
  */
 /// useIndexesOrIndexesById
+/**
+ * The useProvideIndexes hook is used to add an Indexes object by Id to a
+ * Provider component, but imperatively from a component within it.
+ *
+ * Normally you will register an Indexes object by Id in a context by using the
+ * `indexesById` prop of the top-level Provider component. This hook, however,
+ * lets you dynamically add a new Indexes object to the context, from within a
+ * descendent component. This is useful for applications where the set of
+ * Indexes objects is not known at the time of the first render of the root
+ * Provider.
+ *
+ * A Indexes object added to the Provider context in this way will be available
+ * to other components within the context (using the useIndexes hook and so on).
+ * If you use the same Id as an existing Indexes object registration, the new
+ * one will take priority over one provided by the `indexesById` prop.
+ *
+ * Note that other components that consume an Indexes object registered like
+ * this should defend against it being undefined at first. On the first render,
+ * the other component will likely not yet have completed the registration. In
+ * the example below, we use the null-safe `useIndexes('petIndexes')?` to do
+ * this.
+ * @param indexesId The Id of the Indexes object to be registered with the
+ * Provider.
+ * @param indexes The Indexes object to be registered.
+ * @example
+ * This example creates a Provider context. A child component registers an
+ * Indexes object into it which is then consumable by a peer child component.
+ *
+ * ```jsx
+ * import {
+ *   Provider,
+ *   useCreateIndexes,
+ *   useCreateStore,
+ *   useIndexes,
+ *   useProvideIndexes,
+ * } from 'tinybase/ui-react';
+ * import {createIndexes, createStore} from 'tinybase';
+ * import React from 'react';
+ * import {createRoot} from 'react-dom/client';
+ *
+ * const App = () => (
+ *   <Provider>
+ *     <RegisterIndexes />
+ *     <ConsumeIndexes />
+ *   </Provider>
+ * );
+ * const RegisterIndexes = () => {
+ *   const store = useCreateStore(() =>
+ *     createStore().setCell('pets', 'fido', 'color', 'brown'),
+ *   );
+ *   const indexes = useCreateIndexes(store, (store) =>
+ *     createIndexes(store).setIndexDefinition(
+ *       'petsByColor',
+ *       'pets',
+ *       'color',
+ *     ),
+ *   );
+ *   useProvideIndexes('petIndexes', indexes);
+ *   return null;
+ * };
+ * const ConsumeIndexes = () => (
+ *   <span>
+ *     {JSON.stringify(useIndexes('petIndexes')?.getSliceIds('petsByColor'))}
+ *   </span>
+ * );
+ *
+ * const app = document.createElement('div');
+ * const root = createRoot(app);
+ * root.render(<App />); // !act
+ * console.log(app.innerHTML);
+ * // -> '<span>["brown"]</span>'
+ * ```
+ * @category Indexes hooks
+ * @since v5.3.0
+ */
+/// useProvideIndexes
 /**
  * The useIndexIds hook gets an array of the Index Ids registered with an
  * Indexes object, and registers a listener so that any changes to that result
@@ -6756,6 +6943,90 @@
  * @since v4.1.0
  */
 /// useRelationshipsOrRelationshipsById
+/**
+ * The useProvideRelationships hook is used to add a Relationships object by Id
+ * to a Provider component, but imperatively from a component within it.
+ *
+ * Normally you will register a Relationships object by Id in a context by using
+ * the `relationshipsById` prop of the top-level Provider component. This hook,
+ * however, lets you dynamically add a new Relationships object to the context,
+ * from within a component. This is useful for applications where the set of
+ * Relationships objects is not known at the time of the first render of the
+ * root Provider.
+ *
+ * A Relationships object added to the Provider context in this way will be
+ * available to other components within the context (using the useRelationships
+ * hook and so on). If you use the same Id as an existing Relationships object
+ * registration, the new one will take priority over one provided by the
+ * `relationshipsById` prop.
+ *
+ * Note that other components that consume a Relationships object registered
+ * like this should defend against it being undefined at first. On the first
+ * render, the other component will likely not yet have completed the
+ * registration. In the example below, we use the null-safe
+ * `useRelationships('petRelationships')?` to do this.
+ * @param relationshipsId The Id of the Relationships object to be registered
+ * with the Provider.
+ * @param relationships The Relationships object to be registered.
+ * @example
+ * This example creates a Provider context. A child component registers a
+ * Relationships object into it which is then consumable by a peer child
+ * component.
+ *
+ * ```jsx
+ * import {
+ *   Provider,
+ *   useCreateRelationships,
+ *   useCreateStore,
+ *   useProvideRelationships,
+ *   useRelationships,
+ * } from 'tinybase/ui-react';
+ * import {createRelationships, createStore} from 'tinybase';
+ * import React from 'react';
+ * import {createRoot} from 'react-dom/client';
+ *
+ * const App = () => (
+ *   <Provider>
+ *     <RegisterRelationships />
+ *     <ConsumeRelationships />
+ *   </Provider>
+ * );
+ * const RegisterRelationships = () => {
+ *   const store = useCreateStore(() =>
+ *     createStore()
+ *       .setTable('pets', {fido: {species: 'dog'}})
+ *       .setTable('species', {dog: {price: 5}}),
+ *   );
+ *   const relationships = useCreateRelationships(store, (store) =>
+ *     createRelationships(store).setRelationshipDefinition(
+ *       'petSpecies',
+ *       'pets',
+ *       'species',
+ *       'species',
+ *     ),
+ *   );
+ *   useProvideRelationships('petRelationships', relationships);
+ *   return null;
+ * };
+ * const ConsumeRelationships = () => (
+ *   <span>
+ *     {useRelationships('petRelationships')?.getRemoteRowId(
+ *       'petSpecies',
+ *       'fido',
+ *     )}
+ *   </span>
+ * );
+ *
+ * const app = document.createElement('div');
+ * const root = createRoot(app);
+ * root.render(<App />); // !act
+ * console.log(app.innerHTML);
+ * // -> '<span>dog</span>'
+ * ```
+ * @category Relationships hooks
+ * @since v5.3.0
+ */
+/// useProvideRelationships
 /**
  * The useRelationshipIds hook gets an array of the Relationship Ids registered
  * with a Relationships object, and registers a listener so that any changes to
@@ -7755,6 +8026,84 @@
  * @since v4.1.0
  */
 /// useQueriesOrQueriesById
+/**
+ * The useProvideQueries hook is used to add a Queries object by Id to a
+ * Provider component, but imperatively from a component within it.
+ *
+ * Normally you will register a Queries object by Id in a context by using the
+ * `queriesById` prop of the top-level Provider component. This hook, however,
+ * lets you dynamically add a new Queries object to the context, from within a
+ * component. This is useful for applications where the set of Queries objects
+ * is not known at the time of the first render of the root Provider.
+ *
+ * A Queries object added to the Provider context in this way will be available
+ * to other components within the context (using the useQueries hook and so on).
+ * If you use the same Id as an existing Queries object registration, the new
+ * one will take priority over one provided by the `queriesById` prop.
+ *
+ * Note that other components that consume a Queries object registered like this
+ * should defend against it being undefined at first. On the first render, the
+ * other component will likely not yet have completed the registration. In the
+ * example below, we use the null-safe `useQueries('petQueries')?` to do this.
+ * @param queriesId The Id of the Queries object to be registered with the
+ * Provider.
+ * @param queries The Queries object to be registered.
+ * @example
+ * This example creates a Provider context. A child component registers a
+ * Queries object into it which is then consumable by a peer child component.
+ *
+ * ```jsx
+ * import {
+ *   Provider,
+ *   useCreateQueries,
+ *   useCreateStore,
+ *   useProvideQueries,
+ *   useQueries,
+ * } from 'tinybase/ui-react';
+ * import {createQueries, createStore} from 'tinybase';
+ * import React from 'react';
+ * import {createRoot} from 'react-dom/client';
+ *
+ * const App = () => (
+ *   <Provider>
+ *     <RegisterQueries />
+ *     <ConsumeQueries />
+ *   </Provider>
+ * );
+ * const RegisterQueries = () => {
+ *   const store = useCreateStore(() =>
+ *     createStore().setRow('pets', 'fido', {color: 'brown', legs: 4}),
+ *   );
+ *   const queries = useCreateQueries(store, (store) =>
+ *     createQueries(store).setQueryDefinition(
+ *       'brownLegs',
+ *       'pets',
+ *       ({select, where}) => {
+ *         select('legs');
+ *         where('color', 'brown');
+ *       },
+ *     ),
+ *   );
+ *   useProvideQueries('petQueries', queries);
+ *   return null;
+ * };
+ * const ConsumeQueries = () => (
+ *   <span>
+ *     {JSON.stringify(useQueries('petQueries')?.getResultTable('brownLegs'))}
+ *   </span>
+ * );
+ *
+ * const app = document.createElement('div');
+ * const root = createRoot(app);
+ * root.render(<App />); // !act
+ * console.log(app.innerHTML);
+ * // -> '<span>{\"fido\":{\"legs\":4}}</span>'
+ * ```
+ * @category Queries hooks
+ * @since v5.3.0
+ */
+/// useProvideQueries
+
 /**
  * The useQueryIds hook gets an array of the Query Ids registered with a Queries
  * object, and registers a listener so that any changes to that result will
@@ -9560,8 +9909,8 @@
  * create it within the app, perhaps inside the top-level component. To prevent
  * a new Checkpoints object being created every time the app renders or
  * re-renders, since v5.0 this hook performs the creation in an effect. As a
- * result it will return `undefined` on the brief first render (or if the
- * Store is not yet defined), which you should defend against.
+ * result it will return `undefined` on the brief first render (or if the Store
+ * is not yet defined), which you should defend against.
  *
  * If your `create` function contains other dependencies, the changing of which
  * should also cause the Checkpoints object to be recreated, you can provide
@@ -9832,6 +10181,78 @@
  * @since v4.1.0
  */
 /// useCheckpointsOrCheckpointsById
+/**
+ * The useProvideCheckpoints hook is used to add a Checkpoints object by Id to a
+ * Provider component, but imperatively from a component within it.
+ *
+ * Normally you will register a Checkpoints object by Id in a context by using
+ * the `checkpointsById` prop of the top-level Provider component. This hook,
+ * however, lets you dynamically add a new Checkpoints object to the context,
+ * from within a component. This is useful for applications where the set of
+ * Checkpoints objects is not known at the time of the first render of the root
+ * Provider.
+ *
+ *  A Checkpoints object added to the Provider context in this way will be
+ *  available to other components within the context (using the useCheckpoints
+ *  hook and so on). If you use the same Id as an existing Checkpoints object
+ *  registration, the new one will take priority over one provided by the
+ *  `checkpointsById` prop.
+ *
+ *  Note that other components that consume a Checkpoints object registered like
+ *  this should defend against it being undefined at first. On the first render,
+ *  the other component will likely not yet have completed the registration. In
+ *  the example below, we use the null-safe `useCheckpoints('petCheckpoints')?`
+ *  to do this.
+ * @param checkpointsId The Id of the Checkpoints object to be registered with
+ * the Provider.
+ * @param checkpoints The Checkpoints object to be registered.
+ * @example
+ * This example creates a Provider context. A child component registers a
+ * Checkpoints object into it which is then consumable by a peer child
+ * component.
+ *
+ * ```jsx
+ * import {
+ *   Provider,
+ *   useCheckpoints,
+ *   useCreateCheckpoints,
+ *   useCreateStore,
+ *   useProvideCheckpoints,
+ * } from 'tinybase/ui-react';
+ * import {createCheckpoints, createStore} from 'tinybase';
+ * import React from 'react';
+ * import {createRoot} from 'react-dom/client';
+ *
+ * const App = () => (
+ *   <Provider>
+ *     <RegisterCheckpoints />
+ *     <ConsumeCheckpoints />
+ *   </Provider>
+ * );
+ * const RegisterCheckpoints = () => {
+ *   const store = useCreateStore(() =>
+ *     createStore().setCell('pets', 'fido', 'color', 'brown'),
+ *   );
+ *   const checkpoints = useCreateCheckpoints(store, createCheckpoints);
+ *   useProvideCheckpoints('petCheckpoints', checkpoints);
+ *   return null;
+ * };
+ * const ConsumeCheckpoints = () => (
+ *   <span>
+ *     {JSON.stringify(useCheckpoints('petCheckpoints')?.getCheckpointIds())}
+ *   </span>
+ * );
+ *
+ * const app = document.createElement('div');
+ * const root = createRoot(app);
+ * root.render(<App />); // !act
+ * console.log(app.innerHTML);
+ * // -> '<span>[[],"0",[]]</span>'
+ * ```
+ * @category Checkpoints hooks
+ * @since v5.3.0
+ */
+/// useProvideCheckpoints
 /**
  * The useCheckpointIds hook returns an array of the checkpoint Ids being
  * managed by this Checkpoints object, and registers a listener so that any
@@ -10571,6 +10992,9 @@
  * provide them in an array in the fifth parameter. The Persister itself is used
  * as a dependency by default.
  *
+ * See the note below about possible future deprecation of the `then` callback,
+ * however.
+ *
  * Since v4.3.0, the `create` function can return undefined, meaning that you
  * can enable or disable persistence conditionally within this hook. This is
  * useful for applications which might turn on or off their cloud persistence or
@@ -10584,12 +11008,18 @@
  * example. If this callback itself contains additional dependencies, you can
  * provide them in an array in the seventh parameter.
  *
+ * Since v5.2, the `create` function can be asynchronous, which now makes it a
+ * suitable place to call the Persister's startAutoLoad and startAutoSave
+ * methods. At some major version in the future, the `then` parameter will be
+ * removed, since that only really existed to perform such asynchronous initial
+ * tasks.
+ *
  * This hook ensures the Persister object is destroyed whenever a new one is
  * created or the component is unmounted.
  * @param store A reference to the Store for which to create a new Persister
  * object.
- * @param create A function for performing the creation steps of the Persister
- * object for the Store.
+ * @param create A (possibly asynchronous) function for performing the creation
+ * steps of the Persister object for the Store.
  * @param createDeps An optional array of dependencies for the `create`
  * function, which, if any change, result in its rerun. This parameter defaults
  * to an empty array.
@@ -10729,6 +11159,412 @@
  */
 /// useCreatePersister
 /**
+ * The usePersisterIds hook is used to retrieve the Ids of all the named
+ * Persister objects present in the current Provider component context.
+ * @returns A list of the Ids in the context.
+ * @example
+ * This example adds two named Persister objects to a Provider context and an
+ * inner component accesses their Ids.
+ *
+ * ```jsx
+ * import {
+ *   Provider,
+ *   useCreatePersister,
+ *   useCreateStore,
+ *   usePersisterIds,
+ * } from 'tinybase/ui-react';
+ * import React from 'react';
+ * import {createRoot} from 'react-dom/client';
+ * import {createSessionPersister} from 'tinybase/persisters/persister-browser';
+ * import {createStore} from 'tinybase';
+ *
+ * const App = () => {
+ *   const store1 = useCreateStore(createStore);
+ *   const persister1 = useCreatePersister(store1, (store1) =>
+ *     createSessionPersister(store1, 'pets1'),
+ *   );
+ *   const store2 = useCreateStore(createStore);
+ *   const persister2 = useCreatePersister(store2, (store2) =>
+ *     createSessionPersister(store2, 'pets2'),
+ *   );
+ *   return (
+ *     <Provider persistersById={{persister1, persister2}}>
+ *       <Pane />
+ *     </Provider>
+ *   );
+ * };
+ * const Pane = () => <span>{JSON.stringify(usePersisterIds())}</span>;
+ *
+ * const app = document.createElement('div');
+ * createRoot(app).render(<App />); // !act
+ *
+ * // ... // !act
+ * console.log(app.innerHTML);
+ * // -> '<span>["persister1","persister2"]</span>'
+ * ```
+ * @category Persister hooks
+ * @since v5.3.0
+ */
+/// usePersisterIds
+/**
+ * The usePersister hook is used to get a reference to a Persister object from
+ * within a Provider component context.
+ *
+ * A Provider component is used to wrap part of an application in a context. It
+ * can contain a default Persister object (or a set of Persister objects named
+ * by Id) that can be easily accessed without having to be passed down as props
+ * through every component.
+ *
+ * The usePersister hook lets you either get a reference to the default
+ * Persister object (when called without a parameter), or one of the Persister
+ * objects that are named by Id (when called with an Id parameter).
+ * @param id An optional Id for accessing a Persister object that was named with
+ * an Id in the Provider.
+ * @returns A reference to the Persister object (or `undefined` if not within a
+ * Provider context, or if the requested Persister object does not exist).
+ * @example
+ * This example creates a Provider context into which a default Persister
+ * object is provided. A component within it then uses the usePersister hook
+ * to get a reference to the Persister object again, without the need to have
+ * it passed as a prop.
+ *
+ * ```jsx
+ * import {Provider, usePersister} from 'tinybase/ui-react';
+ * import React from 'react';
+ * import {createRoot} from 'react-dom/client';
+ * import {createSessionPersister} from 'tinybase/persisters/persister-browser';
+ * import {createStore} from 'tinybase';
+ *
+ * const App = ({persister}) => (
+ *   <Provider persister={persister}>
+ *     <Pane />
+ *   </Provider>
+ * );
+ * const Pane = () => <span>{usePersister().getStatus()}</span>;
+ *
+ * const persister = createSessionPersister(createStore(), 'pets');
+ * const app = document.createElement('div');
+ * const root = createRoot(app);
+ * root.render(<App persister={persister} />); // !act
+ * console.log(app.innerHTML);
+ * // -> '<span>0</span>'
+ * ```
+ * @example
+ * This example creates a Provider context into which a Persister object is
+ * provided, named by Id. A component within it then uses the usePersister
+ * hook with that Id to get a reference to the Persister object again, without
+ * the need to have it passed as a prop.
+ *
+ * ```jsx
+ * import {Provider, usePersister} from 'tinybase/ui-react';
+ * import React from 'react';
+ * import {createRoot} from 'react-dom/client';
+ * import {createSessionPersister} from 'tinybase/persisters/persister-browser';
+ * import {createStore} from 'tinybase';
+ *
+ * const App = ({persister}) => (
+ *   <Provider persistersById={{petPersister: persister}}>
+ *     <Pane />
+ *   </Provider>
+ * );
+ * const Pane = () => <span>{usePersister('petPersister').getStatus()}</span>;
+ *
+ * const persister = createSessionPersister(createStore(), 'pets');
+ * const app = document.createElement('div');
+ * const root = createRoot(app);
+ * root.render(<App persister={persister} />); // !act
+ * console.log(app.innerHTML);
+ * // -> '<span>0</span>'
+ * ```
+ * @category Persister hooks
+ * @since v5.3.0
+ */
+/// usePersister
+/**
+ * The usePersisterOrPersisterById hook is used to get a reference to a
+ * Persister object from within a Provider component context, _or_ have it
+ * passed directly to this hook.
+ *
+ * This is mostly of use when you are developing a component that needs a
+ * Persister object and which might have been passed in explicitly to the
+ * component or is to be picked up from the context by Id (a common pattern for
+ * Persister-based components).
+ *
+ * This is unlikely to be used often. For most situations, you will want to use
+ * the usePersister hook.
+ * @param persisterOrPersisterId Either an Id for accessing a Persister object
+ * that was named with an Id in the Provider, or the Persister object itself.
+ * @returns A reference to the Persister object (or `undefined` if not within a
+ * Provider context, or if the requested Persister object does not exist).
+ * @example
+ * This example creates a Provider context into which a default Persister
+ * object is provided. A component within it then uses the
+ * usePersisterOrPersisterById hook to get a reference to the Persister
+ * object again, without the need to have it passed as a prop. Note however,
+ * that unlike the usePersister hook example, this component would also work
+ * if you were to pass the Persister object directly into it, making it more
+ * portable.
+ *
+ * ```jsx
+ * import {Provider, usePersisterOrPersisterById} from 'tinybase/ui-react';
+ * import React from 'react';
+ * import {createRoot} from 'react-dom/client';
+ * import {createSessionPersister} from 'tinybase/persisters/persister-browser';
+ * import {createStore} from 'tinybase';
+ *
+ * const App = ({persister}) => (
+ *   <Provider persister={persister}>
+ *     <Pane />
+ *   </Provider>
+ * );
+ * const Pane = ({persister}) => (
+ *   <span>{usePersisterOrPersisterById(persister).getStatus()}</span>
+ * );
+ *
+ * const persister = createSessionPersister(createStore(), 'pets');
+ * const app = document.createElement('div');
+ * const root = createRoot(app);
+ * root.render(<App persister={persister} />); // !act
+ * console.log(app.innerHTML);
+ * // -> '<span>0</span>'
+ * ```
+ * @category Persister hooks
+ * @since v5.3.0
+ */
+/// usePersisterOrPersisterById
+/**
+ * The useProvidePersister hook is used to add a Persister object by Id to a
+ * Provider component, but imperatively from a component within it.
+ *
+ * Normally you will register a Persister object by Id in a context by using the
+ * `persistersById` prop of the top-level Provider component. This hook,
+ * however, lets you dynamically add a new Persister object to the context, from
+ * within a component. This is useful for applications where the set of
+ * Persister objects is not known at the time of the first render of the root
+ * Provider.
+ *
+ * A Persister object added to the Provider context in this way will be
+ * available to other components within the context (using the usePersister hook
+ * and so on). If you use the same Id as an existing Persister object
+ * registration, the new one will take priority over one provided by the
+ * `persistersById` prop.
+ *
+ * Note that other components that consume a Persister object registered like
+ * this should defend against it being undefined at first. On the first render,
+ * the other component will likely not yet have completed the registration. In
+ * the example below, we use the null-safe `usePersister('petPersister')?` to do
+ * this.
+ * @param persisterId The Id of the Persister object to be registered with the
+ * Provider.
+ * @param persister The Persister object to be registered.
+ * @example
+ * This example creates a Provider context. A child component registers a
+ * Persister object into it which is then consumable by a peer child
+ * component.
+ *
+ * ```jsx
+ * import {
+ *   Provider,
+ *   useCreatePersister,
+ *   useCreateStore,
+ *   usePersister,
+ *   useProvidePersister,
+ * } from 'tinybase/ui-react';
+ * import React from 'react';
+ * import {createRoot} from 'react-dom/client';
+ * import {createSessionPersister} from 'tinybase/persisters/persister-browser';
+ * import {createStore} from 'tinybase';
+ *
+ * const App = () => (
+ *   <Provider>
+ *     <RegisterPersister />
+ *     <ConsumePersister />
+ *   </Provider>
+ * );
+ * const RegisterPersister = () => {
+ *   const store = useCreateStore(() =>
+ *     createStore().setCell('pets', 'fido', 'color', 'brown'),
+ *   );
+ *   const persister = useCreatePersister(
+ *     store,
+ *     async (store) => await createSessionPersister(store, 'pets'),
+ *   );
+ *   useProvidePersister('petPersister', persister);
+ *   return null;
+ * };
+ * const ConsumePersister = () => (
+ *   <span>{usePersister('petPersister')?.getStatus()}</span>
+ * );
+ *
+ * const app = document.createElement('div');
+ * const root = createRoot(app);
+ * root.render(<App />); // !act
+ *
+ * // ... // !act
+ * console.log(app.innerHTML);
+ * // -> '<span>0</span>'
+ * ```
+ * @category Persister hooks
+ * @since v5.3.0
+ */
+/// useProvidePersister
+/**
+ * The usePersisterStatus hook returns a the status of a Persister, and
+ * registers a listener so that any changes to it will cause a re-render.
+ *
+ * A Provider component is used to wrap part of an application in a context, and
+ * it can contain a default Persister or a set of Persister objects named by Id.
+ * The usePersisterStatus hook lets you indicate which Persister to get data
+ * for: omit the optional parameter for the default context Persister, provide
+ * an Id for a named context Persister, or provide a Persister explicitly by
+ * reference.
+ *
+ * When first rendered, this hook will create a listener so that changes to the
+ * Persister status will cause a re-render. When the component containing this
+ * hook is unmounted, the listener will be automatically removed.
+ * @param persisterOrPersisterId The Persister to be accessed: omit for the
+ * default context Persister, provide an Id for a named context Persister, or
+ * provide an explicit reference.
+ * @returns The status of the Persister: 0 means idle, 1 means loading, and 2
+ * means saving.
+ * @example
+ * This example creates a Persister outside the application, which is used in
+ * the usePersisterStatus hook by reference. A change to the status of the
+ * Persister re-renders the component.
+ *
+ * ```jsx
+ * import React from 'react';
+ * import {createRoot} from 'react-dom/client';
+ * import {createSessionPersister} from 'tinybase/persisters/persister-browser';
+ * import {createStore} from 'tinybase';
+ * import {usePersisterStatus} from 'tinybase/ui-react';
+ *
+ * const persister = createSessionPersister(createStore(), 'pets');
+ * const App = () => <span>{usePersisterStatus(persister)}</span>;
+ *
+ * const app = document.createElement('div');
+ * const root = createRoot(app);
+ * root.render(<App />); // !act
+ * console.log(app.innerHTML);
+ * // -> '<span>0</span>'
+ * ```
+ * @example
+ * This example creates a Provider context into which a default Persister is
+ * provided. A component within it then uses the usePersisterStatus hook.
+ *
+ * ```jsx
+ * import {Provider, usePersisterStatus} from 'tinybase/ui-react';
+ * import React from 'react';
+ * import {createRoot} from 'react-dom/client';
+ * import {createSessionPersister} from 'tinybase/persisters/persister-browser';
+ * import {createStore} from 'tinybase';
+ *
+ * const App = ({persister}) => (
+ *   <Provider persister={persister}>
+ *     <Pane />
+ *   </Provider>
+ * );
+ * const Pane = () => <span>{usePersisterStatus()}</span>;
+ *
+ * const persister = createSessionPersister(createStore(), 'pets');
+ * const app = document.createElement('div');
+ * createRoot(app).render(<App persister={persister} />); // !act
+ * console.log(app.innerHTML);
+ * // -> '<span>0</span>'
+ * ```
+ * @example
+ * This example creates a Provider context into which a Persister is provided,
+ * named by Id. A component within it then uses the usePersisterStatus hook.
+ *
+ * ```jsx
+ * import {Provider, usePersisterStatus} from 'tinybase/ui-react';
+ * import React from 'react';
+ * import {createRoot} from 'react-dom/client';
+ * import {createSessionPersister} from 'tinybase/persisters/persister-browser';
+ * import {createStore} from 'tinybase';
+ *
+ * const App = ({persister}) => (
+ *   <Provider persistersById={{petPersister: persister}}>
+ *     <Pane />
+ *   </Provider>
+ * );
+ * const Pane = () => <span>{usePersisterStatus('petPersister')}</span>;
+ *
+ * const persister = createSessionPersister(createStore(), 'pets');
+ * const app = document.createElement('div');
+ * createRoot(app).render(<App persister={persister} />); // !act
+ * console.log(app.innerHTML);
+ * // -> '<span>0</span>'
+ * ```
+ * @category Persister hooks
+ * @since v5.3.0
+ */
+/// usePersisterStatus
+/**
+ * The usePersisterStatusListener hook registers a listener function with the
+ * Persister that will be called when its status changes.
+ *
+ * This hook is useful for situations where a component needs to register its
+ * own specific listener to do more than simply tracking the value (which is
+ * more easily done with the usePersisterStatus hook).
+ *
+ * Unlike the addStatusListener method, which returns a listener Id and requires
+ * you to remove it manually, the usePersisterStatusListener hook manages this
+ * lifecycle for you: when the listener changes (per its `listenerDeps`
+ * dependencies) or the component unmounts, the listener on the underlying
+ * Persister will be deleted.
+ * @param listener The function that will be called whenever the status of the
+ * Persister changes.
+ * @param listenerDeps An optional array of dependencies for the `listener`
+ * function, which, if any change, result in the re-registration of the
+ * listener. This parameter defaults to an empty array.
+ * @param persisterOrPersisterId The Persister to be accessed: omit for the
+ * default context Persister, provide an Id for a named context Persister, or
+ * provide an explicit reference.
+ * @example
+ * This example uses the usePersisterStatusListener hook to create a listener
+ * that is scoped to a single component. When the component is unmounted, the
+ * listener is removed from the Persister.
+ *
+ * ```jsx
+ * import {Provider, usePersisterStatusListener} from 'tinybase/ui-react';
+ * import React from 'react';
+ * import {createRoot} from 'react-dom/client';
+ * import {createSessionPersister} from 'tinybase/persisters/persister-browser';
+ * import {createStore} from 'tinybase';
+ *
+ * const App = ({persister}) => (
+ *   <Provider persister={persister}>
+ *     <Pane />
+ *   </Provider>
+ * );
+ * const Pane = () => {
+ *   usePersisterStatusListener((persister, status) =>
+ *     console.log('Persister status changed: ' + status),
+ *   );
+ *   return <span>App</span>;
+ * };
+ *
+ * const persister = createSessionPersister(createStore(), 'pets');
+ * const app = document.createElement('div');
+ * const root = createRoot(app);
+ * root.render(<App persister={persister} />); // !act
+ *
+ * persister.load(); // !act
+ * // -> 'Persister status changed: 1'
+ * // ... // !act
+ * // -> 'Persister status changed: 0'
+ *
+ * persister.save(); // !act
+ * // -> 'Persister status changed: 2'
+ * // ... // !act
+ * // -> 'Persister status changed: 0'
+ * ```
+ * @category Persister hooks
+ * @since v5.3.0
+ */
+/// usePersisterStatusListener
+/**
  * The useCreateSynchronizer hook is used to create a Synchronizer within a
  * React application along with convenient memoization and callbacks.
  *
@@ -10863,6 +11699,423 @@
  * @since v5.0.0
  */
 /// useCreateSynchronizer
+/**
+ * The useSynchronizerIds hook is used to retrieve the Ids of all the named
+ * Synchronizer objects present in the current Provider component context.
+ * @returns A list of the Ids in the context.
+ * @example
+ * This example adds two named Synchronizer objects to a Provider context and an
+ * inner component accesses their Ids.
+ *
+ * ```jsx
+ * import {
+ *   Provider,
+ *   useCreateMergeableStore,
+ *   useCreateSynchronizer,
+ *   useSynchronizerIds,
+ * } from 'tinybase/ui-react';
+ * import React from 'react';
+ * import {createLocalSynchronizer} from 'tinybase/synchronizers/synchronizer-local';
+ * import {createMergeableStore} from 'tinybase';
+ * import {createRoot} from 'react-dom/client';
+ *
+ * const App = () => {
+ *   const store1 = useCreateMergeableStore(createMergeableStore);
+ *   const synchronizer1 = useCreateSynchronizer(
+ *     store1,
+ *     createLocalSynchronizer,
+ *   );
+ *   const store2 = useCreateMergeableStore(createMergeableStore);
+ *   const synchronizer2 = useCreateSynchronizer(
+ *     store2,
+ *     createLocalSynchronizer,
+ *   );
+ *   return (
+ *     <Provider synchronizersById={{synchronizer1, synchronizer2}}>
+ *       <Pane />
+ *     </Provider>
+ *   );
+ * };
+ * const Pane = () => <span>{JSON.stringify(useSynchronizerIds())}</span>;
+ *
+ * const app = document.createElement('div');
+ * createRoot(app).render(<App />); // !act
+ *
+ * // ... // !act
+ * console.log(app.innerHTML);
+ * // -> '<span>["synchronizer1","synchronizer2"]</span>'
+ * ```
+ * @category Synchronizer hooks
+ * @since v5.3.0
+ */
+/// useSynchronizerIds
+/**
+ * The useSynchronizer hook is used to get a reference to a Synchronizer object
+ * from within a Provider component context.
+ *
+ * A Provider component is used to wrap part of an application in a context. It
+ * can contain a default Synchronizer object (or a set of Synchronizer objects
+ * named by Id) that can be easily accessed without having to be passed down as
+ * props through every component.
+ *
+ * The useSynchronizer hook lets you either get a reference to the default
+ * Synchronizer object (when called without a parameter), or one of the
+ * Synchronizer objects that are named by Id (when called with an Id parameter).
+ * @param id An optional Id for accessing a Synchronizer object that was named
+ * with an Id in the Provider.
+ * @returns A reference to the Synchronizer object (or `undefined` if not within
+ * a Provider context, or if the requested Synchronizer object does not exist).
+ * @example
+ * This example creates a Provider context into which a default Synchronizer
+ * object is provided. A component within it then uses the useSynchronizer hook
+ * to get a reference to the Synchronizer object again, without the need to have
+ * it passed as a prop.
+ *
+ * ```jsx
+ * import {Provider, useSynchronizer} from 'tinybase/ui-react';
+ * import React from 'react';
+ * import {createLocalSynchronizer} from 'tinybase/synchronizers/synchronizer-local';
+ * import {createMergeableStore} from 'tinybase';
+ * import {createRoot} from 'react-dom/client';
+ *
+ * const App = ({synchronizer}) => (
+ *   <Provider synchronizer={synchronizer}>
+ *     <Pane />
+ *   </Provider>
+ * );
+ * const Pane = () => <span>{useSynchronizer().getStatus()}</span>;
+ *
+ * const synchronizer = createLocalSynchronizer(createMergeableStore());
+ * const app = document.createElement('div');
+ * const root = createRoot(app);
+ * root.render(<App synchronizer={synchronizer} />); // !act
+ * console.log(app.innerHTML);
+ * // -> '<span>0</span>'
+ * ```
+ * @example
+ * This example creates a Provider context into which a Synchronizer object is
+ * provided, named by Id. A component within it then uses the useSynchronizer
+ * hook with that Id to get a reference to the Synchronizer object again,
+ * without the need to have it passed as a prop.
+ *
+ * ```jsx
+ * import {Provider, useSynchronizer} from 'tinybase/ui-react';
+ * import React from 'react';
+ * import {createLocalSynchronizer} from 'tinybase/synchronizers/synchronizer-local';
+ * import {createMergeableStore} from 'tinybase';
+ * import {createRoot} from 'react-dom/client';
+ *
+ * const App = ({synchronizer}) => (
+ *   <Provider synchronizersById={{petSynchronizer: synchronizer}}>
+ *     <Pane />
+ *   </Provider>
+ * );
+ * const Pane = () => (
+ *   <span>{useSynchronizer('petSynchronizer').getStatus()}</span>
+ * );
+ *
+ * const synchronizer = createLocalSynchronizer(createMergeableStore());
+ * const app = document.createElement('div');
+ * const root = createRoot(app);
+ * root.render(<App synchronizer={synchronizer} />); // !act
+ * console.log(app.innerHTML);
+ * // -> '<span>0</span>'
+ * ```
+ * @category Synchronizer hooks
+ * @since v5.3.0
+ */
+/// useSynchronizer
+/**
+ * The useSynchronizerOrSynchronizerById hook is used to get a reference to a
+ * Synchronizer object from within a Provider component context, _or_ have it
+ * passed directly to this hook.
+ *
+ * This is mostly of use when you are developing a component that needs a
+ * Synchronizer object and which might have been passed in explicitly to the
+ * component or is to be picked up from the context by Id (a common pattern for
+ * Synchronizer-based components).
+ *
+ * This is unlikely to be used often. For most situations, you will want to use
+ * the useSynchronizer hook.
+ * @param synchronizerOrSynchronizerId Either an Id for accessing a Synchronizer
+ * object that was named with an Id in the Provider, or the Synchronizer object
+ * itself.
+ * @returns A reference to the Synchronizer object (or `undefined` if not within
+ * a Provider context, or if the requested Synchronizer object does not exist).
+ * @example
+ * This example creates a Provider context into which a default Synchronizer
+ * object is provided. A component within it then uses the
+ * useSynchronizerOrSynchronizerById hook to get a reference to the Synchronizer
+ * object again, without the need to have it passed as a prop. Note however,
+ * that unlike the useSynchronizer hook example, this component would also work
+ * if you were to pass the Synchronizer object directly into it, making it more
+ * portable.
+ *
+ * ```jsx
+ * import {
+ *   Provider,
+ *   useSynchronizerOrSynchronizerById,
+ * } from 'tinybase/ui-react';
+ * import React from 'react';
+ * import {createLocalSynchronizer} from 'tinybase/synchronizers/synchronizer-local';
+ * import {createMergeableStore} from 'tinybase';
+ * import {createRoot} from 'react-dom/client';
+ *
+ * const App = ({synchronizer}) => (
+ *   <Provider synchronizer={synchronizer}>
+ *     <Pane />
+ *   </Provider>
+ * );
+ * const Pane = ({synchronizer}) => (
+ *   <span>
+ *     {useSynchronizerOrSynchronizerById(synchronizer).getStatus()}
+ *   </span>
+ * );
+ *
+ * const synchronizer = createLocalSynchronizer(createMergeableStore());
+ * const app = document.createElement('div');
+ * const root = createRoot(app);
+ * root.render(<App synchronizer={synchronizer} />); // !act
+ * console.log(app.innerHTML);
+ * // -> '<span>0</span>'
+ * ```
+ * @category Synchronizer hooks
+ * @since v5.3.0
+ */
+/// useSynchronizerOrSynchronizerById
+/**
+ * The useProvideSynchronizer hook is used to add a Synchronizer object by Id to
+ * a Provider component, but imperatively from a component within it.
+ *
+ * Normally you will register a Synchronizer object by Id in a context by using
+ * the `synchronizersById` prop of the top-level Provider component. This hook,
+ * however, lets you dynamically add a new Synchronizer object to the context,
+ * from within a component. This is useful for applications where the set of
+ * Synchronizer objects is not known at the time of the first render of the root
+ * Provider.
+ *
+ * A Synchronizer object added to the Provider context in this way will be
+ * available to other components within the context (using the useSynchronizer
+ * hook and so on). If you use the same Id as an existing Synchronizer object
+ * registration, the new one will take priority over one provided by the
+ * `synchronizersById` prop.
+ *
+ * Note that other components that consume a Synchronizer object registered like
+ * this should defend against it being undefined at first. On the first render,
+ * the other component will likely not yet have completed the registration. In
+ * the example below, we use the null-safe `useSynchronizer('petSynchronizer')?`
+ * to do this.
+ * @param synchronizerId The Id of the Synchronizer object to be registered with
+ * the Provider.
+ * @param synchronizer The Synchronizer object to be registered.
+ * @example
+ * This example creates a Provider context. A child component registers a
+ * Synchronizer object into it which is then consumable by a peer child
+ * component.
+ *
+ * ```jsx
+ * import {
+ *   Provider,
+ *   useCreateStore,
+ *   useCreateSynchronizer,
+ *   useProvideSynchronizer,
+ *   useSynchronizer,
+ * } from 'tinybase/ui-react';
+ * import React from 'react';
+ * import {createLocalSynchronizer} from 'tinybase/synchronizers/synchronizer-local';
+ * import {createMergeableStore} from 'tinybase';
+ * import {createRoot} from 'react-dom/client';
+ *
+ * const App = () => (
+ *   <Provider>
+ *     <RegisterSynchronizer />
+ *     <ConsumeSynchronizer />
+ *   </Provider>
+ * );
+ * const RegisterSynchronizer = () => {
+ *   const store = useCreateStore(() =>
+ *     createMergeableStore().setCell('pets', 'fido', 'color', 'brown'),
+ *   );
+ *   const synchronizer = useCreateSynchronizer(
+ *     store,
+ *     createLocalSynchronizer,
+ *   );
+ *   useProvideSynchronizer('petSynchronizer', synchronizer);
+ *   return null;
+ * };
+ * const ConsumeSynchronizer = () => (
+ *   <span>{useSynchronizer('petSynchronizer')?.getStatus()}</span>
+ * );
+ *
+ * const app = document.createElement('div');
+ * const root = createRoot(app);
+ * root.render(<App />); // !act
+ *
+ * // ... // !act
+ * console.log(app.innerHTML);
+ * // -> '<span>0</span>'
+ * ```
+ * @category Synchronizer hooks
+ * @since v5.3.0
+ */
+/// useProvideSynchronizer
+/**
+ * The useSynchronizerStatus hook returns a the status of a Synchronizer, and
+ * registers a listener so that any changes to it will cause a re-render.
+ *
+ * A Provider component is used to wrap part of an application in a context, and
+ * it can contain a default Synchronizer or a set of Synchronizer objects named
+ * by Id. The useSynchronizerStatus hook lets you indicate which Synchronizer to
+ * get data for: omit the optional parameter for the default context
+ * Synchronizer, provide an Id for a named context Synchronizer, or provide a
+ * Synchronizer explicitly by reference.
+ *
+ * When first rendered, this hook will create a listener so that changes to the
+ * Synchronizer status will cause a re-render. When the component containing
+ * this hook is unmounted, the listener will be automatically removed.
+ * @param synchronizerOrSynchronizerId The Synchronizer to be accessed: omit for
+ * the default context Synchronizer, provide an Id for a named context
+ * Synchronizer, or provide an explicit reference.
+ * @returns The status of the Synchronizer: 0 means idle, 1 means loading, and 2
+ * means saving.
+ * @example
+ * This example creates a Synchronizer outside the application, which is used in
+ * the useSynchronizerStatus hook by reference. A change to the status of the
+ * Synchronizer re-renders the component.
+ *
+ * ```jsx
+ * import React from 'react';
+ * import {createLocalSynchronizer} from 'tinybase/synchronizers/synchronizer-local';
+ * import {createMergeableStore} from 'tinybase';
+ * import {createRoot} from 'react-dom/client';
+ * import {useSynchronizerStatus} from 'tinybase/ui-react';
+ *
+ * const synchronizer = createLocalSynchronizer(createMergeableStore());
+ * const App = () => <span>{useSynchronizerStatus(synchronizer)}</span>;
+ *
+ * const app = document.createElement('div');
+ * const root = createRoot(app);
+ * root.render(<App />); // !act
+ * console.log(app.innerHTML);
+ * // -> '<span>0</span>'
+ * ```
+ * @example
+ * This example creates a Provider context into which a default Synchronizer is
+ * provided. A component within it then uses the useSynchronizerStatus hook.
+ *
+ * ```jsx
+ * import {Provider, useSynchronizerStatus} from 'tinybase/ui-react';
+ * import React from 'react';
+ * import {createLocalSynchronizer} from 'tinybase/synchronizers/synchronizer-local';
+ * import {createMergeableStore} from 'tinybase';
+ * import {createRoot} from 'react-dom/client';
+ *
+ * const App = ({synchronizer}) => (
+ *   <Provider synchronizer={synchronizer}>
+ *     <Pane />
+ *   </Provider>
+ * );
+ * const Pane = () => <span>{useSynchronizerStatus()}</span>;
+ *
+ * const synchronizer = createLocalSynchronizer(createMergeableStore());
+ * const app = document.createElement('div');
+ * createRoot(app).render(<App synchronizer={synchronizer} />); // !act
+ * console.log(app.innerHTML);
+ * // -> '<span>0</span>'
+ * ```
+ * @example
+ * This example creates a Provider context into which a Synchronizer is
+ * provided, named by Id. A component within it then uses the
+ * useSynchronizerStatus hook.
+ *
+ * ```jsx
+ * import {Provider, useSynchronizerStatus} from 'tinybase/ui-react';
+ * import React from 'react';
+ * import {createLocalSynchronizer} from 'tinybase/synchronizers/synchronizer-local';
+ * import {createMergeableStore} from 'tinybase';
+ * import {createRoot} from 'react-dom/client';
+ *
+ * const App = ({synchronizer}) => (
+ *   <Provider synchronizersById={{petSynchronizer: synchronizer}}>
+ *     <Pane />
+ *   </Provider>
+ * );
+ * const Pane = () => <span>{useSynchronizerStatus('petSynchronizer')}</span>;
+ *
+ * const synchronizer = createLocalSynchronizer(createMergeableStore());
+ * const app = document.createElement('div');
+ * createRoot(app).render(<App synchronizer={synchronizer} />); // !act
+ * console.log(app.innerHTML);
+ * // -> '<span>0</span>'
+ * ```
+ * @category Synchronizer hooks
+ * @since v5.3.0
+ */
+/// useSynchronizerStatus
+/**
+ * The useSynchronizerStatusListener hook registers a listener function with the
+ * Synchronizer that will be called when its status changes.
+ *
+ * This hook is useful for situations where a component needs to register its
+ * own specific listener to do more than simply tracking the value (which is
+ * more easily done with the useSynchronizerStatus hook).
+ *
+ * Unlike the addStatusListener method, which returns a listener Id and requires
+ * you to remove it manually, the useSynchronizerStatusListener hook manages
+ * this lifecycle for you: when the listener changes (per its `listenerDeps`
+ * dependencies) or the component unmounts, the listener on the underlying
+ * Synchronizer will be deleted.
+ * @param listener The function that will be called whenever the status of the
+ * Synchronizer changes.
+ * @param listenerDeps An optional array of dependencies for the `listener`
+ * function, which, if any change, result in the re-registration of the
+ * listener. This parameter defaults to an empty array.
+ * @param synchronizerOrSynchronizerId The Synchronizer to be accessed: omit for
+ * the default context Synchronizer, provide an Id for a named context
+ * Synchronizer, or provide an explicit reference.
+ * @example
+ * This example uses the useSynchronizerStatusListener hook to create a listener
+ * that is scoped to a single component. When the component is unmounted, the
+ * listener is removed from the Synchronizer.
+ *
+ * ```jsx
+ * import {Provider, useSynchronizerStatusListener} from 'tinybase/ui-react';
+ * import React from 'react';
+ * import {createLocalSynchronizer} from 'tinybase/synchronizers/synchronizer-local';
+ * import {createMergeableStore} from 'tinybase';
+ * import {createRoot} from 'react-dom/client';
+ *
+ * const App = ({synchronizer}) => (
+ *   <Provider synchronizer={synchronizer}>
+ *     <Pane />
+ *   </Provider>
+ * );
+ * const Pane = () => {
+ *   useSynchronizerStatusListener((synchronizer, status) =>
+ *     console.log('Synchronizer status changed: ' + status),
+ *   );
+ *   return <span>App</span>;
+ * };
+ *
+ * const synchronizer = createLocalSynchronizer(createMergeableStore());
+ * const app = document.createElement('div');
+ * const root = createRoot(app);
+ * root.render(<App synchronizer={synchronizer} />); // !act
+ *
+ * synchronizer.load(); // !act
+ * // -> 'Synchronizer status changed: 1'
+ * // ... // !act
+ * // -> 'Synchronizer status changed: 0'
+ *
+ * synchronizer.save(); // !act
+ * // -> 'Synchronizer status changed: 2'
+ * // ... // !act
+ * // -> 'Synchronizer status changed: 0'
+ * ```
+ * @category Synchronizer hooks
+ * @since v5.3.0
+ */
+/// useSynchronizerStatusListener
 /**
  * The ExtraProps type represents a set of arbitrary additional props.
  * @category Props
@@ -12003,6 +13256,34 @@
    * @since v1.0.0
    */
   /// ProviderProps.checkpointsById
+  /**
+   * A default single Persister object that will be available within the
+   * Provider context.
+   * @category Prop
+   * @since v5.3.0
+   */
+  /// ProviderProps.persister
+  /**
+   * An object containing multiple Persister objects that will be available
+   * within the Provider context by their Id.
+   * @category Prop
+   * @since v5.3.0
+   */
+  /// ProviderProps.persistersById
+  /**
+   * A default single Synchronizer object that will be available within the
+   * Provider context.
+   * @category Prop
+   * @since v5.3.0
+   */
+  /// ProviderProps.synchronizer
+  /**
+   * An object containing multiple Synchronizer objects that will be available
+   * within the Provider context by their Id.
+   * @category Prop
+   * @since v5.3.0
+   */
+  /// ProviderProps.synchronizersById
 }
 /**
  * ComponentReturnType is a simple alias for what a React component can return:
@@ -12015,11 +13296,11 @@
  * The Provider component is used to wrap part of an application in a context
  * that provides default objects to be used by hooks and components within.
  *
- * Store, Metrics, Indexes, Relationships, Queries, and Checkpoints objects can
- * be passed into the context of an application and used throughout. One of each
- * type of object can be provided as a default within the context. Additionally,
- * multiple of each type of object can be provided in an Id-keyed map to the
- * `___ById` props.
+ * Store, Metrics, Indexes, Relationships, Queries, Checkpoints, Persister, and
+ * Synchronizer objects can be passed into the context of an application and
+ * used throughout. One of each type of object can be provided as a default
+ * within the context. Additionally, multiple of each type of object can be
+ * provided in an Id-keyed map to the `___ById` props.
  *
  * Provider contexts can be nested and the objects passed in will be merged. For
  * example, if an outer context contains a default Metrics object and an inner

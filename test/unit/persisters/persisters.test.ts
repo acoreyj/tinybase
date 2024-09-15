@@ -1,15 +1,13 @@
 /* eslint-disable jest/no-conditional-expect */
 
 import 'fake-indexeddb/auto';
-import {GetLocationMethod, Persist, nextLoop} from './common.ts';
-import type {Persister, Store} from 'tinybase';
-import {createCustomPersister, createStore} from 'tinybase';
+import {GetLocationMethod, Persistable, nextLoop} from './common/other.ts';
+import {Status, createCustomPersister} from 'tinybase/persisters';
 import {
+  getMockDatabases,
   mockAutomerge,
   mockChangesListener,
   mockContentListener,
-  mockCrSqliteWasm,
-  mockElectricSql,
   mockFile,
   mockIndexedDb,
   mockLocalStorage,
@@ -17,16 +15,20 @@ import {
   mockMergeableContentListener,
   mockMergeableNoContentListener,
   mockNoContentListener,
-  mockPowerSync,
   mockRemote,
   mockSessionStorage,
-  mockSqlite3,
-  mockSqliteWasm,
   mockYjs,
-} from './mocks.ts';
+} from './common/mocks.ts';
+import {ALL_VARIANTS} from './common/databases.ts';
+import type {Persister} from 'tinybase/persisters';
+import type {Store} from 'tinybase';
+import {createStatusListener} from '../common/listeners.ts';
+import {createStore} from 'tinybase';
 import {join} from 'path';
 import {pause} from '../common/other.ts';
 import tmp from 'tmp';
+
+tmp.setGracefulCleanup();
 
 describe.each([
   ['mockChangesListener', mockChangesListener],
@@ -40,20 +42,14 @@ describe.each([
   ['sessionStorage', mockSessionStorage],
   ['remote', mockRemote],
   ['indexedDb', mockIndexedDb],
-  ['electricSql', mockElectricSql],
-  ['powerSync', mockPowerSync],
-  ['sqlite3', mockSqlite3],
-  ['sqliteWasm', mockSqliteWasm],
-  ['crSqliteWasm', mockCrSqliteWasm],
   ['yjs', mockYjs],
   ['automerge', mockAutomerge],
-])('Persists to/from %s', (name: string, persistable: Persist<any>) => {
+  ...getMockDatabases(ALL_VARIANTS),
+])('Persists to/from %s', (name: string, persistable: Persistable<any>) => {
   let location: string;
   let getLocationMethod: GetLocationMethod<any> | undefined;
   let store: Store;
   let persister: Persister;
-
-  tmp.setGracefulCleanup();
 
   beforeEach(async () => {
     if (persistable.beforeEach != null) {
@@ -62,13 +58,13 @@ describe.each([
     store = createStore();
     location = await persistable.getLocation();
     getLocationMethod = persistable.getLocationMethod;
-    persister = persistable.getPersister(store, location);
+    persister = await persistable.getPersister(store, location);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     persister.destroy();
     if (persistable.afterEach != null) {
-      persistable.afterEach(location);
+      await persistable.afterEach(location);
     }
   });
 
@@ -94,6 +90,29 @@ describe.each([
       {v1: 1},
     ]);
     expect(persister.getStats()).toEqual({loads: 0, saves: 1});
+  });
+
+  // eslint-disable-next-line jest/no-done-callback
+  test('saving status', (done) => {
+    expect.assertions(3);
+    store.setTables({t1: {r1: {c1: 1}}}).setValues({v1: 1});
+    expect(persister.getStatus()).toEqual(Status.Idle);
+    persister
+      .save()
+      .then(() => {
+        expect(persister.getStatus()).toEqual(Status.Idle);
+        done();
+      })
+      .catch(done);
+    expect(persister.getStatus()).toEqual(Status.Saving);
+  });
+
+  test('saving status listener', async () => {
+    store.setTables({t1: {r1: {c1: 1}}}).setValues({v1: 1});
+    const listener = createStatusListener(persister);
+    listener.listenToStatus('');
+    await persister.save();
+    expect(listener.logs).toEqual({'': [2, 0]});
   });
 
   test('autoSaves', async () => {
@@ -187,6 +206,30 @@ describe.each([
     expect(persister.getStats()).toEqual({loads: 1, saves: 0});
   });
 
+  // eslint-disable-next-line jest/no-done-callback
+  test('loading status', (done) => {
+    expect.assertions(3);
+    persistable.set(location, [{t1: {r1: {c1: 1}}}, {v1: 1}]).then(() => {
+      expect(persister.getStatus()).toEqual(Status.Idle);
+      persister
+        .load()
+        .then(() => {
+          expect(persister.getStatus()).toEqual(Status.Idle);
+          done();
+        })
+        .catch(done);
+      expect(persister.getStatus()).toEqual(Status.Loading);
+    });
+  });
+
+  test('loading status listener', async () => {
+    store.setTables({t1: {r1: {c1: 1}}}).setValues({v1: 1});
+    const listener = createStatusListener(persister);
+    listener.listenToStatus('');
+    await persister.load();
+    expect(listener.logs).toEqual({'': [1, 0]});
+  });
+
   test('loads backwards compatible', async () => {
     await persistable.set(location, [{t1: {r1: {c1: 1}}}] as any);
     await persister.load();
@@ -211,7 +254,7 @@ describe.each([
 
   test('does not load from corrupt', async () => {
     store.setTables({t1: {r1: {c1: 1}}});
-    persistable.write(location, '{');
+    await persistable.write(location, '{');
     await persister.load();
     expect(store.getTables()).toEqual({t1: {r1: {c1: 1}}});
     expect(persister.getStats()).toEqual({loads: 1, saves: 0});
@@ -308,7 +351,7 @@ describe.each([
     await persistable.set(location, [{t1: {r1: {c1: 1}}}, {}]);
     await persister.startAutoLoad();
     expect(store.getTables()).toEqual({t1: {r1: {c1: 1}}});
-    persistable.write(location, '{');
+    await persistable.write(location, '{');
     await pause(persistable.autoLoadPause);
     expect(store.getTables()).toEqual({t1: {r1: {c1: 1}}});
   });
@@ -316,7 +359,7 @@ describe.each([
   test('does not load from non-existent', async () => {
     if (persistable.testMissing) {
       store.setTables({t1: {r1: {c1: 1}}});
-      await persistable.getPersister(store, '_').load();
+      await (await persistable.getPersister(store, '_')).load();
       expect(store.getTables()).toEqual({t1: {r1: {c1: 1}}});
     }
   });
@@ -324,9 +367,9 @@ describe.each([
   test('does not autoLoad from non-existent', async () => {
     if (persistable.testMissing) {
       store.setTables({t1: {r1: {c1: 1}}});
-      const persister = await persistable
-        .getPersister(store, join(tmp.dirSync().name, '_'))
-        .startAutoLoad();
+      const persister = await (
+        await persistable.getPersister(store, join(tmp.dirSync().name, '_'))
+      ).startAutoLoad();
       expect(store.getTables()).toEqual({t1: {r1: {c1: 1}}});
       persister.destroy();
     }
@@ -335,7 +378,7 @@ describe.each([
   test('does not load from possibly invalid', async () => {
     if (name == 'file') {
       store.setTables({t1: {r1: {c1: 1}}});
-      await persistable.getPersister(store, '.').load();
+      await (await persistable.getPersister(store, '.')).load();
       expect(store.getTables()).toEqual({t1: {r1: {c1: 1}}});
     }
   });
@@ -343,7 +386,7 @@ describe.each([
   test('does not error on save to possibly invalid', async () => {
     if (name == 'file') {
       store.setTables({t1: {r1: {c1: 1}}});
-      await persistable.getPersister(store, '.').save();
+      await (await persistable.getPersister(store, '.')).save();
       expect(store.getTables()).toEqual({t1: {r1: {c1: 1}}});
     }
   });

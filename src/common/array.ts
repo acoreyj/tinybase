@@ -1,6 +1,11 @@
 import {EMPTY_STRING} from './strings.ts';
 import {size} from './other.ts';
 
+export const arrayNew = <Value>(
+  size: number,
+  cb: (index: number) => Value,
+): Value[] => arrayMap(new Array(size).fill(0), (_, index) => cb(index));
+
 export const arrayHas = <Value>(array: Value[], value: Value): boolean =>
   array.includes(value);
 
@@ -72,3 +77,9 @@ export const arrayUnshift = <Value>(
 
 export const arrayShift = <Value>(array: Value[]): Value | undefined =>
   array.shift();
+
+export const arrayWith = <Value>(
+  array: Value[],
+  index: number,
+  value: Value,
+): Value[] => array.with(index, value);

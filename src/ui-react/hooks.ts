@@ -11,6 +11,7 @@ import {
   ROW_COUNT,
   ROW_IDS,
   SORTED_ROW_IDS,
+  STATUS,
   TABLE,
   TABLES,
   TABLE_IDS,
@@ -69,9 +70,11 @@ import type {
   GetId,
   IndexesOrIndexesId,
   MetricsOrMetricsId,
+  PersisterOrPersisterId,
   QueriesOrQueriesId,
   RelationshipsOrRelationshipsId,
   StoreOrStoreId,
+  SynchronizerOrSynchronizerId,
   UndoOrRedoInformation,
   useAddRowCallback as useAddRowCallbackDecl,
   useCell as useCellDecl,
@@ -82,7 +85,6 @@ import type {
   useCheckpointIds as useCheckpointIdsDecl,
   useCheckpointIdsListener as useCheckpointIdsListenerDecl,
   useCheckpointListener as useCheckpointListenerDecl,
-  useCheckpointsIds as useCheckpointsIdsDecl,
   useCreateCheckpoints as useCreateCheckpointsDecl,
   useCreateIndexes as useCreateIndexesDecl,
   useCreateMergeableStore as useCreateMergeableStoreDecl,
@@ -117,7 +119,6 @@ import type {
   useHasValues as useHasValuesDecl,
   useHasValuesListener as useHasValuesListenerDecl,
   useIndexIds as useIndexIdsDecl,
-  useIndexesIds as useIndexesIdsDecl,
   useLinkedRowIds as useLinkedRowIdsDecl,
   useLinkedRowIdsListener as useLinkedRowIdsListenerDecl,
   useLocalRowIds as useLocalRowIdsDecl,
@@ -125,12 +126,11 @@ import type {
   useMetric as useMetricDecl,
   useMetricIds as useMetricIdsDecl,
   useMetricListener as useMetricListenerDecl,
-  useMetricsIds as useMetricsIdsDecl,
-  useQueriesIds as useQueriesIdsDecl,
+  usePersisterStatus as usePersisterStatusDecl,
+  usePersisterStatusListener as usePersisterStatusListenerDecl,
   useQueryIds as useQueryIdsDecl,
   useRedoInformation as useRedoInformationDecl,
   useRelationshipIds as useRelationshipIdsDecl,
-  useRelationshipsIds as useRelationshipsIdsDecl,
   useRemoteRowId as useRemoteRowIdDecl,
   useRemoteRowIdListener as useRemoteRowIdListenerDecl,
   useResultCell as useResultCellDecl,
@@ -171,7 +171,8 @@ import type {
   useSortedRowIds as useSortedRowIdsDecl,
   useSortedRowIdsListener as useSortedRowIdsListenerDecl,
   useStartTransactionListener as useStartTransactionListenerDecl,
-  useStoreIds as useStoreIdsDecl,
+  useSynchronizerStatus as useSynchronizerStatusDecl,
+  useSynchronizerStatusListener as useSynchronizerStatusListenerDecl,
   useTableCellIds as useTableCellIdsDecl,
   useTableCellIdsListener as useTableCellIdsListenerDecl,
   useTable as useTableDecl,
@@ -202,6 +203,13 @@ import type {
 } from '../@types/relationships/index.d.ts';
 import type {MetricListener, Metrics} from '../@types/metrics/index.d.ts';
 import type {
+  PersistedStore,
+  Persister,
+  Persists,
+  Status,
+  StatusListener,
+} from '../@types/persisters/index.d.ts';
+import type {
   Queries,
   ResultCellIdsListener,
   ResultCellListener,
@@ -228,14 +236,14 @@ import {
   useCheckpointsOrCheckpointsById,
   useIndexesOrIndexesById,
   useMetricsOrMetricsById,
+  usePersisterOrPersisterById,
   useQueriesOrQueriesById,
   useRelationshipsOrRelationshipsById,
   useStoreOrStoreById,
-  useThingIds,
+  useSynchronizerOrSynchronizerById,
 } from './context.ts';
 import {ListenerArgument} from '../common/listeners.ts';
 import type {MergeableStore} from '../@types/mergeable-store/index.d.ts';
-import type {Persister} from '../@types/persisters/index.d.ts';
 import React from 'react';
 import type {Synchronizer} from '../@types/synchronizers/index.d.ts';
 import {TRANSACTION} from '../tools/common/strings.ts';
@@ -243,18 +251,37 @@ import {objIsEqual} from '../common/obj.ts';
 
 export {
   useCheckpoints,
+  useCheckpointsIds,
   useCheckpointsOrCheckpointsById,
   useIndexes,
+  useIndexesIds,
   useIndexesOrIndexesById,
   useMetrics,
+  useMetricsIds,
   useMetricsOrMetricsById,
+  usePersister,
+  usePersisterIds,
+  usePersisterOrPersisterById,
+  useProvideCheckpoints,
+  useProvideIndexes,
+  useProvideMetrics,
+  useProvidePersister,
+  useProvideQueries,
+  useProvideRelationships,
   useProvideStore,
+  useProvideSynchronizer,
   useQueries,
+  useQueriesIds,
   useQueriesOrQueriesById,
   useRelationships,
+  useRelationshipsIds,
   useRelationshipsOrRelationshipsById,
   useStore,
+  useStoreIds,
   useStoreOrStoreById,
+  useSynchronizer,
+  useSynchronizerIds,
+  useSynchronizerOrSynchronizerById,
 } from './context.ts';
 
 const {
@@ -354,7 +381,7 @@ const useListenable = (
     /* eslint-disable-next-line react-hooks/exhaustive-deps */
     [thing, returnType, listenable, ...args],
   );
-  return useSyncExternalStore(subscribe, getResult);
+  return useSyncExternalStore(subscribe, getResult, getResult);
 };
 
 const useListener = (
@@ -457,8 +484,6 @@ export const useCreateMergeableStore: typeof useCreateMergeableStoreDecl = (
   createDeps: React.DependencyList = EMPTY_ARRAY,
   // eslint-disable-next-line react-hooks/exhaustive-deps
 ): MergeableStore => useMemo(create, createDeps);
-
-export const useStoreIds: typeof useStoreIdsDecl = () => useThingIds(1);
 
 export const useHasTables: typeof useHasTablesDecl = (
   storeOrStoreId?: StoreOrStoreId,
@@ -1277,8 +1302,6 @@ export const useCreateMetrics: typeof useCreateMetricsDecl = (
   createDeps?: React.DependencyList,
 ): Metrics | undefined => useCreate(store, create, createDeps);
 
-export const useMetricsIds: typeof useMetricsIdsDecl = () => useThingIds(3);
-
 export const useMetricIds: typeof useMetricIdsDecl = (
   metricsOrMetricsId?: MetricsOrMetricsId,
 ): Ids =>
@@ -1318,8 +1341,6 @@ export const useCreateIndexes: typeof useCreateIndexesDecl = (
   create: (store: Store) => Indexes,
   createDeps?: React.DependencyList,
 ): Indexes | undefined => useCreate(store, create, createDeps);
-
-export const useIndexesIds: typeof useIndexesIdsDecl = () => useThingIds(5);
 
 export const useSliceIds: typeof useSliceIdsDecl = (
   indexId: Id,
@@ -1387,9 +1408,6 @@ export const useCreateRelationships: typeof useCreateRelationshipsDecl = (
   create: (store: Store) => Relationships,
   createDeps?: React.DependencyList,
 ): Relationships | undefined => useCreate(store, create, createDeps);
-
-export const useRelationshipsIds: typeof useRelationshipsIdsDecl = () =>
-  useThingIds(7);
 
 export const useRelationshipIds: typeof useRelationshipIdsDecl = (
   relationshipsOrRelationshipsId?: RelationshipsOrRelationshipsId,
@@ -1486,8 +1504,6 @@ export const useCreateQueries: typeof useCreateQueriesDecl = (
   create: (store: Store) => Queries,
   createDeps?: React.DependencyList,
 ): Queries | undefined => useCreate(store, create, createDeps);
-
-export const useQueriesIds: typeof useQueriesIdsDecl = () => useThingIds(9);
 
 export const useQueryIds: typeof useQueryIdsDecl = (
   queriesOrQueriesId?: QueriesOrQueriesId,
@@ -1722,9 +1738,6 @@ export const useCreateCheckpoints: typeof useCreateCheckpointsDecl = (
   createDeps?: React.DependencyList,
 ): Checkpoints | undefined => useCreate(store, create, createDeps);
 
-export const useCheckpointsIds: typeof useCheckpointsIdsDecl = () =>
-  useThingIds(11);
-
 export const useCheckpointIds: typeof useCheckpointIdsDecl = (
   checkpointsOrCheckpointsId?: CheckpointsOrCheckpointsId,
 ): CheckpointIds =>
@@ -1861,28 +1874,33 @@ export const useCheckpointListener: typeof useCheckpointListenerDecl = (
   );
 
 export const useCreatePersister: typeof useCreatePersisterDecl = <
-  PersisterOrUndefined extends Persister | undefined,
+  Persist extends Persists,
+  PersisterOrUndefined extends Persister<Persist> | undefined,
 >(
-  store: Store | undefined,
-  create: (store: Store) => PersisterOrUndefined,
+  store: PersistedStore<Persist> | undefined,
+  create: (
+    store: PersistedStore<Persist>,
+  ) => PersisterOrUndefined | Promise<PersisterOrUndefined>,
   createDeps: React.DependencyList = EMPTY_ARRAY,
-  then?: (persister: Persister) => Promise<void>,
+  then?: (persister: Persister<Persist>) => Promise<void>,
   thenDeps: React.DependencyList = EMPTY_ARRAY,
-  destroy?: (persister: Persister) => void,
+  destroy?: (persister: Persister<Persist>) => void,
   destroyDeps: React.DependencyList = EMPTY_ARRAY,
 ): PersisterOrUndefined => {
   const [, rerender] = useState<[]>();
   const [persister, setPersister] = useState<any>();
   useEffect(
     () => {
-      const persister = store ? create(store) : undefined;
-      setPersister(persister);
-      if (persister && then) {
-        (async () => {
-          await then(persister);
-          rerender([]);
-        })();
-      }
+      (async () => {
+        const persister = store ? await create(store) : undefined;
+        setPersister(persister);
+        if (persister && then) {
+          (async () => {
+            await then(persister);
+            rerender([]);
+          })();
+        }
+      })();
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [store, ...createDeps, ...thenDeps],
@@ -1899,6 +1917,30 @@ export const useCreatePersister: typeof useCreatePersisterDecl = <
   );
   return persister;
 };
+
+export const usePersisterStatus: typeof usePersisterStatusDecl = (
+  persisterOrPersisterId?: PersisterOrPersisterId,
+): Status =>
+  useListenable(
+    STATUS,
+    usePersisterOrPersisterById(persisterOrPersisterId),
+    ReturnType.Number,
+    [],
+  );
+
+export const usePersisterStatusListener: typeof usePersisterStatusListenerDecl =
+  (
+    listener: StatusListener<Persists.StoreOrMergeableStore>,
+    listenerDeps?: React.DependencyList,
+    persisterOrPersisterId?: PersisterOrPersisterId,
+  ): void =>
+    useListener(
+      STATUS,
+      usePersisterOrPersisterById(persisterOrPersisterId),
+      listener,
+      listenerDeps,
+      [],
+    );
 
 export const useCreateSynchronizer: typeof useCreateSynchronizerDecl = <
   SynchronizerOrUndefined extends Synchronizer | undefined,
@@ -1932,3 +1974,27 @@ export const useCreateSynchronizer: typeof useCreateSynchronizerDecl = <
   );
   return synchronizer;
 };
+
+export const useSynchronizerStatus: typeof useSynchronizerStatusDecl = (
+  synchronizerOrSynchronizerId?: SynchronizerOrSynchronizerId,
+): Status =>
+  useListenable(
+    STATUS,
+    useSynchronizerOrSynchronizerById(synchronizerOrSynchronizerId),
+    ReturnType.Number,
+    [],
+  );
+
+export const useSynchronizerStatusListener: typeof useSynchronizerStatusListenerDecl =
+  (
+    listener: StatusListener<Persists.MergeableStoreOnly>,
+    listenerDeps?: React.DependencyList,
+    synchronizerOrSynchronizerId?: SynchronizerOrSynchronizerId,
+  ): void =>
+    useListener(
+      STATUS,
+      useSynchronizerOrSynchronizerById(synchronizerOrSynchronizerId),
+      listener,
+      listenerDeps,
+      [],
+    );

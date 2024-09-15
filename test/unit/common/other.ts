@@ -10,8 +10,17 @@ const fetchMock = fm as any as FetchMock;
 
 Object.assign(globalThis, {TextDecoder, TextEncoder});
 
+const ignorable = (...args: any[]): boolean =>
+  args.some((arg) =>
+    arg
+      .toString()
+      .match(/wasm|OPFS|ArrayBuffer|ReactDOMTestUtils|C-web|onCustomMessage/),
+  );
+
 export const pause = async (ms = 50, alsoNudgeHlc = false): Promise<void> => {
-  const promise = new Promise<void>((resolve) => setTimeout(resolve, ms));
+  const promise = new Promise<void>((resolve) =>
+    setTimeout(() => setTimeout(() => setTimeout(resolve, 1), ms - 2), 1),
+  );
   if (alsoNudgeHlc) {
     nudgeHlc(ms);
   }
@@ -44,10 +53,14 @@ export const suppressWarnings = async <Return>(
   actions: () => Promise<Return>,
 ) => {
   /* eslint-disable no-console */
+  const log = console.log;
   const warn = console.warn;
   const error = console.error;
-  console.warn = console.error = () => 0;
+  console.log = (...args: any[]) => (ignorable(...args) ? 0 : log(...args));
+  console.warn = (...args: any[]) => (ignorable(...args) ? 0 : warn(...args));
+  console.error = (...args: any[]) => (ignorable(...args) ? 0 : error(...args));
   const result = await actions();
+  console.log = log;
   console.warn = warn;
   console.error = error;
   /* eslint-enable no-console */

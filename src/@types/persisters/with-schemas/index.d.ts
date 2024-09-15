@@ -12,7 +12,18 @@ import type {
   MergeableContent,
   MergeableStore,
 } from '../../mergeable-store/with-schemas/index.d.ts';
+import type {Id} from '../../with-schemas/index.d.ts';
 import type {TableIdFromSchema} from '../../_internal/store/with-schemas/index.d.ts';
+
+/// Status
+export const enum Status {
+  /// Status.Idle
+  Idle = 0,
+  /// Status.Loading
+  Loading = 1,
+  /// Status.Saving
+  Saving = 2,
+}
 
 /// Persists
 export const enum Persists {
@@ -62,6 +73,12 @@ export type PersisterListener<
   content?: PersistedContent<Schemas, Persist>,
   changes?: PersistedChanges<Schemas, Persist>,
 ) => void;
+
+/// StatusListener
+export type StatusListener<
+  Schemas extends OptionalSchemas,
+  Persist extends Persists = Persists.StoreOnly,
+> = (persister: Persister<Schemas, Persist>, status: Status) => void;
 
 /// PersisterStats
 export type PersisterStats = {
@@ -174,6 +191,15 @@ export interface Persister<
   /// Persister.isAutoSaving
   isAutoSaving(): boolean;
 
+  /// Persister.getStatus
+  getStatus(): Status;
+
+  /// Persister.addStatusListener
+  addStatusListener(listener: StatusListener<Schemas, Persist>): Id;
+
+  /// Persister.delListener
+  delListener(listenerId: Id): this;
+
   /// Persister.schedule
   schedule(...actions: (() => Promise<any>)[]): Promise<this>;
 
@@ -187,10 +213,25 @@ export interface Persister<
   getStats(): PersisterStats;
 }
 
+/// AnyPersister
+export type AnyPersister<Schemas extends OptionalSchemas> = Persister<
+  Schemas,
+  Persists
+>;
+
+/// DatabaseExecuteCommand
+export type DatabaseExecuteCommand = (
+  sql: string,
+  params?: any[],
+) => Promise<{[field: string]: any}[]>;
+
+/// DatabaseChangeListener
+export type DatabaseChangeListener = (tableName: string) => void;
+
 /// createCustomPersister
 export function createCustomPersister<
   Schemas extends OptionalSchemas,
-  ListeningHandle,
+  ListenerHandle,
   Persist extends Persists = Persists.StoreOnly,
 >(
   store: PersistedStore<Schemas, Persist>,
@@ -201,8 +242,49 @@ export function createCustomPersister<
   ) => Promise<void>,
   addPersisterListener: (
     listener: PersisterListener<Schemas, Persist>,
-  ) => ListeningHandle,
-  delPersisterListener: (listeningHandle: ListeningHandle) => void,
+  ) => ListenerHandle | Promise<ListenerHandle>,
+  delPersisterListener: (listenerHandle: ListenerHandle) => void,
   onIgnoredError?: (error: any) => void,
   persist?: Persist,
+): Persister<Schemas, Persist>;
+
+/// createCustomSqlitePersister
+export function createCustomSqlitePersister<
+  Schemas extends OptionalSchemas,
+  ListenerHandle,
+  Persist extends Persists = Persists.StoreOnly,
+>(
+  store: PersistedStore<Schemas, Persist>,
+  configOrStoreTableName: DatabasePersisterConfig<Schemas> | string | undefined,
+  executeCommand: DatabaseExecuteCommand,
+  addChangeListener: (listener: DatabaseChangeListener) => ListenerHandle,
+  delChangeListener: (listenerHandle: ListenerHandle) => void,
+  onSqlCommand: ((sql: string, params?: any[]) => void) | undefined,
+  onIgnoredError: ((error: any) => void) | undefined,
+  destroy: () => void,
+  persist: Persist,
+  thing: any,
+  getThing?: string,
+): Persister<Schemas, Persist>;
+
+/// createCustomPostgreSqlPersister
+export function createCustomPostgreSqlPersister<
+  Schemas extends OptionalSchemas,
+  ListenerHandle,
+  Persist extends Persists = Persists.StoreOnly,
+>(
+  store: PersistedStore<Schemas, Persist>,
+  configOrStoreTableName: DatabasePersisterConfig<Schemas> | string | undefined,
+  executeCommand: DatabaseExecuteCommand,
+  addChangeListener: (
+    channel: string,
+    listener: DatabaseChangeListener,
+  ) => Promise<ListenerHandle>,
+  delChangeListener: (listenerHandle: ListenerHandle) => void,
+  onSqlCommand: ((sql: string, params?: any[]) => void) | undefined,
+  onIgnoredError: ((error: any) => void) | undefined,
+  destroy: () => void,
+  persist: Persist,
+  thing: any,
+  getThing?: string,
 ): Persister<Schemas, Persist>;
