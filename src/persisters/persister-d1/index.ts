@@ -32,6 +32,6 @@ export const createD1Persister = ((
     (unsubscribeFunction: UnsubscribeFunction): any => unsubscribeFunction(),
     onSqlCommand,
     onIgnoredError,
-    1, // Store Only,
+    3, // Store or Mergeable Store,
     db,
   ) as D1Persister) as typeof createD1PersisterDecl;
