@@ -82,6 +82,7 @@ export class WsServerDurableObject<Env = unknown>
         }
         this.ctx.acceptWebSocket(client, [clientId, pathId]);
         this.onClientId(pathId, clientId, 1);
+        this.onFetch(request, pathId, clientId);
         client.send(createPayload(SERVER_CLIENT_ID, null, 1, EMPTY_STRING));
         return createResponse(101, webSocket);
       },
@@ -103,25 +104,33 @@ export class WsServerDurableObject<Env = unknown>
     }
   }
 
-  // --
-
   #handleMessage(fromClientId: Id, message: string, fromClient?: WebSocket) {
-    ifPayloadValid(message.toString(), (toClientId, remainder) => {
-      const forwardedPayload = createRawPayload(fromClientId, remainder);
-      this.onMessage(fromClientId, toClientId, remainder);
-      if (toClientId == EMPTY_STRING) {
-        if (fromClientId != SERVER_CLIENT_ID) {
-          this.#serverClientSend?.(forwardedPayload);
+    ifPayloadValid(message.toString(), async (toClientId, remainder) => {
+      const result = await this.onMessageMutator(
+        fromClientId,
+        toClientId,
+        remainder,
+      );
+      if (result !== false) {
+        if (typeof result === 'string') {
+          remainder = result;
         }
-        arrayForEach(this.#getClients(), (otherClient) => {
-          if (otherClient != fromClient) {
-            otherClient.send(forwardedPayload);
+        const forwardedPayload = createRawPayload(fromClientId, remainder);
+        this.onMessage(fromClientId, toClientId, remainder);
+        if (toClientId == EMPTY_STRING) {
+          if (fromClientId != SERVER_CLIENT_ID) {
+            this.#serverClientSend?.(forwardedPayload);
           }
-        });
-      } else if (toClientId == SERVER_CLIENT_ID) {
-        this.#serverClientSend?.(forwardedPayload);
-      } else if (toClientId != fromClientId) {
-        this.#getClients(toClientId)[0]?.send(forwardedPayload);
+          arrayForEach(this.#getClients(), (otherClient) => {
+            if (otherClient != fromClient) {
+              otherClient.send(forwardedPayload);
+            }
+          });
+        } else if (toClientId == SERVER_CLIENT_ID) {
+          this.#serverClientSend?.(forwardedPayload);
+        } else if (toClientId != fromClientId) {
+          this.#getClients(toClientId)[0]?.send(forwardedPayload);
+        }
       }
     });
   }
@@ -153,6 +162,15 @@ export class WsServerDurableObject<Env = unknown>
   onPathId(_pathId: Id, _addedOrRemoved: IdAddedOrRemoved) {}
 
   onClientId(_pathId: Id, _clientId: Id, _addedOrRemoved: IdAddedOrRemoved) {}
+  onFetch(_request: Request, _pathId: Id, _clientId: Id) {}
+
+  async onMessageMutator(
+    _fromClientId: Id,
+    _toClientId: Id,
+    _remainder: string,
+  ): Promise<boolean | string> {
+    return true;
+  }
 
   onMessage(_fromClientId: Id, _toClientId: Id, _remainder: string) {}
 }

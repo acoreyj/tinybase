@@ -26,6 +26,16 @@ export class WsServerDurableObject<Env = unknown> extends DurableObject<Env> {
   /// WsServerDurableObject.onClientId
   onClientId(pathId: Id, clientId: Id, addedOrRemoved: IdAddedOrRemoved): void;
 
+  /// WsServerDurableObject.onFetch
+  onFetch(request: Request, pathId: Id, clientId: Id): void;
+
+  /// WsServerDurableObject.onMessageMutator
+  onMessageMutator(
+    fromClientId: Id,
+    toClientId: Id,
+    remainder: string,
+  ): Promise<boolean | string>;
+
   /// WsServerDurableObject.onMessage
   onMessage(fromClientId: Id, toClientId: Id, remainder: string): void;
 }

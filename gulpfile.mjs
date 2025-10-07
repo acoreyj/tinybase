@@ -19,6 +19,8 @@ const ALL_MODULES = [
   'common',
   'indexes',
   'mergeable-store',
+  'mergeable-store-enhanced',
+  'expanded-schema',
   'metrics',
   'persisters',
   'persisters/persister-automerge',

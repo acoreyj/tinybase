@@ -5,7 +5,9 @@
 
 export * from './checkpoints/index.d.ts';
 export * from './common/index.d.ts';
+export * from './expanded-schema/index.d.ts';
 export * from './indexes/index.d.ts';
+export * from './mergeable-store-enhanced/index.d.ts';
 export * from './mergeable-store/index.d.ts';
 export * from './metrics/index.d.ts';
 export * from './queries/index.d.ts';

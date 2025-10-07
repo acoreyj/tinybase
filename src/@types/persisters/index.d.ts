@@ -88,6 +88,8 @@ export type DpcJson = {
   storeColumnName?: string;
   /// DatabasePersisterConfig.autoLoadIntervalSeconds
   autoLoadIntervalSeconds?: number;
+  /// DpcJson.log
+  log?: boolean;
 };
 
 /// DpcTabular

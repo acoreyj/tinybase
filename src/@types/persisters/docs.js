@@ -367,6 +367,16 @@
    * @since v4.0.0
    */
   /// DpcJson.storeColumnName
+  /**
+   * An optional boolean flag that enables logging of SQL operations when set to
+   * true.
+   *
+   * This is useful for debugging database operations performed by the
+   * persister.
+   * @category Configuration
+   * @since v6.3.0
+   */
+  /// DpcJson.log
 }
 /**
  * The DpcTabular type describes the configuration of a database-oriented

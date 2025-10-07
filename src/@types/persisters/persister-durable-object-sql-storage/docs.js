@@ -97,6 +97,44 @@
 }
 
 /**
+ * The Options type represents optional configuration options that can be
+ * passed to the createDurableObjectSqlStoragePersister function.
+ * @category Configuration
+ * @since v6.3.0
+ */
+/// Options
+{
+  /**
+   * The log property lets you optionally provide a logging function to capture
+   * SQL operations performed by the persister.
+   *
+   * This is useful for debugging and monitoring database operations. The
+   * function will be called with various message arguments whenever the
+   * persister performs SQL operations.
+   * @example
+   * This example shows how to provide a custom logging function:
+   *
+   * ```js yolo
+   * import {createMergeableStore} from 'tinybase';
+   * import {createDurableObjectSqlStoragePersister} from 'tinybase/persisters/persister-durable-object-sql-storage';
+   *
+   * const store = createMergeableStore();
+   * const persister = createDurableObjectSqlStoragePersister(
+   *   store,
+   *   sqlStorage,
+   *   {mode: 'json'},
+   *   undefined,
+   *   undefined,
+   *   {log: (...args) => console.log('SQL:', ...args)},
+   * );
+   * ```
+   * @category Configuration
+   * @since v6.3.0
+   */
+  /// Options.log
+}
+
+/**
  * The DurableObjectSqlDatabasePersisterConfig type represents the union of all
  * possible configuration types for a DurableObjectSqlStoragePersister.
  *
@@ -173,6 +211,48 @@
    * @since v6.3.0
    */
   /// DurableObjectSqlStoragePersister.getSqlStorage
+  /**
+   * The getLog method returns an array of SQL operations that have been
+   * executed by the persister.
+   *
+   * This is primarily useful for debugging and monitoring the SQL operations
+   * performed by the persister. Each log entry contains the SQL statement, its
+   * parameters (if any), and the type of operation.
+   * @returns An array of log entries, where each entry contains the SQL
+   * statement, optional parameters, and operation type.
+   * @example
+   * This example creates a Persister object and retrieves the SQL operation
+   * log:
+   *
+   * ```js yolo
+   * import {createMergeableStore} from 'tinybase';
+   * import {createDurableObjectSqlStoragePersister} from 'tinybase/persisters/persister-durable-object-sql-storage';
+   * import {WsServerDurableObject} from 'tinybase/synchronizers/synchronizer-ws-server-durable-object';
+   *
+   * export class MyDurableObject extends WsServerDurableObject {
+   *   createPersister() {
+   *     const store = createMergeableStore();
+   *     const persister = createDurableObjectSqlStoragePersister(
+   *       store,
+   *       this.ctx.storage.sql,
+   *     );
+   *     
+   *     // Perform some operations
+   *     await persister.save();
+   *     
+   *     // Get the log of SQL operations
+   *     const log = persister.getLog();
+   *     console.log(log);
+   *     // -> [{sql: 'INSERT INTO...', params: [...], type: 'exec'}, ...]
+   *
+   *     return persister;
+   *   }
+   * }
+   * ```
+   * @category Getter
+   * @since v6.3.0
+   */
+  /// DurableObjectSqlStoragePersister.getLog
 }
 /**
  * The createDurableObjectSqlStoragePersister function creates a

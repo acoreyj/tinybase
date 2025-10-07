@@ -200,6 +200,42 @@
    */
   /// WsServerDurableObject.onClientId
   /**
+   * The onFetch method is called when a client connects to the server and the
+   * WebSocket upgrade request has been accepted.
+   *
+   * This is called with the original `Request` along with the path and client
+   * Ids. You can use this to add logging or to validate the connection (for
+   * example, performing authentication or enforcing path constraints) before any
+   * synchronization messages are exchanged.
+   * @param request The HTTP Request used to establish the WebSocket.
+   * @param pathId The Id of the path being served by the Durable Object.
+   * @param clientId The Id of the client that just connected.
+   * @category Event
+   * @since v5.4.0
+   */
+  /// WsServerDurableObject.onFetch
+  /**
+   * The onMessageMutator method is called before a message is forwarded by the
+   * server.
+   *
+   * Return a promise that resolves to `true` to allow the message to be
+   * forwarded, or `false` to block it. This can be used to implement
+   * authorization, filtering, or other validation before the message propagates
+   * to other clients or the server.
+   * @param fromClientId The Id of the client that sent the message.
+   * @param toClientId The Id of the client to receive the message (or empty for
+   * a broadcast).
+   * @param remainder The remainder of the body of the message.
+   * @param isServerRead Whether the message is reading from the server to send
+   * to a client (true when fromClientId is the server's internal client).
+   * @param isServerWrite Whether the message is writing to the server from a
+   * client (true when toClientId is the server's internal client).
+   * @returns Whether the message should be forwarded.
+   * @category Event
+   * @since v5.4.0
+   */
+  /// WsServerDurableObject.onMessageMutator
+  /**
    * The onMessage method is called when a message is handled by the server.
    *
    * This is useful if you want to debug the synchronization process, though be

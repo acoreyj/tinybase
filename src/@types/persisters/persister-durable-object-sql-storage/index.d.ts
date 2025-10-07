@@ -9,7 +9,11 @@ export type DpcFragmented = {
   /// DpcFragmented.storagePrefix
   storagePrefix?: string;
 };
-
+/// Options
+export type Options = {
+  /// Options.log
+  log?: (...message: unknown[]) => void;
+};
 /// DurableObjectSqlDatabasePersisterConfig
 export type DurableObjectSqlDatabasePersisterConfig = DpcJson | DpcFragmented;
 
@@ -18,6 +22,8 @@ export interface DurableObjectSqlStoragePersister
   extends Persister<Persists.MergeableStoreOnly> {
   /// DurableObjectSqlStoragePersister.getSqlStorage
   getSqlStorage(): SqlStorage;
+  /// DurableObjectSqlStoragePersister.getLog
+  getLog(): Array<{sql: string; params?: any[]; type: string}>;
 }
 
 /// createDurableObjectSqlStoragePersister
@@ -27,4 +33,5 @@ export function createDurableObjectSqlStoragePersister(
   configOrStoreTableName?: DurableObjectSqlDatabasePersisterConfig | string,
   onSqlCommand?: (sql: string, params?: any[]) => void,
   onIgnoredError?: (error: any) => void,
+  options?: Options,
 ): DurableObjectSqlStoragePersister;

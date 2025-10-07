@@ -18,6 +18,12 @@ export type DpcFragmented = {
   storagePrefix?: string;
 };
 
+/// Options
+export type Options = {
+  /// Options.log
+  log?: (...message: unknown[]) => void;
+};
+
 /// DurableObjectSqlDatabasePersisterConfig
 export type DurableObjectSqlDatabasePersisterConfig<
   Schemas extends OptionalSchemas,
@@ -42,4 +48,5 @@ export function createDurableObjectSqlStoragePersister<
     | string,
   onSqlCommand?: (sql: string, params?: any[]) => void,
   onIgnoredError?: (error: any) => void,
+  options?: Options,
 ): DurableObjectSqlStoragePersister<Schemas>;

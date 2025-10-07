@@ -16,6 +16,7 @@ import type {
   createDurableObjectSqlStoragePersister as createDurableObjectSqlStoragePersisterDecl,
   DpcFragmented,
   DurableObjectSqlStoragePersister,
+  Options,
 } from '../../@types/persisters/persister-durable-object-sql-storage/index.d.ts';
 import {IdObj, objEnsure, objForEach} from '../../common/obj.ts';
 import {noop} from '../../common/other.ts';
@@ -34,6 +35,7 @@ export const createDurableObjectSqlStoragePersister = (
   configOrStoreTableName?: DurableObjectSqlDatabasePersisterConfig | string,
   onSqlCommand?: (sql: string, params?: any[]) => void,
   onIgnoredError?: (error: any) => void,
+    options?: Options,
 ): DurableObjectSqlStoragePersister => {
   if (
     typeof configOrStoreTableName === 'object' &&
@@ -43,7 +45,9 @@ export const createDurableObjectSqlStoragePersister = (
       store,
       sqlStorage,
       (configOrStoreTableName as DpcFragmented)?.storagePrefix ?? EMPTY_STRING,
+      onSqlCommand,
       onIgnoredError,
+      options,
     );
   }
   return createCustomSqlitePersister(
@@ -74,15 +78,23 @@ const createDurableObjectFragmentedSqlStoragePersister = ((
   store: MergeableStore,
   sqlStorage: SqlStorage,
   storagePrefix: string = EMPTY_STRING,
+  onSqlCommand?: (sql: string, params?: any[]) => void,
   onIgnoredError?: (error: any) => void,
+  options?: Options,
 ): DurableObjectSqlStoragePersister => {
+
+  options?.log?.('createDurableObjectFragmentedSqlStoragePersister');
+  const execSql = (sql: string, ...bindings: any[]) => {
+    onSqlCommand?.(sql, bindings);
+    return sqlStorage.exec(sql, ...bindings);
+  };
   const tablePrefix = storagePrefix.replace(/[^a-zA-Z0-9_]/g, '_');
   const tablesTable = `${tablePrefix}tinybase_tables`;
   const valuesTable = `${tablePrefix}tinybase_values`;
 
   // Initialize the SQL tables
   const initializeTables = () => {
-    sqlStorage.exec(`
+    execSql(`
       CREATE TABLE IF NOT EXISTS ${tablesTable} (
         type TEXT NOT NULL,
         table_id TEXT,
@@ -103,7 +115,11 @@ const createDurableObjectFragmentedSqlStoragePersister = ((
     `);
   };
 
+  options?.log?.('Initialized tables');
+ 
   initializeTables();
+
+  options?.log?.('Loaded tables');
 
   const getPersisted = async (): Promise<
     PersistedContent<PersistsType.MergeableStoreOnly>
@@ -111,8 +127,9 @@ const createDurableObjectFragmentedSqlStoragePersister = ((
     const tables: TablesStamp<true> = stampNewObjectWithHash();
     const values: ValuesStamp<true> = stampNewObjectWithHash();
 
+    options?.log?.('Getting persisted');
     // Load tables data
-    const tablesResult = sqlStorage.exec(`SELECT * FROM ${tablesTable}`);
+    const tablesResult = execSql(`SELECT * FROM ${tablesTable}`);
     for (const row of tablesResult.toArray()) {
       const type = String(row.type);
       const table_id = row.table_id ? String(row.table_id) : null;
@@ -166,8 +183,10 @@ const createDurableObjectFragmentedSqlStoragePersister = ((
       }
     }
 
+    options?.log?.('Loaded tables');
+
     // Load values data
-    const valuesResult = sqlStorage.exec(`SELECT * FROM ${valuesTable}`);
+    const valuesResult = execSql(`SELECT * FROM ${valuesTable}`);
     for (const row of valuesResult.toArray()) {
       const value_id = row.value_id ? String(row.value_id) : null;
       const value_data = String(row.value_data);
@@ -182,6 +201,7 @@ const createDurableObjectFragmentedSqlStoragePersister = ((
         stampUpdate(values, timestamp, hash);
       }
     }
+    options?.log?.('Loaded values');
 
     return [tables, values];
   };
@@ -196,8 +216,9 @@ const createDurableObjectFragmentedSqlStoragePersister = ((
       true
     > = getContent() as any,
   ): Promise<void> => {
+    options?.log?.('Setting persisted');
     // Store the root tables metadata (timestamp and hash)
-    sqlStorage.exec(
+    execSql(
       `INSERT OR REPLACE INTO ${tablesTable} (type, table_id, row_id, cell_id, value_data, timestamp, hash) VALUES (?, ?, ?, ?, ?, ?, ?)`,
       T,
       null,
@@ -208,10 +229,15 @@ const createDurableObjectFragmentedSqlStoragePersister = ((
       tablesHash,
     );
 
+    options?.log?.('Stored tables metadata');
+
+    let execCount = 0;
+
     // Process each table in the store
     objForEach(tablesObj, ([tableObj, tableTime, tableHash], tableId) => {
       // Store table-level metadata
-      sqlStorage.exec(
+      execCount++;
+      execSql(
         `INSERT OR REPLACE INTO ${tablesTable} (type, table_id, row_id, cell_id, value_data, timestamp, hash) VALUES (?, ?, ?, ?, ?, ?, ?)`,
         T,
         tableId,
@@ -225,7 +251,8 @@ const createDurableObjectFragmentedSqlStoragePersister = ((
       // Process each row within the table
       objForEach(tableObj, ([rowObj, rowTime, rowHash], rowId) => {
         // Store row-level metadata
-        sqlStorage.exec(
+        execCount++;
+        execSql(
           `INSERT OR REPLACE INTO ${tablesTable} (type, table_id, row_id, cell_id, value_data, timestamp, hash) VALUES (?, ?, ?, ?, ?, ?, ?)`,
           T,
           tableId,
@@ -238,7 +265,8 @@ const createDurableObjectFragmentedSqlStoragePersister = ((
 
         // Store each cell value within the row
         objForEach(rowObj, (cellStamp, cellId) => {
-          sqlStorage.exec(
+          execCount++;
+          execSql(
             `INSERT OR REPLACE INTO ${tablesTable} (type, table_id, row_id, cell_id, value_data, timestamp, hash) VALUES (?, ?, ?, ?, ?, ?, ?)`,
             T,
             tableId,
@@ -252,8 +280,11 @@ const createDurableObjectFragmentedSqlStoragePersister = ((
       });
     });
 
+    options?.log?.('Stored tables', {execCount});
+    execCount = 0;
+
     // Store the root values metadata (timestamp and hash)
-    sqlStorage.exec(
+    execSql(
       `INSERT OR REPLACE INTO ${valuesTable} (value_id, value_data, timestamp, hash) VALUES (?, ?, ?, ?)`,
       null,
       JSON.stringify([0]),
@@ -261,9 +292,13 @@ const createDurableObjectFragmentedSqlStoragePersister = ((
       valuesHash,
     );
 
-    // Process each value in the store
+    options?.log?.('Stored values metadata', {execCount});
+    execCount = 0;
+
+    // Process each value in the store w
     objForEach(valuesObj, (valueStamp, valueId) => {
-      sqlStorage.exec(
+      execCount++;
+      execSql(
         `INSERT OR REPLACE INTO ${valuesTable} (value_id, value_data, timestamp, hash) VALUES (?, ?, ?, ?)`,
         valueId,
         JSON.stringify([valueStamp[0]]),
@@ -271,6 +306,8 @@ const createDurableObjectFragmentedSqlStoragePersister = ((
         valueStamp[2],
       );
     });
+
+    options?.log?.('Stored values', {execCount});
   };
 
   return createCustomPersister(
