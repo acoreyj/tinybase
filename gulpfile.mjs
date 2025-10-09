@@ -53,6 +53,7 @@ const ALL_MODULES = [
   'synchronizers/synchronizer-local',
   'synchronizers/synchronizer-ws-client',
   'synchronizers/synchronizer-ws-server-durable-object',
+  'synchronizers/synchronizer-ws-server-durable-object-enhanced',
   'synchronizers/synchronizer-ws-server-simple',
   'synchronizers/synchronizer-ws-server',
   'ui-react-dom',

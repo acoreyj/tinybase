@@ -242,7 +242,6 @@ export function createSchema<
       authorization: builder._authorization,
     };
 
-    //@ts-expect-error - we are using the runtimeType to set the type
     richRowSchema[columnId] = {
       type: builder.runtimeType as CellSchema['type'],
       default: builder.defaultValue,

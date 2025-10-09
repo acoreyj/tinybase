@@ -135,6 +135,20 @@ export class WsServerDurableObject<Env = unknown>
     });
   }
 
+  #sendMessageToClients(
+    clients: WebSocket[],
+    fromClientId: Id,
+    remainder: string,
+  ) {
+    const forwardedPayload = createRawPayload(fromClientId, remainder);
+    const fromClient = this.#getClients(fromClientId)[0];
+    arrayForEach(clients, (otherClient) => {
+      if (otherClient != fromClient) {
+        otherClient.send(forwardedPayload);
+      }
+    });
+  }
+
   #getClients(tag?: Id) {
     return this.ctx.getWebSockets(tag);
   }
