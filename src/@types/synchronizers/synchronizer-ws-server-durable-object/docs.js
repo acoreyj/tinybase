@@ -226,10 +226,8 @@
    * @param toClientId The Id of the client to receive the message (or empty for
    * a broadcast).
    * @param remainder The remainder of the body of the message.
-   * @param isServerRead Whether the message is reading from the server to send
-   * to a client (true when fromClientId is the server's internal client).
-   * @param isServerWrite Whether the message is writing to the server from a
-   * client (true when toClientId is the server's internal client).
+   * @param isWrite Whether the message is writing to the server from a client
+   * (true when toClientId is the server's internal client).
    * @returns Whether the message should be forwarded.
    * @category Event
    * @since v5.4.0

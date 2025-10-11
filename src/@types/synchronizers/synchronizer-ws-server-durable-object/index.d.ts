@@ -34,6 +34,7 @@ export class WsServerDurableObject<Env = unknown> extends DurableObject<Env> {
     fromClientId: Id,
     toClientId: Id,
     remainder: string,
+    isWrite: boolean,
   ): Promise<boolean | string>;
 
   /// WsServerDurableObject.onMessage

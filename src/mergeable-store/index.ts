@@ -286,6 +286,15 @@ export const createMergeableStore = ((
         const [, oldThingHlc, oldThingHash] = thingStampMap;
 
         if (!oldThingHlc || thingHlc > oldThingHlc) {
+          if (typeof document !== 'undefined') {
+            console.log('mergeCellsOrValues: thingHlc > oldThingHlc', {
+              thingHlc,
+              oldThingHlc,
+              incomingThingHash,
+              thingsStampMap0: thingsStampMap[0],
+              thing,
+            });
+          }
           stampUpdate(
             thingStampMap,
             thingHlc,

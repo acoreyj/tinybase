@@ -1,17 +1,29 @@
 /* eslint-disable max-len */
+import type {MergeableStoreEnhanced} from '../@types/index.d.ts';
 import type {
+  CellStamp,
   MergeableChanges,
+  MergeableStore,
   RowHashes,
   RowStamp,
   TableHashes,
+  TableStamp,
   TablesStamp,
+  ValuesStamp,
 } from '../@types/mergeable-store/index.d.ts';
 import type {SchemaDefinition} from '../expanded-schema/schemaCreator.ts';
 import type {
   AuthContext,
   AuthFunctionName,
 } from '../expanded-schema/serverFunctions/authorization.ts';
+import {getHlcFunctions} from './hlc.ts';
 import {objForEach, objIsEmpty} from './obj.ts';
+
+const createEmptyMergeableChanges = (): MergeableChanges<false> => {
+  const emptyTables: TablesStamp<false> = [{}];
+  const emptyValues: ValuesStamp<false> = [{}];
+  return [emptyTables, emptyValues, 1];
+};
 
 export const filterMergeableChanges = <withHashes extends boolean>(
   changes: MergeableChanges<withHashes>,
@@ -75,31 +87,50 @@ export const filterMergeableChanges = <withHashes extends boolean>(
           return; // Skip cell
         }
         authorizedCellStampsObj[cellId] = cellStamp;
+        logger('filterMergeableChanges: Cell authorized', {
+          authorizedCellStampsObj: JSON.stringify(authorizedCellStampsObj),
+        });
       });
 
       if (!objIsEmpty(authorizedCellStampsObj)) {
         authorizedRowStampsObj[rowId] =
-          rowHash !== undefined
+          rowHash !== undefined && rowHash !== null
             ? [authorizedCellStampsObj, rowHlc, rowHash]
-            : [authorizedCellStampsObj, rowHlc];
+            : rowHlc !== undefined && rowHlc !== null
+              ? [authorizedCellStampsObj, rowHlc]
+              : [authorizedCellStampsObj];
+        logger('filterMergeableChanges: Row authorized', {
+          authorizedRowStampsObj: JSON.stringify(authorizedRowStampsObj),
+        });
       }
     });
 
     if (!objIsEmpty(authorizedRowStampsObj)) {
       authorizedTablesObj[tableId] =
-        tableHash !== undefined
+        tableHash !== undefined && tableHash !== null
           ? [authorizedRowStampsObj, tableHlc, tableHash]
-          : [authorizedRowStampsObj, tableHlc];
+          : tableHlc !== undefined && tableHlc !== null
+            ? [authorizedRowStampsObj, tableHlc]
+            : [authorizedRowStampsObj];
+      logger('filterMergeableChanges: Table authorized', {
+        authorizedTablesObj: JSON.stringify(authorizedTablesObj),
+      });
     }
   });
-
+  logger('filterMergeableChanges: Authorized tables stamp', {
+    tablesStamp: JSON.stringify(tablesStamp),
+    authorizedTablesObj: JSON.stringify(authorizedTablesObj),
+  });
   const authorizedTablesStamp =
     tablesStamp.length > 2
       ? ([authorizedTablesObj, tablesStamp[1], tablesStamp[2]] as any)
-      : ([authorizedTablesObj, tablesStamp[1]] as any);
+      : tablesStamp.length > 1
+        ? ([authorizedTablesObj, tablesStamp[1]] as any)
+        : ([authorizedTablesObj] as any);
 
   logger('filterMergeableChanges: Authorization complete', {
     authorizedTableCount: Object.keys(authorizedTablesObj).length,
+    authorizedTablesStamp: JSON.stringify(authorizedTablesStamp),
   });
 
   return [
@@ -165,17 +196,21 @@ export const filterTablesStampRead = (
 
       if (!objIsEmpty(authorizedCellStampsObj)) {
         authorizedRowStampsObj[rowId] =
-          rowHash !== undefined
+          rowHash !== undefined && rowHash !== null
             ? [authorizedCellStampsObj, rowHlc, rowHash]
-            : [authorizedCellStampsObj, rowHlc];
+            : rowHlc !== undefined && rowHlc !== null
+              ? [authorizedCellStampsObj, rowHlc]
+              : [authorizedCellStampsObj];
       }
     });
 
     if (!objIsEmpty(authorizedRowStampsObj)) {
       authorizedTablesObj[tableId] =
-        tableHash !== undefined
+        tableHash !== undefined && tableHash !== null
           ? [authorizedRowStampsObj, tableHlc, tableHash]
-          : [authorizedRowStampsObj, tableHlc];
+          : tableHlc !== undefined && tableHlc !== null
+            ? [authorizedRowStampsObj, tableHlc]
+            : [authorizedRowStampsObj];
     }
   });
 
@@ -319,4 +354,160 @@ export const checkMergeableChanges = <withHashes extends boolean>(
 
   logger(`checkMergeableChanges: Authorization result: ${authorized}`);
   return authorized;
+};
+
+const getDefaultConfig = (fieldSchema: unknown) =>
+  (
+    fieldSchema as {
+      defaultServerFunction?: {
+        fn: string;
+        updateType: ('insert' | 'update')[];
+      };
+    }
+  )?.defaultServerFunction;
+
+const storeHasRow = (
+  store: MergeableStoreEnhanced | MergeableStore,
+  tableId: string,
+  rowId: string,
+): boolean =>
+  typeof (store as MergeableStoreEnhanced).hasRow === 'function'
+    ? (store as MergeableStoreEnhanced).hasRow(tableId, rowId)
+    : !!(store as MergeableStore).getRow?.(tableId, rowId);
+
+export const processDefaultServerFunctions = <withHashes extends boolean>(
+  changes: MergeableChanges<withHashes>,
+  schemas: Record<string, SchemaDefinition<any, any>>,
+  store: MergeableStoreEnhanced | MergeableStore | null,
+  serverFunctions: any,
+): MergeableChanges<false> => {
+  // console.log('processDefaultServerFunctions: invoked', {
+  //   hasStore: !!store,
+  //   changes: JSON.stringify(changes),
+  // });
+  if (!store) {
+    // console.log(
+    //   'processDefaultServerFunctions: no store provided, returning empty changes',
+    // );
+    return createEmptyMergeableChanges();
+  }
+
+  const resultTables: TablesStamp<false>[0] = {};
+  const [getNextHlc] = getHlcFunctions();
+  const hlc = getNextHlc();
+  const resultTableStamp: TablesStamp<false> = [resultTables, hlc];
+
+  const [tablesStamp] = changes;
+  const [tablesObj] = tablesStamp;
+
+  // console.log('processDefaultServerFunctions: processing tables', {
+  //   tableIds: Object.keys(tablesObj),
+  // });
+
+  objForEach(tablesObj, (tableStamp, tableId) => {
+    const schemaDefinition = schemas[tableId];
+    const tableSchema = schemaDefinition?.schema.schema[tableId];
+    if (!tableSchema) {
+      // console.log(
+      //   'processDefaultServerFunctions: skipping table with no schema',
+      //   {tableId},
+      // );
+      return;
+    }
+
+    const [rowsObj] = tableStamp as TableStamp<withHashes>;
+    let tableDefaults: TableStamp<false> | undefined;
+
+    objForEach(rowsObj, (rowStamp, rowId) => {
+      const [cellsObj] = rowStamp as RowStamp<withHashes>;
+      const updatedFields = Object.keys(cellsObj);
+
+      const rowDefaultCells: RowStamp<false>[0] = {};
+      let rowDefaults: RowStamp<false> | undefined;
+
+      objForEach(tableSchema, (fieldSchema, fieldKey) => {
+        const defaultConfig = getDefaultConfig(fieldSchema);
+        if (!defaultConfig) {
+          return;
+        }
+
+        const defaultValueFn = serverFunctions?.defaults?.[defaultConfig.fn];
+        if (typeof defaultValueFn !== 'function') {
+          return;
+        }
+
+        const rowExists = storeHasRow(store, tableId, rowId);
+        const currentValue = store.getCell(tableId, rowId, fieldKey);
+
+        const updateTypes = defaultConfig.updateType ?? [];
+        const shouldApplyDefault =
+          rowExists &&
+          typeof currentValue !== 'undefined' &&
+          currentValue !== null &&
+          currentValue !== ''
+            ? !updatedFields.includes(fieldKey) &&
+              updateTypes.includes('update')
+            : updateTypes.includes('insert');
+
+        // console.log('processDefaultServerFunctions: shouldApplyDefault', {
+        //   shouldApplyDefault,
+        //   rowExists,
+        //   currentValue,
+        //   updatedFields,
+        //   updateTypes,
+        // });
+        if (!shouldApplyDefault) {
+          return;
+        }
+
+        const defaultValue = defaultValueFn();
+        if (typeof defaultValue === 'undefined') {
+          return;
+        }
+
+        rowDefaultCells[fieldKey] = [defaultValue, hlc] as CellStamp<false>;
+        rowDefaults = rowDefaults ?? [rowDefaultCells];
+        // console.log('processDefaultServerFunctions: default applied', {
+        //   tableId,
+        //   rowId,
+        //   fieldKey,
+        //   defaultFn: defaultConfig.fn,
+        // });
+      });
+
+      if (rowDefaults && !objIsEmpty(rowDefaultCells)) {
+        if (!tableDefaults) {
+          tableDefaults = [{}, undefined];
+        }
+        tableDefaults[0][rowId] = rowDefaults;
+        // console.log('processDefaultServerFunctions: row defaults set', {
+        //   tableId,
+        //   rowId,
+        //   fields: Object.keys(rowDefaultCells),
+        // });
+      }
+    });
+
+    if (tableDefaults) {
+      resultTables[tableId] = tableDefaults;
+      // console.log('processDefaultServerFunctions: table defaults collected', {
+      //   tableId,
+      // });
+    }
+  });
+
+  if (objIsEmpty(resultTables)) {
+    // console.log(
+    //   'processDefaultServerFunctions: no defaults generated, returning empty changes',
+    // );
+    return createEmptyMergeableChanges();
+  }
+
+  const resultValues: ValuesStamp<false> = [{}];
+
+  // console.log('processDefaultServerFunctions: defaults generated', {
+  //   tablesWithDefaults: Object.keys(resultTables),
+  // });
+
+  return [resultTableStamp, resultValues, 1];
 };

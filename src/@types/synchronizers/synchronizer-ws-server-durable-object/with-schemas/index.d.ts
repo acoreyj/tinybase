@@ -45,6 +45,7 @@ export class WsServerDurableObject<
     fromClientId: Id,
     toClientId: Id,
     remainder: string,
+    isWrite: boolean,
   ): Promise<boolean | string>;
 
   /// WsServerDurableObject.onMessage

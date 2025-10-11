@@ -36,6 +36,7 @@
    * @param toClientId The Id of the client to receive the message (or empty for
    * a broadcast).
    * @param remainder The remainder of the body of the message.
+   * @param isWrite Whether the message is writing to the server from a client.
    * @returns Whether the message should be forwarded (or a modified remainder).
    * @category Event
    * @since vNEXT

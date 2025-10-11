@@ -3,22 +3,25 @@
 // No imports required from 'cloudflare:workers';
 // types are available globally in Workers environment
 import type {Id} from '../../@types/common/index.d.ts';
-import type {MergeableChanges} from '../../@types/mergeable-store/index.d.ts';
+import type {MergeableStoreEnhanced} from '../../@types/index.d.ts';
+import type {
+  MergeableChanges,
+  MergeableStore,
+} from '../../@types/mergeable-store/index.d.ts';
+import type {
+  Logger,
+  LogLevel,
+} from '../../@types/synchronizers/synchronizer-ws-server-durable-object-enhanced/index.d.ts';
 import {
   checkMergeableChanges,
   filterMergeableChanges,
+  processDefaultServerFunctions,
 } from '../../common/authorizer.ts';
-import {strMatch} from '../../common/strings.ts';
+import {EMPTY_STRING, strMatch} from '../../common/strings.ts';
 import type {SchemaDefinition} from '../../expanded-schema/schemaCreator.ts';
 import type {AuthContext} from '../../expanded-schema/serverFunctions/authorization.ts';
+import {createRawPayload, ifPayloadValid} from '../common.ts';
 import {WsServerDurableObject} from '../synchronizer-ws-server-durable-object/index.ts';
-
-type LogLevel = 'debug' | 'info' | 'warn' | 'error';
-type Logger = (
-  level: LogLevel,
-  message: string,
-  context?: Record<string, unknown>,
-) => void;
 
 const defaultLogger: Logger = (level, message, context) => {
   const prefix = `[WsServerDurableObjectEnhanced] ${message}`;
@@ -65,7 +68,7 @@ export class WsServerDurableObjectEnhanced<
   #serverFunctions: any = {authorization: {}};
   #getAuthContextFn: ((clientId: Id) => AuthContext) | null = null;
   #logger: Logger = defaultLogger;
-
+  store: MergeableStoreEnhanced | MergeableStore | null = null;
   setLogger(logger: Logger | null) {
     this.#logger = logger ?? defaultLogger;
   }
@@ -108,11 +111,115 @@ export class WsServerDurableObjectEnhanced<
     return (this.#getAuthContextFn?.(clientId) ??
       null) as unknown as AuthContext;
   }
+  #handleMessage(fromClientId: Id, message: string, fromClient?: WebSocket) {
+    ifPayloadValid(message.toString(), async (toClientId, remainder) => {
+      console.log('handleMessage enhanced', {
+        fromClientId,
+        message,
+        fromClient,
+        toClientId,
+      });
+      if (toClientId == EMPTY_STRING) {
+        if (fromClientId != SERVER_CLIENT_ID) {
+          this.#sendMessageToServer(
+            SERVER_CLIENT_ID,
+            fromClientId,
+            remainder,
+            false,
+          );
+        }
+        await this.#sendMessageToClients(
+          this.#getClients(),
+          fromClientId,
+          fromClient,
+          remainder,
+          false,
+        );
+      } else if (toClientId == SERVER_CLIENT_ID) {
+        await this.#sendMessageToServer(
+          toClientId,
+          fromClientId,
+          remainder,
+          false,
+        );
+      } else if (toClientId != fromClientId) {
+        await this.#sendMessageToClients(
+          [this.#getClients(toClientId)[0]],
+          fromClientId,
+          fromClient,
+          remainder,
+          false,
+        );
+      }
+    });
+  }
+  async #sendMessageToServer(
+    toClientId: Id,
+    fromClientId: Id,
+    remainder: string,
+    applyDefaults = true,
+  ) {
+    const result = await this.onMessageMutator(
+      fromClientId,
+      toClientId,
+      remainder,
+      true,
+      applyDefaults,
+    );
+    if (result !== false) {
+      if (typeof result === 'string') {
+        remainder = result;
+      }
+      const forwardedPayload = createRawPayload(fromClientId, remainder);
+      this.onMessage(fromClientId, toClientId, remainder);
+      this.serverClientSend?.(forwardedPayload);
+    }
+  }
+
+  async #sendMessageToClients(
+    clients: WebSocket[],
+    fromClientId: Id,
+    fromClient: WebSocket | null | undefined,
+    remainder: string,
+    applyDefaults = true,
+  ) {
+    const sendPromieses = clients
+      .map(async (otherClient) => {
+        if (otherClient != fromClient) {
+          const toClientId = this.ctx.getTags(otherClient)[0];
+
+          const result = await this.onMessageMutator(
+            fromClientId,
+            toClientId,
+            remainder,
+            false,
+            applyDefaults,
+          );
+          if (result !== false) {
+            if (typeof result === 'string') {
+              remainder = result;
+            }
+            const forwardedPayload = createRawPayload(fromClientId, remainder);
+            this.onMessage(fromClientId, toClientId, remainder);
+
+            return otherClient.send(forwardedPayload);
+          }
+        }
+      })
+      .filter(Boolean);
+    await Promise.allSettled(sendPromieses);
+  }
+
+  #getClients(tag?: Id) {
+    return this.ctx.getWebSockets(tag);
+  }
 
   async onMessageMutator(
     fromClientId: Id,
     toClientId: Id,
     remainder: string,
+    isWrite: boolean,
+    applyDefaults = true,
   ): Promise<boolean | string> {
     const [requestId, message, ...body] = JSON.parse(remainder);
 
@@ -135,8 +242,36 @@ export class WsServerDurableObjectEnhanced<
       toClientId,
       requestId,
       message,
-      body: JSON.stringify(body),
+      isWrite,
+      // body: JSON.stringify(body),
     });
+
+    if (isWrite && this.store && applyDefaults) {
+      const [mergeableChanges] = body as [MergeableChanges<true>];
+      const defaultChanges = processDefaultServerFunctions(
+        mergeableChanges,
+        this.getExpandedSchema(),
+        this.store,
+        this.getServerFunctions(),
+      );
+      this.log('debug', 'Default changes', {
+        defaultChanges: JSON.stringify(defaultChanges),
+        mergeableChanges: JSON.stringify(mergeableChanges),
+        test:
+          defaultChanges[0][0] && Object.keys(defaultChanges[0][0]).length > 0,
+        test2: defaultChanges[0][0] && Object.keys(defaultChanges[0][0]).length,
+      });
+      if (
+        defaultChanges[0][0] &&
+        Object.keys(defaultChanges[0][0]).length > 0
+      ) {
+        this.#handleMessage(
+          'default',
+          '\n' +
+            JSON.stringify([requestId + '_default', message, defaultChanges]),
+        );
+      }
+    }
 
     // Message 1: Server sending diffs to a client
     if (message === 1) {
@@ -209,7 +344,7 @@ export class WsServerDurableObjectEnhanced<
         MergeableChanges<true> | MergeableChanges<false>,
       ];
 
-      if (fromClientId === SERVER_CLIENT_ID) {
+      if (!isWrite) {
         if (!toClientId) {
           this.log(
             'debug',
@@ -235,7 +370,7 @@ export class WsServerDurableObjectEnhanced<
           this.getExpandedSchema(),
           this.getServerFunctions(),
           authContext,
-          authorizerLog,
+          // authorizerLog,
         );
 
         this.log('info', 'Authorized outbound content diff', {
@@ -243,9 +378,21 @@ export class WsServerDurableObjectEnhanced<
           toClientId,
           requestId,
         });
+        const result = JSON.stringify([requestId, message, filteredChanges]);
+        this.log('debug', 'Filtered outbound content diff', {
+          requestId,
+          message,
+          filteredChanges: JSON.stringify(filteredChanges),
+          body: JSON.stringify(body),
+          return: result,
+          remainder: remainder,
+          same: result === remainder,
+        });
 
-        return JSON.stringify([requestId, message, filteredChanges]);
+        return result;
       }
+
+      return true;
 
       const authContext = this.getAuthContext(fromClientId);
       if (!authContext) {
