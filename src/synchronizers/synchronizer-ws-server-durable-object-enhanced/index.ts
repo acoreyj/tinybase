@@ -113,28 +113,31 @@ export class WsServerDurableObjectEnhanced<
   }
   #handleMessage(fromClientId: Id, message: string, fromClient?: WebSocket) {
     ifPayloadValid(message.toString(), async (toClientId, remainder) => {
-      console.log('handleMessage enhanced', {
-        fromClientId,
-        message,
-        fromClient,
-        toClientId,
-      });
+      // console.log('handleMessage enhanced', {
+      //   fromClientId,
+      //   message,
+      //   fromClient,
+      //   toClientId,
+      // });
       if (toClientId == EMPTY_STRING) {
+        let result: boolean | string = true;
         if (fromClientId != SERVER_CLIENT_ID) {
-          this.#sendMessageToServer(
+          result = await this.#sendMessageToServer(
             SERVER_CLIENT_ID,
             fromClientId,
             remainder,
             false,
           );
         }
-        await this.#sendMessageToClients(
-          this.#getClients(),
-          fromClientId,
-          fromClient,
-          remainder,
-          false,
-        );
+        if (result !== false) {
+          await this.#sendMessageToClients(
+            this.#getClients(),
+            fromClientId,
+            fromClient,
+            remainder,
+            false,
+          );
+        }
       } else if (toClientId == SERVER_CLIENT_ID) {
         await this.#sendMessageToServer(
           toClientId,
@@ -174,6 +177,7 @@ export class WsServerDurableObjectEnhanced<
       this.onMessage(fromClientId, toClientId, remainder);
       this.serverClientSend?.(forwardedPayload);
     }
+    return result;
   }
 
   async #sendMessageToClients(
@@ -245,33 +249,6 @@ export class WsServerDurableObjectEnhanced<
       isWrite,
       // body: JSON.stringify(body),
     });
-
-    if (isWrite && this.store && applyDefaults) {
-      const [mergeableChanges] = body as [MergeableChanges<true>];
-      const defaultChanges = processDefaultServerFunctions(
-        mergeableChanges,
-        this.getExpandedSchema(),
-        this.store,
-        this.getServerFunctions(),
-      );
-      this.log('debug', 'Default changes', {
-        defaultChanges: JSON.stringify(defaultChanges),
-        mergeableChanges: JSON.stringify(mergeableChanges),
-        test:
-          defaultChanges[0][0] && Object.keys(defaultChanges[0][0]).length > 0,
-        test2: defaultChanges[0][0] && Object.keys(defaultChanges[0][0]).length,
-      });
-      if (
-        defaultChanges[0][0] &&
-        Object.keys(defaultChanges[0][0]).length > 0
-      ) {
-        this.#handleMessage(
-          'default',
-          '\n' +
-            JSON.stringify([requestId + '_default', message, defaultChanges]),
-        );
-      }
-    }
 
     // Message 1: Server sending diffs to a client
     if (message === 1) {
@@ -382,17 +359,15 @@ export class WsServerDurableObjectEnhanced<
         this.log('debug', 'Filtered outbound content diff', {
           requestId,
           message,
-          filteredChanges: JSON.stringify(filteredChanges),
-          body: JSON.stringify(body),
-          return: result,
-          remainder: remainder,
+          // filteredChanges: JSON.stringify(filteredChanges),
+          // body: JSON.stringify(body),
+          // return: result,
+          // remainder: remainder,
           same: result === remainder,
         });
 
         return result;
       }
-
-      return true;
 
       const authContext = this.getAuthContext(fromClientId);
       if (!authContext) {
@@ -449,6 +424,25 @@ export class WsServerDurableObjectEnhanced<
         });
 
         return JSON.stringify([requestId, message, filteredChanges]);
+      }
+      if (isWrite && this.store && applyDefaults) {
+        const [mergeableChanges] = body as [MergeableChanges<true>];
+        const defaultChanges = processDefaultServerFunctions(
+          mergeableChanges,
+          this.getExpandedSchema(),
+          this.store,
+          this.getServerFunctions(),
+        );
+        if (
+          defaultChanges[0][0] &&
+          Object.keys(defaultChanges[0][0]).length > 0
+        ) {
+          this.#handleMessage(
+            'default',
+            '\n' +
+              JSON.stringify([requestId + '_default', message, defaultChanges]),
+          );
+        }
       }
 
       return true;

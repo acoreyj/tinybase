@@ -106,22 +106,29 @@ export class WsServerDurableObject<Env = unknown>
 
   #handleMessage(fromClientId: Id, message: string, fromClient?: WebSocket) {
     ifPayloadValid(message.toString(), async (toClientId, remainder) => {
-      console.log('handleMessage original', {
-        fromClientId,
-        message,
-        fromClient,
-        toClientId,
-      });
+      // console.log('handleMessage original', {
+      //   fromClientId,
+      //   message,
+      //   fromClient,
+      //   toClientId,
+      // });
       if (toClientId == EMPTY_STRING) {
+        let result: boolean | string = true;
         if (fromClientId != SERVER_CLIENT_ID) {
-          this.#sendMessageToServer(SERVER_CLIENT_ID, fromClientId, remainder);
+          result = await this.#sendMessageToServer(
+            SERVER_CLIENT_ID,
+            fromClientId,
+            remainder,
+          );
         }
-        await this.#sendMessageToClients(
-          this.#getClients(),
-          fromClientId,
-          fromClient,
-          remainder,
-        );
+        if (result !== false) {
+          await this.#sendMessageToClients(
+            this.#getClients(),
+            fromClientId,
+            fromClient,
+            remainder,
+          );
+        }
       } else if (toClientId == SERVER_CLIENT_ID) {
         await this.#sendMessageToServer(toClientId, fromClientId, remainder);
       } else if (toClientId != fromClientId) {
@@ -153,6 +160,7 @@ export class WsServerDurableObject<Env = unknown>
       this.onMessage(fromClientId, toClientId, remainder);
       this.serverClientSend?.(forwardedPayload);
     }
+    return result;
   }
 
   async #sendMessageToClients(
