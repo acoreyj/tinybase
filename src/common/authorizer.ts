@@ -17,13 +17,20 @@ import type {
   AuthFunctionName,
 } from '../expanded-schema/serverFunctions/authorization.ts';
 import {getHlcFunctions} from './hlc.ts';
-import {objForEach, objIsEmpty} from './obj.ts';
+import {isObject, objForEach, objIsEmpty} from './obj.ts';
 
 const createEmptyMergeableChanges = (): MergeableChanges<false> => {
   const emptyTables: TablesStamp<false> = [{}];
   const emptyValues: ValuesStamp<false> = [{}];
   return [emptyTables, emptyValues, 1];
 };
+
+const findTableSchemaDef = (
+  tableId: string,
+  expandedSchema: Record<string, SchemaDefinition<any, any>>,
+): SchemaDefinition<any, any> | undefined =>
+  expandedSchema[tableId] ??
+  Object.values(expandedSchema).find((schema) => schema.nameMatcher?.(tableId));
 
 export const filterMergeableChanges = <withHashes extends boolean>(
   changes: MergeableChanges<withHashes>,
@@ -34,110 +41,201 @@ export const filterMergeableChanges = <withHashes extends boolean>(
 ): MergeableChanges<withHashes> => {
   const logger = log ?? (() => {});
   logger('filterMergeableChanges: Starting operation', {
-    changes,
+    changes: JSON.stringify(changes),
   });
   const [tablesStamp, valuesStamp, one] = changes;
 
   const authorizedTablesObj: any = {};
-  objForEach(tablesStamp[0], (tableStamp, tableId) => {
-    const tableSchemaDef = expandedSchema[tableId];
-    if (!tableSchemaDef) {
-      logger(
-        `filterMergeableChanges: Table "${tableId}" has no schema, allowing`,
-      );
-      authorizedTablesObj[tableId] = tableStamp;
-      return;
+
+  try {
+    if (!tablesStamp || !Array.isArray(tablesStamp)) {
+      if (
+        typeof tablesStamp === 'number' ||
+        tablesStamp === undefined ||
+        (typeof tablesStamp === 'object' &&
+          Object.keys(tablesStamp).length === 0)
+      ) {
+        logger(
+          'filterMergeableChanges: tablesStamp is a number or undefined or empty object',
+          {
+            tablesStamp,
+            tablesStampType: typeof tablesStamp,
+            isArray: Array.isArray(tablesStamp),
+            isObject: typeof tablesStamp === 'object',
+            isEmpty:
+              typeof tablesStamp === 'object' &&
+              Object.keys(tablesStamp).length === 0,
+          },
+        );
+        return changes;
+      }
+      logger('filterMergeableChanges: Invalid tablesStamp structure', {
+        tablesStamp,
+        tablesStampType: typeof tablesStamp,
+        isArray: Array.isArray(tablesStamp),
+      });
+      return createEmptyMergeableChanges() as MergeableChanges<withHashes>;
     }
 
-    const tableAuthRule = tableSchemaDef.tableAuthorization?.read as
-      | AuthFunctionName
-      | undefined;
-    if (
-      tableAuthRule &&
-      !serverFunctions.authorization[tableAuthRule]?.(authContext)
-    ) {
-      logger(
-        `filterMergeableChanges: Table "${tableId}" blocked by auth rule "${tableAuthRule}"`,
-      );
-      return; // Skip table
-    }
-    if (tableAuthRule) {
-      logger(
-        `filterMergeableChanges: Table "${tableId}" authorized by rule "${tableAuthRule}"`,
-      );
+    const tablesObj = tablesStamp[0];
+    if (!isObject(tablesObj)) {
+      logger('filterMergeableChanges: tablesStamp[0] is not a valid object', {
+        tablesObj,
+        tablesObjType: typeof tablesObj,
+      });
+      return createEmptyMergeableChanges() as MergeableChanges<withHashes>;
     }
 
-    const [rowStampsObj, tableHlc, tableHash] = tableStamp as any;
-    const authorizedRowStampsObj: any = {};
-    objForEach(rowStampsObj, (rowStamp, rowId) => {
-      const [cellStampsObj, rowHlc, rowHash] = rowStamp as any;
-      const authorizedCellStampsObj: any = {};
-      objForEach(cellStampsObj, (cellStamp, cellId) => {
-        const cellSchema = tableSchemaDef.schema.schema[tableId]?.[cellId];
-        const cellAuthRule = cellSchema?.authorization?.read as
-          | AuthFunctionName
-          | undefined;
-        if (
-          cellAuthRule &&
-          !serverFunctions.authorization[cellAuthRule]?.(authContext)
-        ) {
-          logger(
-            `filterMergeableChanges: Cell "${tableId}.${rowId}.${cellId}" blocked by auth rule "${cellAuthRule}"`,
-          );
-          return; // Skip cell
-        }
-        authorizedCellStampsObj[cellId] = cellStamp;
-        logger('filterMergeableChanges: Cell authorized', {
-          authorizedCellStampsObj: JSON.stringify(authorizedCellStampsObj),
+    logger('filterMergeableChanges: Processing tables', {
+      tableCount: Object.keys(tablesObj).length,
+    });
+
+    objForEach(tablesObj, (tableStamp, tableId) => {
+      logger('filterMergeableChanges: Processing table', {tableId});
+      const tableSchemaDef = findTableSchemaDef(tableId, expandedSchema);
+      if (!tableSchemaDef) {
+        logger(
+          `filterMergeableChanges: Table "${tableId}" has no schema, denying`,
+        );
+        return; // Default deny when no schema
+      }
+
+      const tableAuthRule = tableSchemaDef.tableAuthorization?.read as
+        | AuthFunctionName
+        | undefined;
+      const tableAuthorized = tableAuthRule
+        ? !!serverFunctions.authorization[tableAuthRule]?.(authContext, {
+            tablesStamp,
+            tableStamp,
+            tableId,
+          })
+        : false;
+      if (tableAuthRule && !tableAuthorized) {
+        logger(
+          `filterMergeableChanges: Table "${tableId}" blocked by auth rule "${tableAuthRule}"`,
+        );
+        return; // Skip table
+      }
+      if (tableAuthorized) {
+        logger(
+          `filterMergeableChanges: Table "${tableId}" authorized by rule "${tableAuthRule}"`,
+        );
+      }
+
+      const [rowStampsObj, tableHlc, tableHash] = tableStamp as any;
+      if (!isObject(rowStampsObj)) {
+        logger('filterMergeableChanges: rowStampsObj is not a valid object', {
+          tableId,
+          rowStampsObj,
+          rowStampsObjType: typeof rowStampsObj,
         });
+        return; // Skip table
+      }
+
+      const authorizedRowStampsObj: any = {};
+      objForEach(rowStampsObj, (rowStamp, rowId) => {
+        const [cellStampsObj, rowHlc, rowHash] = rowStamp as any;
+        if (!isObject(cellStampsObj)) {
+          logger(
+            'filterMergeableChanges: cellStampsObj is not a valid object',
+            {
+              tableId,
+              rowId,
+              cellStampsObj,
+              cellStampsObjType: typeof cellStampsObj,
+            },
+          );
+          return; // Skip row
+        }
+
+        const authorizedCellStampsObj: any = {};
+        objForEach(cellStampsObj, (cellStamp, cellId) => {
+          const cellSchema = tableSchemaDef.schema.schema[tableId]?.[cellId];
+          const cellAuthRule = cellSchema?.authorization?.read as
+            | AuthFunctionName
+            | undefined;
+          const cellAuthorized =
+            tableAuthorized ||
+            (cellAuthRule
+              ? !!serverFunctions.authorization[cellAuthRule]?.(authContext, {
+                  tablesStamp,
+                  tableStamp,
+                  tableId,
+                  rowStamp,
+                  rowId,
+                  rowStampsObj,
+                  rowHlc,
+                  rowHash,
+                  cellStampsObj,
+                  cellStamp,
+                  cellId,
+                })
+              : false);
+          if (!cellAuthorized) {
+            logger(
+              `filterMergeableChanges: Cell "${tableId}.${rowId}.${cellId}" blocked (no matching allow rule)`,
+            );
+            return; // Skip cell
+          }
+          authorizedCellStampsObj[cellId] = cellStamp;
+          logger('filterMergeableChanges: Cell authorized', {
+            authorizedCellStampsObj: JSON.stringify(authorizedCellStampsObj),
+          });
+        });
+
+        if (!objIsEmpty(authorizedCellStampsObj)) {
+          authorizedRowStampsObj[rowId] =
+            rowHash !== undefined && rowHash !== null
+              ? [authorizedCellStampsObj, rowHlc, rowHash]
+              : rowHlc !== undefined && rowHlc !== null
+                ? [authorizedCellStampsObj, rowHlc]
+                : [authorizedCellStampsObj];
+          logger('filterMergeableChanges: Row authorized', {
+            authorizedRowStampsObj: JSON.stringify(authorizedRowStampsObj),
+          });
+        }
       });
 
-      if (!objIsEmpty(authorizedCellStampsObj)) {
-        authorizedRowStampsObj[rowId] =
-          rowHash !== undefined && rowHash !== null
-            ? [authorizedCellStampsObj, rowHlc, rowHash]
-            : rowHlc !== undefined && rowHlc !== null
-              ? [authorizedCellStampsObj, rowHlc]
-              : [authorizedCellStampsObj];
-        logger('filterMergeableChanges: Row authorized', {
-          authorizedRowStampsObj: JSON.stringify(authorizedRowStampsObj),
+      if (!objIsEmpty(authorizedRowStampsObj)) {
+        authorizedTablesObj[tableId] =
+          tableHash !== undefined && tableHash !== null
+            ? [authorizedRowStampsObj, tableHlc, tableHash]
+            : tableHlc !== undefined && tableHlc !== null
+              ? [authorizedRowStampsObj, tableHlc]
+              : [authorizedRowStampsObj];
+        logger('filterMergeableChanges: Table authorized', {
+          authorizedTablesObj: JSON.stringify(authorizedTablesObj),
         });
       }
     });
+    logger('filterMergeableChanges: Authorized tables stamp', {
+      tablesStamp: JSON.stringify(tablesStamp),
+      authorizedTablesObj: JSON.stringify(authorizedTablesObj),
+    });
+    const authorizedTablesStamp =
+      tablesStamp.length > 2
+        ? ([authorizedTablesObj, tablesStamp[1], tablesStamp[2]] as any)
+        : tablesStamp.length > 1
+          ? ([authorizedTablesObj, tablesStamp[1]] as any)
+          : ([authorizedTablesObj] as any);
 
-    if (!objIsEmpty(authorizedRowStampsObj)) {
-      authorizedTablesObj[tableId] =
-        tableHash !== undefined && tableHash !== null
-          ? [authorizedRowStampsObj, tableHlc, tableHash]
-          : tableHlc !== undefined && tableHlc !== null
-            ? [authorizedRowStampsObj, tableHlc]
-            : [authorizedRowStampsObj];
-      logger('filterMergeableChanges: Table authorized', {
-        authorizedTablesObj: JSON.stringify(authorizedTablesObj),
-      });
-    }
-  });
-  logger('filterMergeableChanges: Authorized tables stamp', {
-    tablesStamp: JSON.stringify(tablesStamp),
-    authorizedTablesObj: JSON.stringify(authorizedTablesObj),
-  });
-  const authorizedTablesStamp =
-    tablesStamp.length > 2
-      ? ([authorizedTablesObj, tablesStamp[1], tablesStamp[2]] as any)
-      : tablesStamp.length > 1
-        ? ([authorizedTablesObj, tablesStamp[1]] as any)
-        : ([authorizedTablesObj] as any);
+    logger('filterMergeableChanges: Authorization complete', {
+      authorizedTableCount: Object.keys(authorizedTablesObj).length,
+      authorizedTablesStamp: JSON.stringify(authorizedTablesStamp),
+    });
 
-  logger('filterMergeableChanges: Authorization complete', {
-    authorizedTableCount: Object.keys(authorizedTablesObj).length,
-    authorizedTablesStamp: JSON.stringify(authorizedTablesStamp),
-  });
-
-  return [
-    authorizedTablesStamp,
-    valuesStamp,
-    one,
-  ] as MergeableChanges<withHashes>;
+    return [
+      authorizedTablesStamp,
+      valuesStamp,
+      one,
+    ] as MergeableChanges<withHashes>;
+  } catch (error) {
+    logger('filterMergeableChanges: Error during operation', {
+      error: error instanceof Error ? error.message : String(error),
+      errorStack: error instanceof Error ? error.stack : undefined,
+    });
+    return createEmptyMergeableChanges() as MergeableChanges<withHashes>;
+  }
 };
 
 export const filterTablesStampRead = (
@@ -150,22 +248,25 @@ export const filterTablesStampRead = (
   const logger = log ?? (() => {});
   const authorizedTablesObj: any = {};
   objForEach(tablesStamp[0], (tableStamp, tableId) => {
-    const tableSchemaDef = expandedSchema[tableId];
+    const tableSchemaDef = findTableSchemaDef(tableId, expandedSchema);
     if (!tableSchemaDef) {
       logger(
-        `filterTablesStampRead: Table "${tableId}" has no schema, allowing`,
+        `filterTablesStampRead: Table "${tableId}" has no schema, denying`,
       );
-      authorizedTablesObj[tableId] = tableStamp;
-      return;
+      return; // Default deny when no schema
     }
 
     const tableAuthRule = tableSchemaDef.tableAuthorization?.read as
       | AuthFunctionName
       | undefined;
-    if (
-      tableAuthRule &&
-      !serverFunctions.authorization[tableAuthRule]?.(authContext)
-    ) {
+    const tableAuthorized = tableAuthRule
+      ? !!serverFunctions.authorization[tableAuthRule]?.(authContext, {
+          tablesStamp,
+          tableStamp,
+          tableId,
+        })
+      : false;
+    if (tableAuthRule && !tableAuthorized) {
       logger(
         `filterTablesStampRead: Table "${tableId}" blocked by auth rule "${tableAuthRule}"`,
       );
@@ -182,12 +283,21 @@ export const filterTablesStampRead = (
         const cellAuthRule = cellSchema?.authorization?.read as
           | AuthFunctionName
           | undefined;
-        if (
-          cellAuthRule &&
-          !serverFunctions.authorization[cellAuthRule]?.(authContext)
-        ) {
+        const cellAuthorized =
+          tableAuthorized ||
+          (cellAuthRule
+            ? !!serverFunctions.authorization[cellAuthRule]?.(authContext, {
+                tablesStamp,
+                tableStamp,
+                tableId,
+                rowStamp,
+                cellStamp,
+                cellId,
+              })
+            : false);
+        if (!cellAuthorized) {
           logger(
-            `filterTablesStampRead: Cell "${tableId}.${rowId}.${cellId}" blocked by auth rule "${cellAuthRule}"`,
+            `filterTablesStampRead: Cell "${tableId}.${rowId}.${cellId}" blocked (no matching allow rule)`,
           );
           return;
         }
@@ -239,20 +349,28 @@ export const filterTableHashesRead = (
   const logger = log ?? (() => {});
   const finalDifferingTableHashes: TableHashes = {};
   objForEach(differingTableHashes, (hash, tableId) => {
-    const tableSchemaDef = expandedSchema[tableId];
-    if (tableSchemaDef) {
-      const tableAuthRule = tableSchemaDef.tableAuthorization?.read as
-        | AuthFunctionName
-        | undefined;
-      if (
-        tableAuthRule &&
-        !serverFunctions.authorization[tableAuthRule]?.(authContext)
-      ) {
-        logger(
-          `filterTableHashesRead: Differing table "${tableId}" blocked by auth rule "${tableAuthRule}"`,
-        );
-        return;
-      }
+    const tableSchemaDef = findTableSchemaDef(tableId, expandedSchema);
+    if (!tableSchemaDef) {
+      logger(
+        `filterTableHashesRead: Differing table "${tableId}" has no schema, denying`,
+      );
+      return;
+    }
+    const tableAuthRule = tableSchemaDef.tableAuthorization?.read as
+      | AuthFunctionName
+      | undefined;
+    const tableAuthorized = tableAuthRule
+      ? !!serverFunctions.authorization[tableAuthRule]?.(authContext, {
+          tableId,
+          differingTableHashes,
+          hash,
+        })
+      : false;
+    if (!tableAuthorized) {
+      logger(
+        `filterTableHashesRead: Differing table "${tableId}" blocked (no matching allow rule)`,
+      );
+      return;
     }
     finalDifferingTableHashes[tableId] = hash;
   });
@@ -272,20 +390,25 @@ export const filterRowHashesRead = (
   const logger = log ?? (() => {});
   const authorizedDifferingRowHashes: RowHashes = {};
   objForEach(differingRowHashes, (rowHashes, tableId) => {
-    const tableSchemaDef = expandedSchema[tableId];
-    if (tableSchemaDef) {
-      const tableAuthRule = tableSchemaDef.tableAuthorization?.read as
-        | AuthFunctionName
-        | undefined;
-      if (
-        tableAuthRule &&
-        !serverFunctions.authorization[tableAuthRule]?.(authContext)
-      ) {
-        logger(
-          `filterRowHashesRead: Differing rows for table "${tableId}" blocked by auth rule "${tableAuthRule}"`,
-        );
-        return;
-      }
+    const tableSchemaDef = findTableSchemaDef(tableId, expandedSchema);
+    if (!tableSchemaDef) {
+      logger(`filterRowHashesRead: Table "${tableId}" has no schema, denying`);
+      return;
+    }
+    const tableAuthRule = tableSchemaDef.tableAuthorization?.read as
+      | AuthFunctionName
+      | undefined;
+    const tableAuthorized = tableAuthRule
+      ? !!serverFunctions.authorization[tableAuthRule]?.(authContext, {
+          tableId,
+          rowHashes,
+        })
+      : false;
+    if (!tableAuthorized) {
+      logger(
+        `filterRowHashesRead: Differing rows for table "${tableId}" blocked (no matching allow rule)`,
+      );
+      return;
     }
     authorizedDifferingRowHashes[tableId] = rowHashes;
   });
@@ -306,51 +429,149 @@ export const checkMergeableChanges = <withHashes extends boolean>(
   const [tablesStamp] = changes;
 
   let authorized = true;
+  logger('checkMergeableChanges: Starting authorization', {
+    changes: JSON.stringify(changes),
+  });
 
-  objForEach(tablesStamp[0], (tableStamp, tableId) => {
-    if (!authorized) {
-      return;
+  try {
+    if (!tablesStamp || !Array.isArray(tablesStamp)) {
+      if (
+        typeof tablesStamp === 'number' ||
+        tablesStamp === undefined ||
+        (typeof tablesStamp === 'object' &&
+          Object.keys(tablesStamp).length === 0)
+      ) {
+        logger(
+          'checkMergeableChanges: tablesStamp is a number or undefined or empty object',
+          {
+            tablesStamp,
+            tablesStampType: typeof tablesStamp,
+            isArray: Array.isArray(tablesStamp),
+            isObject: typeof tablesStamp === 'object',
+            isEmpty:
+              typeof tablesStamp === 'object' &&
+              Object.keys(tablesStamp).length === 0,
+          },
+        );
+        authorized = true;
+        return authorized;
+      }
+      logger('checkMergeableChanges: Invalid tablesStamp structure', {
+        tablesStamp,
+        tablesStampType: typeof tablesStamp,
+        isArray: Array.isArray(tablesStamp),
+      });
+      authorized = false;
+      logger(`checkMergeableChanges: Authorization result: ${authorized}`);
+      return authorized;
     }
-    const tableSchemaDef = expandedSchema[tableId];
-    if (tableSchemaDef) {
+
+    const tablesObj = tablesStamp[0];
+    if (!isObject(tablesObj)) {
+      logger('checkMergeableChanges: tablesStamp[0] is not a valid object', {
+        tablesObj,
+        tablesObjType: typeof tablesObj,
+      });
+      authorized = false;
+      logger(`checkMergeableChanges: Authorization result: ${authorized}`);
+      return authorized;
+    }
+
+    logger('checkMergeableChanges: Processing tables', {
+      tableCount: Object.keys(tablesObj).length,
+    });
+
+    objForEach(tablesObj, (tableStamp, tableId) => {
+      if (!authorized) {
+        return;
+      }
+      logger('checkMergeableChanges: Processing table', {tableId});
+      const tableSchemaDef = findTableSchemaDef(tableId, expandedSchema);
+      if (!tableSchemaDef) {
+        logger(
+          `checkMergeableChanges: Table "${tableId}" has no schema, denying`,
+        );
+        authorized = false;
+        return;
+      }
+
       const tableAuthRule = tableSchemaDef.tableAuthorization?.create as
         | AuthFunctionName
         | undefined;
-      if (
-        tableAuthRule &&
-        !serverFunctions.authorization[tableAuthRule]?.(authContext)
-      ) {
+      const tableAuthorized = tableAuthRule
+        ? !!serverFunctions.authorization[tableAuthRule]?.(authContext, {
+            tablesStamp,
+            tableStamp,
+            tableId,
+          })
+        : false;
+      if (!tableAuthorized) {
         logger(
-          `checkMergeableChanges: Table "${tableId}" blocked by write auth rule "${tableAuthRule}"`,
+          `checkMergeableChanges: Table "${tableId}" blocked (no matching allow rule for create) (${tableAuthRule})`,
         );
         authorized = false;
         return;
       }
 
       const [rowStampsObj] = tableStamp as any;
+      if (!isObject(rowStampsObj)) {
+        logger('checkMergeableChanges: rowStampsObj is not a valid object', {
+          tableId,
+          rowStampsObj,
+          rowStampsObjType: typeof rowStampsObj,
+        });
+        authorized = false;
+        return;
+      }
+
       objForEach(rowStampsObj, (rowStamp, rowId) => {
         if (!authorized) {
           return;
         }
         const [cellStampsObj] = rowStamp as RowStamp;
-        objForEach(cellStampsObj, (_cellStamp, cellId) => {
+        if (!isObject(cellStampsObj)) {
+          logger('checkMergeableChanges: cellStampsObj is not a valid object', {
+            tableId,
+            rowId,
+            cellStampsObj,
+            cellStampsObjType: typeof cellStampsObj,
+          });
+          authorized = false;
+          return;
+        }
+        objForEach(cellStampsObj, (cellStamp, cellId) => {
           const cellSchema = tableSchemaDef.schema.schema[tableId]?.[cellId];
-          const cellAuthRule = cellSchema?.authorization?.write as
+          const cellAuthRule = cellSchema?.authorization?.create as
             | AuthFunctionName
             | undefined;
-          if (
-            cellAuthRule &&
-            !serverFunctions.authorization[cellAuthRule]?.(authContext)
-          ) {
+          const cellAuthorized =
+            tableAuthorized ||
+            (cellAuthRule
+              ? !!serverFunctions.authorization[cellAuthRule]?.(authContext, {
+                  tablesStamp,
+                  tableStamp,
+                  tableId,
+                  rowStamp,
+                  cellStamp,
+                  cellId,
+                })
+              : false);
+          if (!cellAuthorized) {
             logger(
-              `checkMergeableChanges: Cell "${tableId}.${rowId}.${cellId}" blocked by write auth rule "${cellAuthRule}"`,
+              `checkMergeableChanges: Cell "${tableId}.${rowId}.${cellId}" blocked (no matching allow rule for create)`,
             );
             authorized = false;
           }
         });
       });
-    }
-  });
+    });
+  } catch (error) {
+    logger('checkMergeableChanges: Error during authorization', {
+      error: error instanceof Error ? error.message : String(error),
+      errorStack: error instanceof Error ? error.stack : undefined,
+    });
+    authorized = false;
+  }
 
   logger(`checkMergeableChanges: Authorization result: ${authorized}`);
   return authorized;
@@ -380,7 +601,7 @@ export const processDefaultServerFunctions = <withHashes extends boolean>(
   schemas: Record<string, SchemaDefinition<any, any>>,
   store: MergeableStoreEnhanced | MergeableStore | null,
   serverFunctions: any,
-): MergeableChanges<false> => {
+): MergeableChanges<boolean> => {
   // console.log('processDefaultServerFunctions: invoked', {
   //   hasStore: !!store,
   //   changes: JSON.stringify(changes),

@@ -1,6 +1,9 @@
 /* eslint-disable max-len */
-import type {TablesSchema} from '../@types/store/index.d.ts';
 import type {serverFunctions} from './serverFunctions/index.ts';
+
+export type TablesSchema = {
+  [tableId: string]: {[cellId: string]: CellSchema};
+};
 export type MetaType =
   | 'date'
   | 'datetime'

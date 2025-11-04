@@ -204,6 +204,7 @@ export type SchemaDefinition<
   $tinybaseSchemaType: InferTinybaseSchema<TableName, T>;
   /** Table-level authorization configuration. */
   tableAuthorization?: TableAuthorizationConfig;
+  nameMatcher?: (name: string) => boolean;
 };
 
 // ✨ 1. ALTER THIS FUNCTION
@@ -222,6 +223,7 @@ export function createSchema<
   schema: T,
   displayTemplate?: string,
   tableAuthorization?: TableAuthorizationConfig,
+  nameMatcher?: (name: string) => boolean,
 ): SchemaDefinition<TableName, T> {
   const richRowSchema: TablesSchema[string] = {};
   // Use Record type to allow indexing while preserving inference
@@ -242,6 +244,7 @@ export function createSchema<
       authorization: builder._authorization,
     };
 
+    //@ts-expect-error - we are using the runtimeType to set the type
     richRowSchema[columnId] = {
       type: builder.runtimeType as CellSchema['type'],
       default: builder.defaultValue,
@@ -302,6 +305,7 @@ export function createSchema<
     $tinybaseSchemaType: null as unknown as InferTinybaseSchema<TableName, T>,
     /** Table-level authorization configuration. */
     tableAuthorization,
+    nameMatcher,
   };
 }
 

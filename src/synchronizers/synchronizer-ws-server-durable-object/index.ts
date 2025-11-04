@@ -56,9 +56,15 @@ export class WsServerDurableObject<Env = unknown>
                   SERVER_CLIENT_ID,
                   createPayload(toClientId, requestId, message, body),
                 ),
-              (receive: Receive) =>
-                (this.serverClientSend = (payload: string) =>
-                  receivePayload(payload, receive)),
+              (receive: Receive) => {
+                console.log('receive', receive);
+                this.serverClientSend = (payload: string) => {
+                  console.log('serverClientSend', {
+                    payload,
+                  });
+                  receivePayload(payload, receive);
+                };
+              },
               noop,
               1,
             );
@@ -106,12 +112,12 @@ export class WsServerDurableObject<Env = unknown>
 
   #handleMessage(fromClientId: Id, message: string, fromClient?: WebSocket) {
     ifPayloadValid(message.toString(), async (toClientId, remainder) => {
-      // console.log('handleMessage original', {
-      //   fromClientId,
-      //   message,
-      //   fromClient,
-      //   toClientId,
-      // });
+      console.log('handleMessage original', {
+        fromClientId,
+        message,
+        fromClient,
+        toClientId,
+      });
       if (toClientId == EMPTY_STRING) {
         let result: boolean | string = true;
         if (fromClientId != SERVER_CLIENT_ID) {
@@ -152,6 +158,11 @@ export class WsServerDurableObject<Env = unknown>
       remainder,
       true,
     );
+    console.log('sendMessageToServer result', {
+      fromClientId,
+      toClientId,
+      result,
+    });
     if (result !== false) {
       if (typeof result === 'string') {
         remainder = result;
@@ -180,6 +191,11 @@ export class WsServerDurableObject<Env = unknown>
             remainder,
             false,
           );
+          console.log('sendMessageToClients result', {
+            fromClientId,
+            toClientId,
+            result,
+          });
           if (result !== false) {
             if (typeof result === 'string') {
               remainder = result;

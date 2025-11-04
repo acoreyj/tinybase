@@ -7,6 +7,7 @@ import type {
 import type {MergeableStoreEnhanced} from '../../../mergeable-store-enhanced/index.d.ts';
 import type {
   Id,
+  IdAddedOrRemoved,
   MergeableStore,
   OptionalSchemas,
 } from '../../../with-schemas/index.d.ts';
@@ -30,6 +31,12 @@ export class WsServerDurableObjectEnhanced<
   getServerFunctions(): any;
   getAuthContext(clientId: Id): AuthContext;
   setLogger(logger: Logger | null): void;
+  onClientIdWithToken(
+    pathId: Id,
+    clientId: Id,
+    addedOrRemoved: IdAddedOrRemoved,
+    token: string,
+  ): void;
   /// WsServerDurableObjectEnhanced.onMessageMutator
   onMessageMutator(
     fromClientId: Id,
