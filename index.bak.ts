@@ -1,8 +1,8 @@
 import {DurableObject} from 'cloudflare:workers';
-import type {Id, Ids} from '../../@types/common/index.d.ts';
-import type {Persister, Persists} from '../../@types/persisters/index.d.ts';
-import type {IdAddedOrRemoved} from '../../@types/store/index.d.ts';
-import type {Receive} from '../../@types/synchronizers/index.d.ts';
+import type {Id, Ids} from '../../@types/common/index.js';
+import type {Persister, Persists} from '../../@types/persisters/index.js';
+import type {IdAddedOrRemoved} from '../../@types/store/index.js';
+import type {Receive} from '../../@types/synchronizers/index.js';
 import {arrayIsEmpty, arrayMap} from '../../common/array.ts';
 import {objValues} from '../../common/obj.ts';
 import {ifNotUndefined, noop, size, startTimeout} from '../../common/other.ts';
@@ -57,11 +57,11 @@ export class WsServerDurableObject<Env = unknown>
                   createPayload(toClientId, requestId, message, body),
                 ),
               (receive: Receive) => {
-                // console.log('receive', receive);
+                console.log('receive', receive);
                 this.serverClientSend = (payload: string) => {
-                  // console.log('serverClientSend', {
-                  //   payload,
-                  // });
+                  console.log('serverClientSend', {
+                    payload,
+                  });
                   receivePayload(payload, receive);
                 };
               },
@@ -109,52 +109,26 @@ export class WsServerDurableObject<Env = unknown>
       this.onPathId(pathId, -1);
     }
   }
-  // #handleMessage(fromClientId: Id, message: string, fromClient?: WebSocket) {
-  //   ifPayloadValid(message.toString(), (toClientId, remainder) => {
-  //     console.log('handleMessage original', {
-  //       fromClientId,
-  //       message,
-  //       fromClient,
-  //       toClientId,
-  //     });
-  //     const forwardedPayload = createRawPayload(fromClientId, remainder);
-  //     this.onMessage(fromClientId, toClientId, remainder);
-  //     if (toClientId == EMPTY_STRING) {
-  //       if (fromClientId != SERVER_CLIENT_ID) {
-  //         this.serverClientSend?.(forwardedPayload);
-  //       }
-  //       arrayForEach(this.#getClients(), (otherClient) => {
-  //         if (otherClient != fromClient) {
-  //           otherClient.send(forwardedPayload);
-  //         }
-  //       });
-  //     } else if (toClientId == SERVER_CLIENT_ID) {
-  //       this.serverClientSend?.(forwardedPayload);
-  //     } else if (toClientId != fromClientId) {
-  //       this.#getClients(toClientId)[0]?.send(forwardedPayload);
-  //     }
-  //   });
-  // }
 
   #handleMessage(fromClientId: Id, message: string, fromClient?: WebSocket) {
-    ifPayloadValid(message.toString(), (toClientId, remainder) => {
-      // console.log('handleMessage original', {
-      //   fromClientId,
-      //   message,
-      //   fromClient,
-      //   toClientId,
-      // });
+    ifPayloadValid(message.toString(), async (toClientId, remainder) => {
+      console.log('handleMessage original', {
+        fromClientId,
+        message,
+        fromClient,
+        toClientId,
+      });
       if (toClientId == EMPTY_STRING) {
         let result: boolean | string = true;
         if (fromClientId != SERVER_CLIENT_ID) {
-          result = this.#sendMessageToServer(
+          result = await this.#sendMessageToServer(
             SERVER_CLIENT_ID,
             fromClientId,
             remainder,
           );
         }
         if (result !== false) {
-          this.#sendMessageToClients(
+          await this.#sendMessageToClients(
             this.#getClients(),
             fromClientId,
             fromClient,
@@ -162,9 +136,9 @@ export class WsServerDurableObject<Env = unknown>
           );
         }
       } else if (toClientId == SERVER_CLIENT_ID) {
-        this.#sendMessageToServer(toClientId, fromClientId, remainder);
+        await this.#sendMessageToServer(toClientId, fromClientId, remainder);
       } else if (toClientId != fromClientId) {
-        this.#sendMessageToClients(
+        await this.#sendMessageToClients(
           [this.#getClients(toClientId)[0]],
           fromClientId,
           fromClient,
@@ -173,25 +147,24 @@ export class WsServerDurableObject<Env = unknown>
       }
     });
   }
-  #sendMessageToServer(toClientId: Id, fromClientId: Id, remainder: string) {
-    const result = this.onMessageMutator(
+  async #sendMessageToServer(
+    toClientId: Id,
+    fromClientId: Id,
+    remainder: string,
+  ) {
+    const result = await this.onMessageMutator(
       fromClientId,
       toClientId,
       remainder,
       true,
     );
-    // console.log('sendMessageToServer result', {
-    //   fromClientId,
-    //   toClientId,
-    //   result,
-    // });
+    console.log('sendMessageToServer result', {
+      fromClientId,
+      toClientId,
+      result,
+    });
     if (result !== false) {
       if (typeof result === 'string') {
-        // console.log('sendMessageToServer result is a string', {
-        //   result: JSON.stringify(result),
-        //   remainder: JSON.stringify(remainder),
-        //   same: JSON.stringify(result) === JSON.stringify(remainder),
-        // });
         remainder = result;
       }
       const forwardedPayload = createRawPayload(fromClientId, remainder);
@@ -201,43 +174,41 @@ export class WsServerDurableObject<Env = unknown>
     return result;
   }
 
-  #sendMessageToClients(
+  async #sendMessageToClients(
     clients: WebSocket[],
     fromClientId: Id,
     fromClient: WebSocket | null | undefined,
     remainder: string,
   ) {
-    clients.map((otherClient) => {
-      if (otherClient != fromClient) {
-        const toClientId = this.ctx.getTags(otherClient)[0];
+    const sendPromieses = clients
+      .map(async (otherClient) => {
+        if (otherClient != fromClient) {
+          const toClientId = this.ctx.getTags(otherClient)[0];
 
-        const result = this.onMessageMutator(
-          fromClientId,
-          toClientId,
-          remainder,
-          false,
-        );
-        // console.log('sendMessageToClients result', {
-        //   fromClientId,
-        //   toClientId,
-        //   result,
-        // });
-        if (result !== false) {
-          if (typeof result === 'string') {
-            // console.log('sendMessageToClients result is a string', {
-            //   result: JSON.stringify(result),
-            //   remainder: JSON.stringify(remainder),
-            //   same: JSON.stringify(result) === JSON.stringify(remainder),
-            // });
-            remainder = result;
+          const result = await this.onMessageMutator(
+            fromClientId,
+            toClientId,
+            remainder,
+            false,
+          );
+          console.log('sendMessageToClients result', {
+            fromClientId,
+            toClientId,
+            result,
+          });
+          if (result !== false) {
+            if (typeof result === 'string') {
+              remainder = result;
+            }
+            const forwardedPayload = createRawPayload(fromClientId, remainder);
+            this.onMessage(fromClientId, toClientId, remainder);
+
+            return otherClient.send(forwardedPayload);
           }
-          const forwardedPayload = createRawPayload(fromClientId, remainder);
-          this.onMessage(fromClientId, toClientId, remainder);
-
-          return otherClient.send(forwardedPayload);
         }
-      }
-    });
+      })
+      .filter(Boolean);
+    await Promise.allSettled(sendPromieses);
   }
 
   #getClients(tag?: Id) {
@@ -269,12 +240,12 @@ export class WsServerDurableObject<Env = unknown>
   onClientId(_pathId: Id, _clientId: Id, _addedOrRemoved: IdAddedOrRemoved) {}
   onFetch(_request: Request, _pathId: Id, _clientId: Id) {}
 
-  onMessageMutator(
+  async onMessageMutator(
     _fromClientId: Id,
     _toClientId: Id,
     _remainder: string,
     _isWrite: boolean,
-  ): boolean | string {
+  ): Promise<boolean | string> {
     return true;
   }
 

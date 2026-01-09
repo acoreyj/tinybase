@@ -43,8 +43,17 @@ export const filterMergeableChanges = <withHashes extends boolean>(
   logger('filterMergeableChanges: Starting operation', {
     changes: JSON.stringify(changes),
   });
-  const [tablesStamp, valuesStamp, one] = changes;
-
+  const [originalTablesStamp, valuesStamp, one] = changes;
+  let tablesStamp = originalTablesStamp;
+  let wrappedTablesStamp = false;
+  if (
+    !Array.isArray(tablesStamp) &&
+    typeof tablesStamp === 'object' &&
+    Object.keys(tablesStamp).length > 0
+  ) {
+    tablesStamp = [tablesStamp] as unknown as TablesStamp<withHashes>;
+    wrappedTablesStamp = true;
+  }
   const authorizedTablesObj: any = {};
 
   try {
@@ -108,6 +117,7 @@ export const filterMergeableChanges = <withHashes extends boolean>(
             tablesStamp,
             tableStamp,
             tableId,
+            action: 'read',
           })
         : false;
       if (tableAuthRule && !tableAuthorized) {
@@ -169,6 +179,7 @@ export const filterMergeableChanges = <withHashes extends boolean>(
                   cellStampsObj,
                   cellStamp,
                   cellId,
+                  action: 'read',
                 })
               : false);
           if (!cellAuthorized) {
@@ -212,7 +223,7 @@ export const filterMergeableChanges = <withHashes extends boolean>(
       tablesStamp: JSON.stringify(tablesStamp),
       authorizedTablesObj: JSON.stringify(authorizedTablesObj),
     });
-    const authorizedTablesStamp =
+    let authorizedTablesStamp =
       tablesStamp.length > 2
         ? ([authorizedTablesObj, tablesStamp[1], tablesStamp[2]] as any)
         : tablesStamp.length > 1
@@ -224,11 +235,22 @@ export const filterMergeableChanges = <withHashes extends boolean>(
       authorizedTablesStamp: JSON.stringify(authorizedTablesStamp),
     });
 
-    return [
-      authorizedTablesStamp,
-      valuesStamp,
-      one,
-    ] as MergeableChanges<withHashes>;
+    if (wrappedTablesStamp) {
+      [authorizedTablesStamp] = authorizedTablesStamp;
+    }
+
+    if (one) {
+      return [
+        authorizedTablesStamp,
+        valuesStamp,
+        one,
+      ] as MergeableChanges<withHashes>;
+    } else {
+      return [
+        authorizedTablesStamp,
+        valuesStamp,
+      ] as unknown as MergeableChanges<withHashes>;
+    }
   } catch (error) {
     logger('filterMergeableChanges: Error during operation', {
       error: error instanceof Error ? error.message : String(error),
@@ -264,6 +286,7 @@ export const filterTablesStampRead = (
           tablesStamp,
           tableStamp,
           tableId,
+          action: 'read',
         })
       : false;
     if (tableAuthRule && !tableAuthorized) {
@@ -293,6 +316,7 @@ export const filterTablesStampRead = (
                 rowStamp,
                 cellStamp,
                 cellId,
+                action: 'read',
               })
             : false);
         if (!cellAuthorized) {
@@ -364,6 +388,7 @@ export const filterTableHashesRead = (
           tableId,
           differingTableHashes,
           hash,
+          action: 'read',
         })
       : false;
     if (!tableAuthorized) {
@@ -402,6 +427,7 @@ export const filterRowHashesRead = (
       ? !!serverFunctions.authorization[tableAuthRule]?.(authContext, {
           tableId,
           rowHashes,
+          action: 'read',
         })
       : false;
     if (!tableAuthorized) {
@@ -423,15 +449,24 @@ export const checkMergeableChanges = <withHashes extends boolean>(
   expandedSchema: Record<string, SchemaDefinition<any, any>>,
   serverFunctions: any,
   authContext: AuthContext,
+  message: number,
   log?: (message: string, data?: any) => void,
 ): boolean => {
   const logger = log ?? (() => {});
-  const [tablesStamp] = changes;
+  let [tablesStamp] = changes;
 
   let authorized = true;
   logger('checkMergeableChanges: Starting authorization', {
     changes: JSON.stringify(changes),
   });
+  if (
+    message === 0 &&
+    !Array.isArray(tablesStamp) &&
+    typeof tablesStamp === 'object' &&
+    Object.keys(tablesStamp).length > 0
+  ) {
+    tablesStamp = [tablesStamp] as unknown as TablesStamp<withHashes>;
+  }
 
   try {
     if (!tablesStamp || !Array.isArray(tablesStamp)) {
@@ -460,6 +495,7 @@ export const checkMergeableChanges = <withHashes extends boolean>(
         tablesStamp,
         tablesStampType: typeof tablesStamp,
         isArray: Array.isArray(tablesStamp),
+        message,
       });
       authorized = false;
       logger(`checkMergeableChanges: Authorization result: ${authorized}`);
@@ -503,6 +539,7 @@ export const checkMergeableChanges = <withHashes extends boolean>(
             tablesStamp,
             tableStamp,
             tableId,
+            action: 'create',
           })
         : false;
       if (!tableAuthorized) {
@@ -554,6 +591,7 @@ export const checkMergeableChanges = <withHashes extends boolean>(
                   rowStamp,
                   cellStamp,
                   cellId,
+                  action: 'create',
                 })
               : false);
           if (!cellAuthorized) {
@@ -619,7 +657,7 @@ export const processDefaultServerFunctions = <withHashes extends boolean>(
   const resultTableStamp: TablesStamp<false> = [resultTables, hlc];
 
   const [tablesStamp] = changes;
-  const [tablesObj] = tablesStamp;
+  const [tablesObj] = Array.isArray(tablesStamp) ? tablesStamp : [tablesStamp];
 
   // console.log('processDefaultServerFunctions: processing tables', {
   //   tableIds: Object.keys(tablesObj),

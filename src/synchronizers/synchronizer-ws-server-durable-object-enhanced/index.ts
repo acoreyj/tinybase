@@ -20,7 +20,7 @@ import type {
   Logger,
   LogLevel,
 } from '../../@types/synchronizers/synchronizer-ws-server-durable-object-enhanced/index.d.ts';
-import {arrayIsEmpty} from '../../common/array.ts';
+import {arrayForEach, arrayIsEmpty} from '../../common/array.ts';
 import {
   checkMergeableChanges,
   filterMergeableChanges,
@@ -172,136 +172,49 @@ export class WsServerDurableObjectEnhanced<
 
     return [tablesStamp, valuesStamp, 1];
   }
-  #handleMessage(
-    fromClientId: Id,
-    message: string,
-    fromClient?: WebSocket,
-    mutate = true,
-  ) {
-    ifPayloadValid(message.toString(), async (toClientId, remainder) => {
-      console.log('handleMessage enhanced', {
-        fromClientId,
-        message,
-        fromClient,
-        toClientId,
-      });
-      if (toClientId == EMPTY_STRING) {
-        let result: boolean | string = true;
-        if (fromClientId != SERVER_CLIENT_ID) {
-          result = await this.#sendMessageToServer(
-            SERVER_CLIENT_ID,
-            fromClientId,
-            remainder,
-            false,
-            mutate,
-          );
-        }
-        if (result !== false) {
-          await this.#sendMessageToClients(
-            this.#getClients(),
-            fromClientId,
-            fromClient,
-            remainder,
-            false,
-            mutate,
-          );
-        }
-      } else if (toClientId == SERVER_CLIENT_ID) {
-        await this.#sendMessageToServer(
-          toClientId,
-          fromClientId,
-          remainder,
-          false,
-          mutate,
-        );
-      } else if (toClientId != fromClientId) {
-        await this.#sendMessageToClients(
-          [this.#getClients(toClientId)[0]],
-          fromClientId,
-          fromClient,
-          remainder,
-          false,
-          mutate,
-        );
-      }
-    });
-  }
-  async #sendMessageToServer(
-    toClientId: Id,
-    fromClientId: Id,
-    remainder: string,
-    applyDefaults = true,
-    mutate = true,
-  ) {
-    const result = mutate
-      ? await this.onMessageMutator(
-          fromClientId,
-          toClientId,
-          remainder,
-          true,
-          applyDefaults,
-        )
-      : true;
-    if (result !== false) {
-      if (typeof result === 'string') {
-        remainder = result;
-      }
+  #handleMessage(fromClientId: Id, message: string, fromClient?: WebSocket) {
+    ifPayloadValid(message.toString(), (toClientId, remainder) => {
+      // console.log('handleMessage enhanced', {
+      //   fromClientId,
+      //   message,
+      //   fromClient,
+      //   toClientId,
+      // });
       const forwardedPayload = createRawPayload(fromClientId, remainder);
       this.onMessage(fromClientId, toClientId, remainder);
-      this.serverClientSend?.(forwardedPayload);
-    }
-    return result;
-  }
-
-  async #sendMessageToClients(
-    clients: WebSocket[],
-    fromClientId: Id,
-    fromClient: WebSocket | null | undefined,
-    remainder: string,
-    applyDefaults = true,
-    mutate = true,
-  ) {
-    const sendPromieses = clients
-      .map(async (otherClient) => {
-        if (otherClient != fromClient) {
-          const toClientId = this.ctx.getTags(otherClient)[0];
-
-          const result = mutate
-            ? await this.onMessageMutator(
-                fromClientId,
-                toClientId,
-                remainder,
-                false,
-                applyDefaults,
-              )
-            : true;
-          if (result !== false) {
-            if (typeof result === 'string') {
-              remainder = result;
-            }
-            const forwardedPayload = createRawPayload(fromClientId, remainder);
-            this.onMessage(fromClientId, toClientId, remainder);
-
-            return otherClient.send(forwardedPayload);
-          }
+      if (toClientId == EMPTY_STRING) {
+        if (fromClientId != SERVER_CLIENT_ID) {
+          this.serverClientSend?.(forwardedPayload);
         }
-      })
-      .filter(Boolean);
-    await Promise.allSettled(sendPromieses);
+        arrayForEach(this.#getClients(), (otherClient) => {
+          if (otherClient != fromClient) {
+            otherClient.send(forwardedPayload);
+          }
+        });
+      } else if (toClientId == SERVER_CLIENT_ID) {
+        this.serverClientSend?.(forwardedPayload);
+      } else if (toClientId != fromClientId) {
+        this.#getClients(toClientId)[0]?.send(forwardedPayload);
+      }
+    });
   }
 
   #getClients(tag?: Id) {
     return this.ctx.getWebSockets(tag);
   }
 
-  async onMessageMutator(
+  onMessageMutator(
     fromClientId: Id,
     toClientId: Id,
     remainder: string,
     isWrite: boolean,
     applyDefaults = true,
-  ): Promise<boolean | string> {
-    const [requestId, message, ...body] = JSON.parse(remainder);
+  ): boolean | string {
+    const [requestId, message, ...body] = JSON.parse(remainder) as [
+      Id,
+      number,
+      ...unknown[],
+    ];
     const requestIdStr = `${requestId ?? ''}` as Id;
 
     const baseLogContext = {
@@ -355,7 +268,6 @@ export class WsServerDurableObjectEnhanced<
             '\n' +
             JSON.stringify([requestId + '_notification', 3, changes]),
           undefined,
-          false,
         );
         this.#handleMessage(
           'notification',
@@ -363,7 +275,6 @@ export class WsServerDurableObjectEnhanced<
             '\n' +
             JSON.stringify([requestId + '_notification', 3, changes]),
           undefined,
-          false,
         );
       } catch (error) {
         this.log('error', 'Failed to record blocked message notification', {
@@ -415,6 +326,9 @@ export class WsServerDurableObjectEnhanced<
         requestId,
         result: JSON.stringify([requestId, message, filteredChanges]),
         remainder,
+        same:
+          JSON.stringify([requestId, message, filteredChanges]) ===
+          JSON.stringify(remainder),
       });
 
       return JSON.stringify([requestId, message, filteredChanges]);
@@ -443,6 +357,7 @@ export class WsServerDurableObjectEnhanced<
         this.getExpandedSchema(),
         this.getServerFunctions(),
         authContext,
+        message,
         authorizerLog,
       );
 
@@ -547,6 +462,7 @@ export class WsServerDurableObjectEnhanced<
         this.getExpandedSchema(),
         this.getServerFunctions(),
         authContext,
+        message,
         authorizerLog,
       );
 
@@ -619,7 +535,6 @@ export class WsServerDurableObjectEnhanced<
             '\n' +
               JSON.stringify([requestId + '_default', message, defaultChanges]),
             undefined,
-            false,
           );
         }
       }
