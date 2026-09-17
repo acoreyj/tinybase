@@ -359,6 +359,7 @@ export class WsServerDurableObjectEnhanced<
         authContext,
         message,
         authorizerLog,
+        this.store,
       );
 
       if (checkResult === true) {
@@ -464,6 +465,7 @@ export class WsServerDurableObjectEnhanced<
         authContext,
         message,
         authorizerLog,
+        this.store,
       );
 
       if (!isAuthorized) {
