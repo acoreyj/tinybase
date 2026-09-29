@@ -31,6 +31,15 @@ export class WsServerDurableObject<
   /// WsServerDurableObject.getClientIds
   getClientIds(): Ids;
 
+  /// WsServerDurableObject.getFragmentSize
+  getFragmentSize(): number | undefined;
+
+  /// WsServerDurableObject.getRequestTimeoutSeconds
+  getRequestTimeoutSeconds(): number;
+
+  /// WsServerDurableObject.onIgnoredError
+  onIgnoredError(error: any): void;
+
   /// WsServerDurableObject.onPathId
   onPathId(pathId: Id, addedOrRemoved: IdAddedOrRemoved): void;
 
@@ -65,4 +74,4 @@ export function getWsServerDurableObjectFetch<
       WsServerDurableObject<Schemas>
     >;
   },
-) => Response;
+) => Response | Promise<Response>;

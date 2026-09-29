@@ -23,19 +23,29 @@ import type {
   Synchronizer,
 } from '../@types/synchronizers/index.d.ts';
 import {getUniqueId} from '../common/codec.ts';
-import {collDel} from '../common/coll.ts';
-import {IdMap, mapGet, mapNew, mapSet} from '../common/map.ts';
-import {objEnsure, objForEach, objIsEmpty} from '../common/obj.ts';
+import {collDel, collSize} from '../common/coll.ts';
+import {
+  ERROR_SYNC_MESSAGE,
+  ERROR_SYNC_OVERFLOW,
+  ERROR_SYNC_RESPONSE,
+  errorNew,
+  tryCatch,
+} from '../common/error.ts';
+import {IdMap, mapForEach, mapGet, mapNew, mapSet} from '../common/map.ts';
+import {objEnsure, objForEach, objIsEmpty, objSet} from '../common/obj.ts';
 import {
   ifNotUndefined,
+  isNull,
   isUndefined,
+  noop,
   promiseNew,
   startTimeout,
-  tryCatch,
+  stopTimeout,
 } from '../common/other.ts';
 import {getLatestHlc, stampNew, stampNewObj} from '../common/stamps.ts';
 import {DOT, EMPTY_STRING} from '../common/strings.ts';
 import {createCustomPersister} from '../persisters/index.ts';
+import {MAX_PENDING_REQUESTS, isProtocolMessageValid} from './common.ts';
 
 const enum MessageValues {
   Response = 0,
@@ -62,7 +72,7 @@ export const Message = {
 export const createCustomSynchronizer = (
   store: MergeableStore,
   send: Send,
-  registerReceive: (receive: Receive) => void,
+  registerReceive: (receive: Receive, fail: (error: Error) => void) => void,
   extraDestroy: () => void,
   requestTimeoutSeconds: number,
   onSend?: Send,
@@ -70,22 +80,32 @@ export const createCustomSynchronizer = (
   onIgnoredError?: (error: any) => void,
   // undocumented:
   extra: {[methodName: string]: (...args: any[]) => any} = {},
+  preDestroy: () => void = noop,
 ): Synchronizer => {
   let syncing: 0 | 1 = 0;
   let persisterListener:
-    | PersisterListener<PersistsEnum.MergeableStoreOnly>
-    | undefined;
+    PersisterListener<PersistsEnum.MergeableStoreOnly> | undefined;
   let sends = 0;
   let receives = 0;
+  let destroyed = false;
 
   const pendingRequests: IdMap<
     [
       toClientId: IdOrNull,
       handleResponse: (response: any, fromClientId: Id) => void,
+      reject: (error: Error) => void,
+      timeout: ReturnType<typeof startTimeout>,
     ]
   > = mapNew();
 
   const getTransactionId = () => getUniqueId(11);
+
+  const rejectPendingRequests = (error: Error) =>
+    mapForEach(pendingRequests, (requestId, [, , reject, timeout]) => {
+      stopTimeout(timeout);
+      collDel(pendingRequests, requestId);
+      reject(error);
+    });
 
   const sendImpl = (
     toClientId: IdOrNull,
@@ -105,23 +125,37 @@ export const createCustomSynchronizer = (
     transactionId: Id,
   ): Promise<[response: Response, fromClientId: Id, transactionId: Id]> =>
     promiseNew((resolve, reject) => {
+      if (collSize(pendingRequests) >= MAX_PENDING_REQUESTS) {
+        reject(errorNew(ERROR_SYNC_OVERFLOW, 'requests'));
+        return;
+      }
       const requestId = transactionId + DOT + getUniqueId(4);
       const timeout = startTimeout(() => {
         collDel(pendingRequests, requestId);
         reject(
-          `No response from ${toClientId ?? 'anyone'} to ${requestId}, ` +
-            message,
+          errorNew(
+            ERROR_SYNC_RESPONSE,
+            (toClientId ?? EMPTY_STRING) + DOT + requestId + DOT + message,
+          ),
         );
       }, requestTimeoutSeconds);
       mapSet(pendingRequests, requestId, [
         toClientId,
         (response: Response, fromClientId: Id) => {
-          clearTimeout(timeout);
+          stopTimeout(timeout);
           collDel(pendingRequests, requestId);
           resolve([response, fromClientId, transactionId]);
         },
+        reject,
+        timeout,
       ]);
-      sendImpl(toClientId, requestId, message, body);
+      try {
+        sendImpl(toClientId, requestId, message, body);
+      } catch (error) {
+        stopTimeout(timeout);
+        collDel(pendingRequests, requestId);
+        reject(error);
+      }
     });
 
   const mergeTablesStamps = (
@@ -140,10 +174,8 @@ export const createCustomSynchronizer = (
           rowId,
           stampNewObj<CellStamp>,
         );
-        objForEach(
-          cellStamps2,
-          ([cell2, cellTime2], cellId) =>
-            (rowStamp[0][cellId] = stampNew(cell2, cellTime2)),
+        objForEach(cellStamps2, ([cell2, cellTime2], cellId) =>
+          objSet(rowStamp[0], cellId, stampNew(cell2, cellTime2)),
         );
         rowStamp[1] = getLatestHlc(rowStamp[1], rowTime2);
       });
@@ -261,6 +293,9 @@ export const createCustomSynchronizer = (
   };
 
   const destroy = async () => {
+    destroyed = true;
+    rejectPendingRequests(errorNew(ERROR_SYNC_RESPONSE, 'destroyed'));
+    preDestroy();
     await persister.stopSync();
     extraDestroy();
     return persister;
@@ -287,6 +322,13 @@ export const createCustomSynchronizer = (
       message: MessageEnum | any,
       body: any,
     ) => {
+      if (destroyed) {
+        return;
+      }
+      if (!isProtocolMessageValid(transactionOrRequestId, message, body)) {
+        onIgnoredError?.(errorNew(ERROR_SYNC_MESSAGE));
+        return;
+      }
       const isAutoLoading = syncing || persister.isAutoLoading();
       receives++;
       onReceive?.(fromClientId, transactionOrRequestId, message, body);
@@ -294,7 +336,7 @@ export const createCustomSynchronizer = (
         ifNotUndefined(
           mapGet(pendingRequests, transactionOrRequestId),
           ([toClientId, handleResponse]) =>
-            isUndefined(toClientId) || toClientId == fromClientId
+            isNull(toClientId) || toClientId == fromClientId
               ? handleResponse(body, fromClientId)
               : /*! istanbul ignore next */
                 0,
@@ -336,6 +378,7 @@ export const createCustomSynchronizer = (
         );
       }
     },
+    rejectPendingRequests,
   );
 
   return persister;

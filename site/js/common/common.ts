@@ -64,6 +64,7 @@ export const toggleClass = (
 
 export const go = (href: string, updateUrl = true): void => {
   const nav = getNav();
+  (queryById('menustate') as HTMLInputElement).checked = false;
   ['?', '#'].forEach((separator) => {
     if (href.includes(separator)) {
       href = href.substring(0, href.indexOf(separator));
@@ -81,7 +82,9 @@ export const go = (href: string, updateUrl = true): void => {
       const article = getArticle();
       article.innerHTML = html;
       article.scrollTo(0, 0);
-      addPen();
+      addStackblitz();
+      addCopyButtons();
+      updateToc();
     });
 
   if (updateUrl) {
@@ -89,7 +92,102 @@ export const go = (href: string, updateUrl = true): void => {
   }
 };
 
-export const addPen = () => {
+// Terminal examples mark their commands with a '> ' prompt; copy just those.
+const getCopyText = (code: HTMLElement): string => {
+  const lines = code.innerText.trimEnd().split('\n');
+  const commands = lines.filter((line) => line.startsWith('> '));
+  return commands.length > 0
+    ? commands.map((line) => line.substring(2)).join('\n')
+    : lines.join('\n');
+};
+
+export const addCopyButtons = () =>
+  getArticle()
+    .querySelectorAll('pre')
+    .forEach((pre) => {
+      const code = queryElement(pre, ':scope > code');
+      if (code == null || queryElement(pre, ':scope > button') != null) {
+        return;
+      }
+      const button = createElement(
+        'button',
+        pre,
+        {type: 'button', class: 'copy'},
+        'Copy',
+      );
+      button.onclick = () =>
+        navigator.clipboard.writeText(getCopyText(code)).then(() => {
+          button.innerText = 'Copied';
+          setTimeout(() => (button.innerText = 'Copy'), 1500);
+        });
+    });
+
+let tocHeadings: HTMLElement[] = [];
+
+export const updateToc = () => {
+  const aside = query('body > main > aside');
+  if (aside == null) {
+    return;
+  }
+  aside.replaceChildren();
+  tocHeadings = Array.from(getArticle().querySelectorAll('h2[id], h3[id]'));
+  if (tocHeadings.length < 2) {
+    return;
+  }
+  createElement('p', aside, {}, 'On this page');
+  const ul = createElement('ul', aside);
+  tocHeadings.forEach((heading) => {
+    const li = createElement('li', ul, {class: heading.tagName.toLowerCase()});
+    const text = heading.innerText;
+    createElement('a', li, {href: '#' + heading.id, title: text}, text);
+  });
+  highlightToc();
+};
+
+// The current heading is the last to have scrolled near the top of the
+// article, or the very last one if the article cannot scroll any further.
+export const highlightToc = () => {
+  const article = getArticle();
+  const items = query('body > main > aside')?.querySelectorAll('li') ?? [];
+  const top = article.getBoundingClientRect().top + 96;
+  let current = 0;
+  if (article.scrollTop + article.clientHeight >= article.scrollHeight - 1) {
+    current = tocHeadings.length - 1;
+  } else {
+    tocHeadings.forEach((heading, index) => {
+      if (heading.getBoundingClientRect().top <= top) {
+        current = index;
+      }
+    });
+  }
+  items.forEach((item, index) =>
+    item.classList.toggle('current', index == current),
+  );
+};
+
+export const addNavTitles = () =>
+  getNav()
+    ?.querySelectorAll('li > a')
+    .forEach((a) => a.setAttribute('title', (a as HTMLElement).innerText));
+
+type ExecutableProject = {
+  title: string;
+  description: string;
+  template: string;
+  files: {[filePath: string]: string};
+  settings?: unknown;
+  dependencies?: unknown;
+  options?: {[option: string]: string};
+};
+
+const addHiddenInput = (form: HTMLFormElement, field: string, value: string) =>
+  createElement('input', form, {
+    type: 'hidden',
+    name: 'project' + field,
+    value,
+  });
+
+export const addStackblitz = () => {
   const iframe = queryElement(getArticle(), ':scope iframe');
   const iframeParent = iframe?.parentElement;
   if (iframe == null || iframeParent == null) {
@@ -97,25 +195,45 @@ export const addPen = () => {
   }
   const form = iframeParent.insertBefore(
     createElement('form', null, {
-      action: 'https://codepen.io/pen/define',
+      action: 'https://stackblitz.com/run',
       method: 'post',
       target: '_blank',
     }),
     iframe,
   ) as HTMLFormElement;
   iframeParent.insertBefore(
-    createElement('a', null, {id: 'penEdit'}, 'Open this demo in CodePen'),
+    createElement('a', null, {id: 'sbEdit'}, 'Open this demo in StackBlitz'),
     iframe,
   ).onclick = () => {
     if (form.childNodes.length == 0) {
-      fetch('pen.json')
-        .then((response) => response.text())
-        .then((rawJson) => {
-          createElement('input', form, {
-            type: 'hidden',
-            name: 'data',
-            value: rawJson,
-          });
+      fetch('stackblitz.json')
+        .then((response) => response.json())
+        .then((project: ExecutableProject) => {
+          addHiddenInput(form, '[title]', project.title);
+          addHiddenInput(form, '[description]', project.description);
+          addHiddenInput(form, '[template]', project.template);
+          Object.entries(project.files).forEach(([filePath, contents]) =>
+            addHiddenInput(form, `[files][${filePath}]`, contents),
+          );
+          if (project.settings != null) {
+            addHiddenInput(
+              form,
+              '[settings]',
+              JSON.stringify(project.settings),
+            );
+          }
+          if (project.dependencies != null) {
+            addHiddenInput(
+              form,
+              '[dependencies]',
+              JSON.stringify(project.dependencies),
+            );
+          }
+          const action = new URL(form.action);
+          Object.entries(project.options ?? {}).forEach(([option, value]) =>
+            action.searchParams.set(option, value),
+          );
+          form.action = action.toString();
           form.submit();
         });
     } else {
@@ -142,7 +260,7 @@ const updateNav = (
   if (li == null) {
     li = createElement('li', ul, {id});
     createElement('span', li);
-    const a = createElement('a', li, {href: url});
+    const a = createElement('a', li, {href: url, title: name});
     if (reflection) {
       createElement('code', a, {}, name);
     } else {

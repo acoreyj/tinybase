@@ -2,18 +2,14 @@ import type {Checkpoints} from '../@types/checkpoints/index.d.ts';
 import type {Id, Ids, SortKey} from '../@types/common/index.d.ts';
 import type {Indexes} from '../@types/indexes/index.d.ts';
 import type {Metrics} from '../@types/metrics/index.d.ts';
+import type {Middleware} from '../@types/middleware/index.d.ts';
 import type {Queries} from '../@types/queries/index.d.ts';
 import type {Relationships} from '../@types/relationships/index.d.ts';
 import type {Cell, GetCell, Store} from '../@types/store/index.d.ts';
-import {arrayForEach, arrayIsEmpty, arrayIsEqual} from './array.ts';
-import {
-  collClear,
-  collDel,
-  collForEach,
-  collHas,
-  collIsEmpty,
-  collValues,
-} from './coll.ts';
+import {arrayForEach, arrayIsEqual} from './array.ts';
+import {collClear, collDel, collForEach, collHas} from './coll.ts';
+import {tryCatchSync} from './error.ts';
+import {jsonString} from './json.ts';
 import {AddListener, CallListeners} from './listeners.ts';
 import {
   IdMap,
@@ -24,7 +20,9 @@ import {
   mapKeys,
   mapNew,
   mapSet,
+  weakMapNew,
 } from './map.ts';
+import {isObject} from './obj.ts';
 import {ifNotUndefined, isArray, isString, isUndefined} from './other.ts';
 import {IdSet2, setAdd, setNew} from './set.ts';
 import {EMPTY_STRING} from './strings.ts';
@@ -37,6 +35,11 @@ type OnChangedDecl<RowValue> = (
   sortKeys?: IdMap<SortKey>,
   force?: boolean,
 ) => void;
+
+const sortKeyIsEqual = (sortKey1: SortKey, sortKey2: SortKey): boolean =>
+  sortKey1 === sortKey2 ||
+  ((isObject(sortKey1) || isArray(sortKey1)) &&
+    jsonString(sortKey1) === jsonString(sortKey2));
 
 export const getDefinableFunctions = <Thing, RowValue>(
   store: Store,
@@ -63,8 +66,6 @@ export const getDefinableFunctions = <Thing, RowValue>(
   delDefinition: (id: Id) => void,
   addThingIdsListener: (listener: () => void) => void,
   destroy: () => void,
-  addStoreListeners: (id: Id, andCall: 0 | 1, ...listenerIds: Ids) => Ids,
-  delStoreListeners: (id: Id, ...listenerIds: Ids) => void,
 ] => {
   const hasRow = store.hasRow;
   const tableIds: IdMap<Id> = mapNew();
@@ -90,32 +91,18 @@ export const getDefinableFunctions = <Thing, RowValue>(
   const setThing = (id: Id, thing: Thing | undefined): IdMap<Thing> =>
     mapSet(things, id, thing) as IdMap<Thing>;
 
-  const addStoreListeners = (
-    id: Id,
-    andCall: 0 | 1,
-    ...listenerIds: Ids
-  ): Ids => {
+  const addStoreListeners = (id: Id, ...listenerIds: Ids): void => {
     const set = mapEnsure(storeListenerIds, id, setNew);
-    arrayForEach(
-      listenerIds,
-      (listenerId) =>
-        setAdd(set, listenerId) && andCall && store.callListener(listenerId),
-    );
-    return listenerIds;
+    arrayForEach(listenerIds, (listenerId) => setAdd(set, listenerId));
   };
 
-  const delStoreListeners = (id: Id, ...listenerIds: Ids): void =>
+  const delStoreListeners = (id: Id): void =>
     ifNotUndefined(mapGet(storeListenerIds, id), (allListenerIds) => {
-      arrayForEach(
-        arrayIsEmpty(listenerIds) ? collValues(allListenerIds) : listenerIds,
-        (listenerId: Id) => {
-          store.delListener(listenerId);
-          collDel(allListenerIds, listenerId);
-        },
-      );
-      if (collIsEmpty(allListenerIds)) {
-        mapSet(storeListenerIds, id);
-      }
+      collForEach(allListenerIds, (listenerId: Id) => {
+        store.delListener(listenerId);
+        collDel(allListenerIds, listenerId);
+      });
+      mapSet(storeListenerIds, id);
     });
 
   const setDefinition = (id: Id, tableId: Id): void => {
@@ -124,7 +111,16 @@ export const getDefinableFunctions = <Thing, RowValue>(
       mapSet(things, id, getDefaultThing());
       mapSet(allRowValues, id, mapNew());
       mapSet(allSortKeys, id, mapNew());
-      callListeners(thingIdListeners);
+      tryCatchSync(
+        () => callListeners(thingIdListeners),
+        (error) => {
+          mapSet(tableIds, id);
+          mapSet(things, id);
+          mapSet(allRowValues, id);
+          mapSet(allSortKeys, id);
+          throw error;
+        },
+      );
     }
   };
 
@@ -150,14 +146,12 @@ export const getDefinableFunctions = <Thing, RowValue>(
       const newRowValue = hasRow(tableId, rowId)
         ? validateRowValue(getRowValue(getCell as any, rowId))
         : undefined;
-      if (
-        !(
-          oldRowValue === newRowValue ||
-          (isArray(oldRowValue) &&
-            isArray(newRowValue) &&
-            arrayIsEqual(oldRowValue, newRowValue))
-        )
-      ) {
+      if (!(
+        oldRowValue === newRowValue ||
+        (isArray(oldRowValue) &&
+          isArray(newRowValue) &&
+          arrayIsEqual(oldRowValue, newRowValue))
+      )) {
         mapSet(changedRowValues, rowId, [oldRowValue, newRowValue]);
       }
 
@@ -166,7 +160,7 @@ export const getDefinableFunctions = <Thing, RowValue>(
         const newSortKey = hasRow(tableId, rowId)
           ? getSortKey(getCell as any, rowId)
           : undefined;
-        if (oldSortKey != newSortKey) {
+        if (!sortKeyIsEqual(oldSortKey, newSortKey)) {
           mapSet(changedSortKeys, rowId, newSortKey);
         }
       }
@@ -205,7 +199,6 @@ export const getDefinableFunctions = <Thing, RowValue>(
     delStoreListeners(id);
     addStoreListeners(
       id,
-      0,
       store.addRowListener(tableId, null, (_store, _tableId, rowId) =>
         processRow(rowId),
       ),
@@ -240,8 +233,6 @@ export const getDefinableFunctions = <Thing, RowValue>(
     delDefinition,
     addThingIdsListener,
     destroy,
-    addStoreListeners,
-    delStoreListeners,
   ];
 };
 
@@ -255,15 +246,23 @@ export const getRowCellFunction = <RowValue>(
       ((): RowValue => defaultCellValue ?? (EMPTY_STRING as any as RowValue)));
 
 export const getCreateFunction = <
-  Thing extends Metrics | Indexes | Relationships | Checkpoints | Queries,
+  Thing extends
+    Metrics | Middleware | Indexes | Relationships | Checkpoints | Queries,
 >(
-  getFunction: (store: Store) => Thing,
+  getFunction: (store: Store, destroyThing: () => boolean) => Thing,
   initFunction?: (thing: Thing) => void,
 ): ((store: Store) => Thing) => {
-  const thingsByStore: WeakMap<Store, Thing> = new WeakMap();
+  const thingsByStore: WeakMap<Store, Thing> = weakMapNew();
   return (store: Store): Thing => {
     if (!thingsByStore.has(store)) {
-      thingsByStore.set(store, getFunction(store));
+      const thing = getFunction(store, () => {
+        if (thingsByStore.get(store) === thing) {
+          thingsByStore.delete(store);
+          return true;
+        }
+        return false;
+      });
+      thingsByStore.set(store, thing);
     }
     const thing = thingsByStore.get(store) as Thing;
     initFunction?.(thing);

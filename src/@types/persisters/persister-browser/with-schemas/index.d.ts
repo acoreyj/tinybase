@@ -7,17 +7,27 @@ import type {
 import type {Persister, Persists} from '../../with-schemas/index.d.ts';
 
 /// SessionPersister
-export interface SessionPersister<Schemas extends OptionalSchemas>
-  extends Persister<Schemas, Persists.StoreOrMergeableStore> {
+export interface SessionPersister<
+  Schemas extends OptionalSchemas,
+> extends Persister<Schemas, Persists.StoreOrMergeableStore> {
   /// SessionPersister.getStorageName
   getStorageName(): string;
 }
 
 /// LocalPersister
-export interface LocalPersister<Schemas extends OptionalSchemas>
-  extends Persister<Schemas, Persists.StoreOrMergeableStore> {
+export interface LocalPersister<
+  Schemas extends OptionalSchemas,
+> extends Persister<Schemas, Persists.StoreOrMergeableStore> {
   /// LocalPersister.getStorageName
   getStorageName(): string;
+}
+
+/// OpfsPersister
+export interface OpfsPersister<
+  Schemas extends OptionalSchemas,
+> extends Persister<Schemas, Persists.StoreOrMergeableStore> {
+  /// OpfsPersister.getHandle
+  getHandle(): string;
 }
 
 /// createSessionPersister
@@ -33,3 +43,10 @@ export function createLocalPersister<Schemas extends OptionalSchemas>(
   storageName: string,
   onIgnoredError?: (error: any) => void,
 ): LocalPersister<Schemas>;
+
+/// createOpfsPersister
+export function createOpfsPersister<Schemas extends OptionalSchemas>(
+  store: Store<Schemas> | MergeableStore<Schemas>,
+  handle: FileSystemFileHandle,
+  onIgnoredError?: (error: any) => void,
+): OpfsPersister<Schemas>;

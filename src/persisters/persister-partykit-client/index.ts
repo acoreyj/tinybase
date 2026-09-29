@@ -6,8 +6,14 @@ import type {
   createPartyKitPersister as createPartyKitPersisterDecl,
 } from '../../@types/persisters/persister-partykit-client/index.d.ts';
 import type {Changes, Content, Store} from '../../@types/store/index.d.ts';
-import {jsonStringWithMap} from '../../common/json.ts';
-import {ifNotUndefined, isString} from '../../common/other.ts';
+import {tryCatch} from '../../common/error.ts';
+import {jsonParse, jsonStringWithMap} from '../../common/json.ts';
+import {
+  addEventListener,
+  ifNotUndefined,
+  isEmpty,
+  isString,
+} from '../../common/other.ts';
 import {EMPTY_STRING, MESSAGE} from '../../common/strings.ts';
 import {createCustomPersister} from '../common/create.ts';
 import {
@@ -17,8 +23,6 @@ import {
   construct,
   deconstruct,
 } from '../common/partykit.ts';
-
-type MessageListener = (event: MessageEvent) => void;
 
 export const createPartyKitPersister = ((
   store: Store,
@@ -46,14 +50,20 @@ export const createPartyKitPersister = ((
     room +
     storePath;
 
-  const getOrSetStore = async (content?: Content): Promise<Content> =>
-    await (
-      await fetch(storeUrl, {
-        ...(content ? {method: PUT, body: jsonStringWithMap(content)} : {}),
-        mode: 'cors',
-        cache: 'no-store',
-      })
-    ).json();
+  const getOrSetStore = async (
+    content?: Content,
+  ): Promise<Content | undefined> => {
+    const response = await fetch(storeUrl, {
+      ...(content ? {method: PUT, body: jsonStringWithMap(content)} : {}),
+      mode: 'cors',
+      cache: 'no-store',
+    });
+    if (!response.ok) {
+      throw response;
+    }
+    const responseText = await response.text();
+    return isEmpty(responseText) ? undefined : jsonParse(responseText);
+  };
 
   const getPersisted = getOrSetStore;
 
@@ -68,25 +78,24 @@ export const createPartyKitPersister = ((
     }
   };
 
-  const addPersisterListener = (
-    listener: PersisterListener,
-  ): MessageListener => {
-    const messageListener = (event: MessageEvent) =>
-      ifNotUndefined(
-        deconstruct(messagePrefix, event.data, 1),
-        ([type, payload]) => {
-          if (type == SET_CHANGES) {
-            listener(undefined, payload);
-          }
-        },
+  const addPersisterListener = (listener: PersisterListener): (() => void) =>
+    addEventListener(connection, MESSAGE, (event: MessageEvent) => {
+      void tryCatch(
+        async () =>
+          await ifNotUndefined(
+            deconstruct(messagePrefix, event.data, 1),
+            async ([type, payload]) => {
+              if (type == SET_CHANGES) {
+                await listener(undefined, payload);
+              }
+            },
+          ),
+        onIgnoredError,
       );
-    connection.addEventListener(MESSAGE, messageListener);
-    return messageListener;
-  };
+    });
 
-  const delPersisterListener = (messageListener: MessageListener): void => {
-    connection.removeEventListener(MESSAGE, messageListener);
-  };
+  const delPersisterListener = (removeListener: () => void): void =>
+    removeListener();
 
   return createCustomPersister(
     store,

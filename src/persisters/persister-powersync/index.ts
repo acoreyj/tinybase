@@ -1,7 +1,6 @@
 import {AbstractPowerSyncDatabase} from '@powersync/common';
 import type {
   DatabaseChangeListener,
-  DatabaseExecuteCommand,
   DatabasePersisterConfig,
 } from '../../@types/persisters/index.d.ts';
 import type {
@@ -9,30 +8,11 @@ import type {
   createPowerSyncPersister as createPowerSyncPersisterDecl,
 } from '../../@types/persisters/persister-powersync/index.d.ts';
 import type {Store} from '../../@types/store/index.d.ts';
-import {
-  arrayFilter,
-  arrayForEach,
-  arrayIsEmpty,
-  arrayJoin,
-  arrayMap,
-  arrayPush,
-} from '../../common/array.ts';
-import {collHas} from '../../common/coll.ts';
-import {IdObj, objIds, objNew, objToArray} from '../../common/obj.ts';
+import {arrayForEach} from '../../common/array.ts';
+import {tryCatchIgnore} from '../../common/error.ts';
+import {IdObj} from '../../common/obj.ts';
 import {noop} from '../../common/other.ts';
-import {IdSet, setNew} from '../../common/set.ts';
-import {COMMA} from '../../common/strings.ts';
-import {
-  FROM,
-  INSERT,
-  OR_REPLACE,
-  SELECT,
-  Upsert,
-  WHERE,
-  escapeColumnNames,
-  escapeId,
-  getPlaceholders,
-} from '../common/database/common.ts';
+import {updateThenInsertUpsert} from '../common/database/common.ts';
 import {createCustomSqlitePersister} from '../common/database/sqlite.ts';
 
 export const createPowerSyncPersister = ((
@@ -53,16 +33,15 @@ export const createPowerSyncPersister = ((
     (listener: DatabaseChangeListener): AbortController => {
       const abortController = new AbortController();
       const onChange = powerSync.onChange({
-        rawTableNames: true,
         signal: abortController.signal,
       });
-      (async () => {
+      void tryCatchIgnore(async () => {
         for await (const update of onChange) {
           if (tableListener) {
-            arrayMap(update.changedTables, tableListener);
+            arrayForEach(update.changedTables, tableListener);
           }
         }
-      })();
+      }, onIgnoredError);
       tableListener = listener;
       return abortController;
     },
@@ -76,83 +55,6 @@ export const createPowerSyncPersister = ((
     1, // StoreOnly,
     powerSync,
     'getPowerSync',
-    viewUpsert,
+    updateThenInsertUpsert,
   ) as PowerSyncPersister;
 }) as typeof createPowerSyncPersisterDecl;
-
-const viewUpsert: Upsert = async (
-  executeCommand: DatabaseExecuteCommand,
-  tableName: string,
-  rowIdColumnName: string,
-  changingColumnNames: string[],
-  rows: {[id: string]: any[]},
-  currentColumnNames?: IdSet | undefined,
-) => {
-  const offset = [1];
-  const changingColumnNamesSet = setNew(changingColumnNames);
-  const unchangingColumnNames = currentColumnNames
-    ? arrayFilter(
-        [...currentColumnNames],
-        (currentColumnName) =>
-          currentColumnName != rowIdColumnName &&
-          !collHas(changingColumnNamesSet, currentColumnName),
-      )
-    : [];
-  if (!arrayIsEmpty(unchangingColumnNames)) {
-    const ids = objIds(rows);
-    const unchangingData = objNew(
-      arrayMap(
-        await executeCommand(
-          SELECT +
-            escapeColumnNames(rowIdColumnName, ...unchangingColumnNames) +
-            FROM +
-            escapeId(tableName) +
-            WHERE +
-            escapeId(rowIdColumnName) +
-            'IN(' +
-            getPlaceholders(ids) +
-            ')',
-          ids,
-        ),
-        (unchangingRow) => [unchangingRow[rowIdColumnName], unchangingRow],
-      ),
-    );
-    arrayForEach(ids, (id: string) =>
-      arrayPush(
-        rows[id],
-        ...arrayMap(
-          unchangingColumnNames,
-          (unchangingColumnName) =>
-            unchangingData?.[id]?.[unchangingColumnName] ?? null,
-        ),
-      ),
-    );
-  }
-
-  await executeCommand(
-    INSERT +
-      ' ' +
-      OR_REPLACE +
-      'INTO' +
-      escapeId(tableName) +
-      '(' +
-      escapeColumnNames(
-        rowIdColumnName,
-        ...changingColumnNames,
-        ...unchangingColumnNames,
-      ) +
-      ')VALUES' +
-      arrayJoin(
-        objToArray(
-          rows,
-          (row: any[]) =>
-            '($' + offset[0]++ + ',' + getPlaceholders(row, offset) + ')',
-        ),
-        COMMA,
-      ),
-    objToArray(rows, (row: any[], id: string) => [
-      id,
-      ...arrayMap(row, (value) => value ?? null),
-    ]).flat(),
-  );
-};

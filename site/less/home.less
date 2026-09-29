@@ -18,6 +18,9 @@ body > main > article#home {
   row-gap: 2rem;
   padding: 2rem;
   z-index: 0;
+  p {
+    margin: 1rem 0 0;
+  }
   > em {
     display: block;
     max-width: 10rem;
@@ -33,18 +36,36 @@ body > main > article#home {
     }
   }
   > section#hero {
+    display: grid;
     max-width: 40rem;
     margin: auto;
     h2 {
+      animation: heroHeading 6s ease-in-out infinite both;
       font-size: 3rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      grid-column: 1;
+      grid-row: 1;
       line-height: 3.6rem;
+      margin: 0;
+      opacity: 0;
       text-align: center;
+      transform: translate3d(0, 0.8rem, 0);
+      will-change: opacity, transform, filter;
+      &:nth-of-type(2) {
+        animation-delay: -4s;
+      }
+      &:nth-of-type(3) {
+        animation-delay: -2s;
+      }
       em,
       span {
         white-space: nowrap;
       }
     }
     p {
+      grid-column: 1;
+      grid-row: 2;
       text-align: center;
     }
   }
@@ -52,7 +73,7 @@ body > main > article#home {
     color: @accentColor;
     font-family: Shantell;
     display: block;
-    margin: 0 auto;
+    margin-top: -1rem;
     text-align: center;
     white-space: nowrap;
     font-size: 1.1rem;
@@ -66,18 +87,29 @@ body > main > article#home {
     border: 1px solid @borderColor;
     padding: 1rem;
     text-align: center;
-    border-radius: 0.25rem;
+    border-radius: @radius;
     white-space: nowrap;
     width: 16rem;
     margin: -1rem auto;
     text-decoration: none;
     overflow: hidden;
     text-overflow: ellipsis;
+    transition:
+      border-color 0.15s,
+      box-shadow 0.15s,
+      transform 0.15s;
     &:hover {
       border-color: @accentColor;
+      box-shadow: @shadow;
+      transform: translateY(-1px);
+    }
+    &:focus-visible {
+      outline: 0.125rem solid @accentColor;
+      outline-offset: 0.2rem;
     }
     &.start {
       background: @accentColor;
+      border-color: @accentColor;
       color: @backColor;
     }
   }
@@ -121,6 +153,14 @@ body > main > article#home {
     width: 6rem;
     a {
       text-decoration: none;
+      &:hover,
+      &:focus-visible {
+        img,
+        embed {
+          filter: none;
+          opacity: 1;
+        }
+      }
     }
     img,
     embed {
@@ -129,6 +169,19 @@ body > main > article#home {
       max-width: 6rem;
       display: block;
       width: unset;
+      filter: grayscale(1);
+      opacity: 0.7;
+      transition:
+        filter 0.2s,
+        opacity 0.2s;
+    }
+  }
+  > section#friends h3 {
+    color: @text2Color;
+    font-size: 1rem;
+    margin: 2rem 0 0;
+    a {
+      color: inherit;
     }
   }
   > section#family p:nth-child(1n + 3) {
@@ -169,12 +222,58 @@ body > main > article#home {
   }
 }
 
+// Each heading fades out completely before the next fades in, so that two
+// are never visible, overlapping, at the same time.
+@keyframes heroHeading {
+  0%,
+  25% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translate3d(0, 0, 0);
+  }
+  29.166% {
+    opacity: 0;
+    filter: blur(0.25rem);
+    transform: translate3d(0, -0.8rem, 0);
+  }
+  29.167%,
+  95.833% {
+    opacity: 0;
+    filter: blur(0.25rem);
+    transform: translate3d(0, 0.8rem, 0);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body > main > article#home > p > a {
+    transition: none;
+    &:hover {
+      transform: none;
+    }
+  }
+  body > main > article#home > section#hero {
+    h2 {
+      animation: none;
+      opacity: 1;
+      transform: none;
+    }
+    h2:nth-of-type(1n + 2) {
+      display: none;
+    }
+  }
+}
+
 @media (min-width: 56rem) {
   body > main > article#home {
     grid-template-columns: repeat(6, 1fr);
     padding: 4rem 8rem;
     column-gap: 4rem;
-    row-gap: 2rem;
+    row-gap: 3rem;
     > em {
       grid-column-end: span 2;
       grid-row: span 2;
@@ -184,6 +283,10 @@ body > main > article#home {
       margin: 0;
       text-align: left;
       transform: rotate(-5deg) translate3d(-3rem, -1rem, 0);
+      @media (max-width: 64rem) {
+        font-size: 0.9rem;
+        transform: rotate(-5deg) translate3d(-4rem, -1rem, 0);
+      }
       &:before {
         content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" height="1em" viewBox="0 0 200 100" stroke-width="10" stroke="rgb(216,27,96)" fill="rgb(216,27,96)"><path fill="none" d="M25 70a120 120 0 00160-50"/><path d="M30.26 54.095l-18.91 6.512 6.511 18.91z"/></svg>');
         top: 0.9rem;
@@ -205,7 +308,7 @@ body > main > article#home {
     > pre,
     > img,
     > .table {
-      margin-top: 0.5rem;
+      margin: 0.3rem 0 0;
     }
     > .table th:first-child {
       width: 45%;
@@ -233,6 +336,15 @@ body > main > article#home {
     > section#family,
     > section#follow {
       grid-column: 1/7;
+    }
+    > section#friends {
+      max-width: 48rem;
+      margin-left: auto;
+      margin-right: auto;
+      h2 {
+        margin-left: -8rem;
+        margin-right: -8rem;
+      }
     }
     > section#sponsors {
       grid-column-start: 1;

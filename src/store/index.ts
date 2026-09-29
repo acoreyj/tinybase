@@ -1,4 +1,4 @@
-import type {Id, Ids, Json} from '../@types/common/index.d.ts';
+import type {Id, Ids, Json, SortKey, Sorter} from '../@types/common/index.d.ts';
 import type {
   Cell,
   CellCallback,
@@ -37,6 +37,7 @@ import type {
   createStore as createStoreDecl,
 } from '../@types/store/index.d.ts';
 import {
+  arrayEvery,
   arrayForEach,
   arrayHas,
   arrayIsEqual,
@@ -45,13 +46,20 @@ import {
   arraySort,
 } from '../common/array.ts';
 import {
+  type CellOrValueSchemaTypes,
+  cellOrValueSchemaTypeIncludes,
+  decodeIfJson,
+  encodeIfJson,
   getCellOrValueType,
-  setOrDelCell,
-  setOrDelValue,
+  isCellOrValueSchemaTypes,
+  isEncodedJson,
+  isJsonType,
+  isReservedString,
 } from '../common/cell.ts';
 import {
   collClear,
   collDel,
+  collEvery,
   collForEach,
   collHas,
   collIsEmpty,
@@ -60,9 +68,12 @@ import {
   collSize3,
   collSize4,
 } from '../common/coll.ts';
+import {tryCatchSync, tryFinally, tryReturn} from '../common/error.ts';
 import {defaultSorter} from '../common/index.ts';
 import {jsonParse, jsonStringWithMap} from '../common/json.ts';
 import {
+  AddListener,
+  CallListeners,
   ExtraArgsGetter,
   IdSetNode,
   PathGetters,
@@ -90,20 +101,24 @@ import {
 import {
   isObject,
   objDel,
+  objForEach,
   objFreeze,
   objHas,
   objIsEmpty,
+  objIsEqual,
   objMap,
+  objSet,
   objValidate,
 } from '../common/obj.ts';
 import {
+  getArg,
   ifNotUndefined,
   isArray,
   isFunction,
-  isTypeStringOrBoolean,
+  isNull,
   isUndefined,
   slice,
-  tryCatch,
+  structuredClone,
 } from '../common/other.ts';
 import {
   Pair,
@@ -117,12 +132,15 @@ import {PoolFunctions, getPoolFunctions} from '../common/pool.ts';
 import {IdSet, IdSet2, IdSet3, IdSet4, setAdd, setNew} from '../common/set.ts';
 import {
   ADD,
+  ALLOW_NULL,
   CELL,
   CELL_IDS,
   DEFAULT,
+  EMPTY_STRING,
+  ENUM,
   HAS,
   LISTENER,
-  NUMBER,
+  REQUIRED,
   ROW,
   ROW_COUNT,
   ROW_IDS,
@@ -136,6 +154,75 @@ import {
   id,
 } from '../common/strings.ts';
 
+export type ProtectedStore = Store & {_: ProtectedMethods};
+
+type ProtectedMethods = [
+  createStore: () => Store,
+  addListener: AddListener,
+  callListeners: CallListeners,
+  setInternalListeners: (
+    preStartTransaction: () => void,
+    preFinishTransaction: (rolledBack: boolean) => void,
+    postFinishTransaction: (rolledBack: boolean) => void,
+    cellChanged: (
+      tableId: Id,
+      rowId: Id,
+      cellId: Id,
+      newCell: CellOrUndefined,
+      mutating: 0 | 1,
+      defaulted: 0 | 1,
+    ) => void,
+    valueChanged: (
+      valueId: Id,
+      newValue: ValueOrUndefined,
+      mutating: 0 | 1,
+      defaulted: 0 | 1,
+    ) => void,
+  ) => void,
+  setMiddleware: (
+    willSetContent?: (content: Content, encoded?: 0 | 1) => Content | undefined,
+    willSetTables?: (tables: Tables) => Tables | undefined,
+    willSetTable?: (tableId: Id, table: Table) => Table | undefined,
+    willSetRow?: (tableId: Id, rowId: Id, row: Row) => Row | undefined,
+    willSetCell?: (
+      tableId: Id,
+      rowId: Id,
+      cellId: Id,
+      cell: Cell,
+    ) => CellOrUndefined,
+    willSetValues?: (values: Values) => Values | undefined,
+    willSetValue?: (valueId: Id, value: Value) => ValueOrUndefined,
+    willDelTables?: () => boolean,
+    willDelTable?: (tableId: Id) => boolean,
+    willDelRow?: (tableId: Id, rowId: Id) => boolean,
+    willDelCell?: (tableId: Id, rowId: Id, cellId: Id) => boolean,
+    willDelValues?: () => boolean,
+    willDelValue?: (valueId: Id) => boolean,
+    willApplyChanges?: (
+      changes: Changes,
+      encoded?: 0 | 1,
+    ) => Changes | undefined,
+    hasWillSetRowCallbacks?: () => boolean,
+  ) => void,
+  setOrDelCell: (
+    tableId: Id,
+    rowId: Id,
+    cellId: Id,
+    cell: CellOrUndefined,
+    skipMiddleware?: boolean,
+    skipRowMiddleware?: boolean,
+  ) => Store,
+  setOrDelValue: (
+    valueId: Id,
+    value: ValueOrUndefined,
+    skipMiddleware?: boolean,
+  ) => Store,
+  getEncodedContent: () => Content,
+  getEncodedTransactionChanges: () => Changes,
+  setEncodedContent: (content: Content) => Store,
+  applyEncodedChanges: (changes: Changes) => Store,
+];
+
 type TablesSchemaMap = IdMap2<CellSchema>;
 type ValuesSchemaMap = IdMap<ValueSchema>;
 type RowMap = IdMap<Cell>;
@@ -145,6 +232,20 @@ type ValuesMap = IdMap<Value>;
 type ChangedIdsMap = IdMap<IdAddedOrRemoved>;
 type ChangedIdsMap2 = IdMap2<IdAddedOrRemoved>;
 type ChangedIdsMap3 = IdMap3<IdAddedOrRemoved>;
+
+const cloneSchema = <Schema>(schema: Schema): Schema =>
+  (isArray(schema)
+    ? arrayMap(schema, cloneSchema)
+    : isObject(schema)
+      ? objMap(schema, cloneSchema)
+      : schema) as Schema;
+
+const decodeSchema = <Schema extends CellSchema | ValueSchema>(
+  schema: Schema,
+): Schema =>
+  objMap(schema as any, (value, id) =>
+    id == DEFAULT ? decodeIfJson(value as Cell) : value,
+  ) as Schema;
 
 const idsChanged = (
   changedIds: ChangedIdsMap,
@@ -157,39 +258,84 @@ const idsChanged = (
     mapGet(changedIds, id) == -addedOrRemoved ? undefined : addedOrRemoved,
   ) as ChangedIdsMap;
 
+const contentOrChangesIsEqual = (
+  [tables1, values1]: Content | Changes,
+  [tables2, values2]: Content | Changes,
+): boolean => objIsEqual(tables1, tables2) && objIsEqual(values1, values2);
+
 export const createStore: typeof createStoreDecl = (): Store => {
   let hasTablesSchema: boolean;
   let hasValuesSchema: boolean;
   let hadTables = false;
   let hadValues = false;
+  let oldTablesSchema: [boolean, TablesSchema] | undefined;
+  let oldValuesSchema: [boolean, ValuesSchema] | undefined;
+  let rollbackRequested: 0 | 1 = 0;
   let transactions = 0;
+  let middleware: [
+    willSetContent?: (content: Content, encoded?: 0 | 1) => Content | undefined,
+    willSetTables?: (tables: Tables) => Tables | undefined,
+    willSetTable?: (tableId: Id, table: Table) => Table | undefined,
+    willSetRow?: (tableId: Id, rowId: Id, row: Row) => Row | undefined,
+    willSetCell?: (
+      tableId: Id,
+      rowId: Id,
+      cellId: Id,
+      cell: Cell,
+    ) => CellOrUndefined,
+    willSetValues?: (values: Values) => Values | undefined,
+    willSetValue?: (valueId: Id, value: Value) => ValueOrUndefined,
+    willDelTables?: () => boolean,
+    willDelTable?: (tableId: Id) => boolean,
+    willDelRow?: (tableId: Id, rowId: Id) => boolean,
+    willDelCell?: (tableId: Id, rowId: Id, cellId: Id) => boolean,
+    willDelValues?: () => boolean,
+    willDelValue?: (valueId: Id) => boolean,
+    willApplyChanges?: (
+      changes: Changes,
+      encoded?: 0 | 1,
+    ) => Changes | undefined,
+    hasWillSetRowCallbacks?: () => boolean,
+  ] = [];
   let internalListeners: [
     preStartTransaction?: () => void,
-    preFinishTransaction?: () => void,
-    postFinishTransaction?: () => void,
+    preFinishTransaction?: (rolledBack: boolean) => void,
+    postFinishTransaction?: (rolledBack: boolean) => void,
     cellChanged?: (
       tableId: Id,
       rowId: Id,
       cellId: Id,
       newCell: CellOrUndefined,
+      mutating: 0 | 1,
+      defaulted: 0 | 1,
     ) => void,
-    valueChanged?: (valueId: Id, newValue: ValueOrUndefined) => void,
+    valueChanged?: (
+      valueId: Id,
+      newValue: ValueOrUndefined,
+      mutating: 0 | 1,
+      defaulted: 0 | 1,
+    ) => void,
   ] = [];
+  let acceptingEncodedData: 0 | 1 = 0;
+  let mutating: 0 | 1 = 0;
   const changedTableIds: ChangedIdsMap = mapNew();
   const changedTableCellIds: ChangedIdsMap2 = mapNew();
   const changedRowCount: IdMap<number> = mapNew();
   const changedRowIds: ChangedIdsMap2 = mapNew();
   const changedCellIds: ChangedIdsMap3 = mapNew();
   const changedCells: IdMap3<ChangedCell> = mapNew();
+  const defaultedCells: IdSet3 = mapNew();
   const changedValueIds: ChangedIdsMap = mapNew();
   const changedValues: IdMap<ChangedValue> = mapNew();
+  const defaultedValues: IdSet = setNew();
   const invalidCells: IdMap3<any[]> = mapNew();
   const invalidValues: IdMap<any[]> = mapNew();
   const tablesSchemaMap: TablesSchemaMap = mapNew();
-  const tablesSchemaRowCache: IdMap<[RowMap, IdSet]> = mapNew();
+  const tablesSchemaRowCache: IdMap<[RowMap, IdSet, IdSet]> = mapNew();
   const valuesSchemaMap: ValuesSchemaMap = mapNew();
   const valuesDefaulted: ValuesMap = mapNew();
   const valuesNonDefaulted: IdSet = setNew();
+  const valuesRequiredNonDefaulted: IdSet = setNew();
   const tablePoolFunctions: IdMap<PoolFunctions> = mapNew();
   const tableCellIds: IdMap<IdMap<number>> = mapNew();
   const tablesMap: TablesMap = mapNew();
@@ -219,8 +365,40 @@ export const createStore: typeof createStoreDecl = (): Store => {
   const startTransactionListeners: IdSet2 = mapNew();
   const finishTransactionListeners: Pair<IdSet2> = pairNewMap();
 
-  const [addListener, callListeners, delListenerImpl, callListenerImpl] =
-    getListenerFunctions(() => store);
+  const [
+    addListener,
+    callListeners,
+    delListenerImpl,
+    callListenerImpl,
+    callListenersThenThrow,
+  ] = getListenerFunctions(() => store);
+
+  const whileMutating = <Return>(action: () => Return): Return => {
+    const wasMutating = mutating;
+    mutating = 1;
+    return tryFinally(action, () => (mutating = wasMutating));
+  };
+
+  const whileAcceptingEncodedData = <Return>(action: () => Return): Return => {
+    const wasAcceptingEncodedData = acceptingEncodedData;
+    acceptingEncodedData = 1;
+    return tryFinally(
+      action,
+      () => (acceptingEncodedData = wasAcceptingEncodedData),
+    );
+  };
+
+  const ifTransformed = <Value, Result>(
+    snapshot: Value,
+    getResult: () => Value | undefined,
+    then: (result: Value) => Result,
+    isEqual: (a: Value, b: Value) => boolean = Object.is,
+  ): Result | undefined =>
+    ifNotUndefined(getResult(), (result) =>
+      snapshot === result || isEqual(snapshot, result)
+        ? then(result)
+        : whileMutating(() => then(result)),
+    );
 
   const validateTablesSchema = (
     tableSchema: TablesSchema | undefined,
@@ -235,19 +413,94 @@ export const createStore: typeof createStoreDecl = (): Store => {
 
   const validateCellOrValueSchema = (schema: CellSchema | ValueSchema) => {
     if (
-      !objValidate(schema, (_child, id: Id) => arrayHas([TYPE, DEFAULT], id))
+      !objValidate(schema, (_child, id: Id) =>
+        arrayHas([TYPE, ENUM, DEFAULT, ALLOW_NULL, REQUIRED], id),
+      )
     ) {
       return false;
     }
     const type = schema[TYPE];
-    if (!isTypeStringOrBoolean(type) && type != NUMBER) {
+    const enumValues = schema[ENUM];
+    if (
+      isUndefined(enumValues)
+        ? !isCellOrValueSchemaTypes(type)
+        : !isUndefined(type) ||
+          !isArray(enumValues) ||
+          isUndefined(enumValues[0]) ||
+          !arrayEvery(enumValues, (enumValue) => {
+            const enumType = getCellOrValueType(enumValue);
+            return (
+              !isNull(enumValue) &&
+              !isUndefined(enumType) &&
+              !isJsonType(enumType) &&
+              !isReservedString(enumValue)
+            );
+          })
+    ) {
       return false;
     }
-    if (getCellOrValueType(schema[DEFAULT]) != type) {
-      objDel(schema as any, DEFAULT);
+    const defaultValue = schema[DEFAULT];
+    if (isNull(defaultValue) && !schema[ALLOW_NULL]) {
+      return false;
+    }
+    if (!isNull(defaultValue)) {
+      if (
+        (isUndefined(enumValues)
+          ? !cellOrValueSchemaTypeIncludes(
+              type as CellOrValueSchemaTypes,
+              getCellOrValueType(defaultValue),
+            )
+          : !arrayHas(enumValues, defaultValue as any)) ||
+        isReservedString(defaultValue)
+      ) {
+        objDel(schema as any, DEFAULT);
+      } else {
+        ifNotUndefined(
+          tryReturn(() => encodeIfJson(defaultValue as Cell)),
+          (defaultValue) => ((schema as any)[DEFAULT] = defaultValue),
+          () => objDel(schema as any, DEFAULT),
+        );
+      }
     }
     return true;
   };
+
+  const encodeValid = <CV extends Cell | Value>(
+    cellOrValue: CV,
+    invalid: () => CV | undefined,
+  ): CV | undefined =>
+    ifNotUndefined(
+      tryReturn(() => encodeIfJson(cellOrValue)) as CV | undefined,
+      (cellOrValue) => cellOrValue,
+      invalid,
+    );
+
+  const cloneRow = (row: Row): Row =>
+    isObject(row) ? objMap(row, getArg) : row;
+
+  const cloneTable = (table: Table): Table =>
+    isObject(table) ? objMap(table, cloneRow) : table;
+
+  const cloneTables = (tables: Tables): Tables =>
+    isObject(tables) ? objMap(tables, cloneTable) : tables;
+
+  const cloneValues = (values: Values): Values =>
+    isObject(values) ? objMap(values, getArg) : values;
+
+  const isValidEncodedJson = (
+    cellOrValue: any,
+    types?: CellOrValueSchemaTypes,
+  ): boolean =>
+    acceptingEncodedData == 1 &&
+    isEncodedJson(cellOrValue) &&
+    tryReturn(() => {
+      const encodedType = getCellOrValueType(decodeIfJson(cellOrValue));
+      return (
+        isJsonType(encodedType) &&
+        (isUndefined(types) ||
+          cellOrValueSchemaTypeIncludes(types, encodedType))
+      );
+    }, false) == true;
 
   const validateContent = isArray;
 
@@ -270,20 +523,31 @@ export const createStore: typeof createStoreDecl = (): Store => {
     rowId: Id | undefined,
     row: Row,
     skipDefaults?: 1,
-  ): boolean =>
-    objValidate(
-      skipDefaults ? row : addDefaultsToRow(row, tableId, rowId),
-      (cell: Cell, cellId: Id): boolean =>
-        ifNotUndefined(
-          getValidatedCell(tableId, rowId, cellId, cell),
-          (validCell) => {
-            row[cellId] = validCell;
-            return true;
-          },
-          () => false,
-        ) as boolean,
-      () => cellInvalid(tableId, rowId),
+  ): boolean => {
+    const rowWithDefaults = skipDefaults
+      ? row
+      : addDefaultsToRow(row, tableId, rowId);
+    return (
+      objValidate(
+        rowWithDefaults,
+        (cell: Cell, cellId: Id): boolean =>
+          ifNotUndefined(
+            getValidatedCell(tableId, rowId, cellId, cell),
+            (validCell) => {
+              objSet(row, cellId, validCell);
+              return true;
+            },
+            () => false,
+          ) as boolean,
+        () => cellInvalid(tableId, rowId),
+      ) &&
+      (skipDefaults
+        ? true
+        : collEvery(mapGet(tablesSchemaRowCache, tableId)?.[2], (cellId) =>
+            objHas(rowWithDefaults, cellId),
+          ))
     );
+  };
 
   const getValidatedCell = (
     tableId: Id,
@@ -295,43 +559,122 @@ export const createStore: typeof createStoreDecl = (): Store => {
       ? ifNotUndefined(
           mapGet(mapGet(tablesSchemaMap, tableId), cellId),
           (cellSchema) =>
-            getCellOrValueType(cell) != cellSchema[TYPE]
-              ? cellInvalid(tableId, rowId, cellId, cell, cellSchema[DEFAULT])
-              : cell,
+            isNull(cell)
+              ? cellSchema[ALLOW_NULL]
+                ? cell
+                : cellInvalid(tableId, rowId, cellId, cell, cellSchema[DEFAULT])
+              : isReservedString(cell, acceptingEncodedData)
+                ? cellInvalid(tableId, rowId, cellId, cell, cellSchema[DEFAULT])
+                : isEncodedJson(cell)
+                  ? isUndefined(cellSchema[ENUM]) &&
+                    isValidEncodedJson(cell, cellSchema[TYPE])
+                    ? cell
+                    : cellInvalid(
+                        tableId,
+                        rowId,
+                        cellId,
+                        cell,
+                        cellSchema[DEFAULT],
+                      )
+                  : isUndefined(cellSchema[ENUM])
+                    ? cellOrValueSchemaTypeIncludes(
+                        cellSchema[TYPE] as CellOrValueSchemaTypes,
+                        getCellOrValueType(cell),
+                      )
+                      ? encodeValid(cell, () =>
+                          cellInvalid(
+                            tableId,
+                            rowId,
+                            cellId,
+                            cell,
+                            cellSchema[DEFAULT],
+                          ),
+                        )
+                      : cellInvalid(
+                          tableId,
+                          rowId,
+                          cellId,
+                          cell,
+                          cellSchema[DEFAULT],
+                        )
+                    : arrayHas(cellSchema[ENUM], cell)
+                      ? cell
+                      : cellInvalid(
+                          tableId,
+                          rowId,
+                          cellId,
+                          cell,
+                          cellSchema[DEFAULT],
+                        ),
           () => cellInvalid(tableId, rowId, cellId, cell),
         )
-      : isUndefined(getCellOrValueType(cell))
+      : isUndefined(getCellOrValueType(cell)) ||
+          isReservedString(cell, acceptingEncodedData) ||
+          (isEncodedJson(cell) && !isValidEncodedJson(cell))
         ? cellInvalid(tableId, rowId, cellId, cell)
-        : cell;
+        : encodeValid(cell, () => cellInvalid(tableId, rowId, cellId, cell));
 
-  const validateValues = (values: Values, skipDefaults?: 1): boolean =>
-    objValidate(
-      skipDefaults ? values : addDefaultsToValues(values),
-      (value: Value, valueId: Id): boolean =>
-        ifNotUndefined(
-          getValidatedValue(valueId, value),
-          (validValue) => {
-            values[valueId] = validValue;
-            return true;
-          },
-          () => false,
-        ) as boolean,
-      () => valueInvalid(),
+  const validateValues = (values: Values, skipDefaults?: 1): boolean => {
+    const valuesWithDefaults = skipDefaults
+      ? values
+      : addDefaultsToValues(values);
+    return (
+      objValidate(
+        valuesWithDefaults,
+        (value: Value, valueId: Id): boolean =>
+          ifNotUndefined(
+            getValidatedValue(valueId, value),
+            (validValue) => {
+              objSet(values, valueId, validValue);
+              return true;
+            },
+            () => false,
+          ) as boolean,
+        () => valueInvalid(),
+      ) &&
+      (skipDefaults
+        ? true
+        : collEvery(valuesRequiredNonDefaulted, (valueId) =>
+            objHas(valuesWithDefaults, valueId),
+          ))
     );
+  };
 
   const getValidatedValue = (valueId: Id, value: Value): ValueOrUndefined =>
     hasValuesSchema
       ? ifNotUndefined(
           mapGet(valuesSchemaMap, valueId),
           (valueSchema) =>
-            getCellOrValueType(value) != valueSchema[TYPE]
-              ? valueInvalid(valueId, value, valueSchema[DEFAULT])
-              : value,
+            isNull(value)
+              ? valueSchema[ALLOW_NULL]
+                ? value
+                : valueInvalid(valueId, value, valueSchema[DEFAULT])
+              : isReservedString(value, acceptingEncodedData)
+                ? valueInvalid(valueId, value, valueSchema[DEFAULT])
+                : isEncodedJson(value)
+                  ? isUndefined(valueSchema[ENUM]) &&
+                    isValidEncodedJson(value, valueSchema[TYPE])
+                    ? value
+                    : valueInvalid(valueId, value, valueSchema[DEFAULT])
+                  : isUndefined(valueSchema[ENUM])
+                    ? cellOrValueSchemaTypeIncludes(
+                        valueSchema[TYPE] as CellOrValueSchemaTypes,
+                        getCellOrValueType(value),
+                      )
+                      ? encodeValid(value, () =>
+                          valueInvalid(valueId, value, valueSchema[DEFAULT]),
+                        )
+                      : valueInvalid(valueId, value, valueSchema[DEFAULT])
+                    : arrayHas(valueSchema[ENUM], value)
+                      ? value
+                      : valueInvalid(valueId, value, valueSchema[DEFAULT]),
           () => valueInvalid(valueId, value),
         )
-      : isUndefined(getCellOrValueType(value))
+      : isUndefined(getCellOrValueType(value)) ||
+          isReservedString(value, acceptingEncodedData) ||
+          (isEncodedJson(value) && !isValidEncodedJson(value))
         ? valueInvalid(valueId, value)
-        : value;
+        : encodeValid(value, () => valueInvalid(valueId, value));
 
   const addDefaultsToRow = (row: Row, tableId: Id, rowId?: Id): Row => {
     ifNotUndefined(
@@ -339,7 +682,17 @@ export const createStore: typeof createStoreDecl = (): Store => {
       ([rowDefaulted, rowNonDefaulted]) => {
         collForEach(rowDefaulted, (cell, cellId) => {
           if (!objHas(row, cellId)) {
-            row[cellId] = cell;
+            objSet(row, cellId, cell);
+            ifNotUndefined(rowId, (rowId) =>
+              setAdd(
+                mapEnsure(
+                  mapEnsure(defaultedCells, tableId, mapNew<Id, IdSet>),
+                  rowId,
+                  setNew<Id>,
+                ),
+                cellId,
+              ),
+            );
           }
         });
         collForEach(rowNonDefaulted, (cellId) => {
@@ -356,7 +709,8 @@ export const createStore: typeof createStoreDecl = (): Store => {
     if (hasValuesSchema) {
       collForEach(valuesDefaulted, (value, valueId) => {
         if (!objHas(values, valueId)) {
-          values[valueId] = value;
+          objSet(values, valueId, value);
+          setAdd(defaultedValues, valueId);
         }
       });
       collForEach(valuesNonDefaulted, (valueId) => {
@@ -375,6 +729,7 @@ export const createStore: typeof createStoreDecl = (): Store => {
       (_tablesSchema, tableId, tableSchema) => {
         const rowDefaulted = mapNew();
         const rowNonDefaulted = setNew();
+        const rowRequiredNonDefaulted = setNew();
         mapMatch(
           mapEnsure<Id, IdMap<CellSchema>>(tablesSchemaMap, tableId, mapNew),
           tableSchema,
@@ -382,12 +737,23 @@ export const createStore: typeof createStoreDecl = (): Store => {
             mapSet(tableSchemaMap, cellId, cellSchema);
             ifNotUndefined(
               cellSchema[DEFAULT],
-              (def) => mapSet(rowDefaulted, cellId, def),
-              () => setAdd(rowNonDefaulted, cellId) as any,
+              (defaultCell) => {
+                mapSet(rowDefaulted, cellId, defaultCell);
+              },
+              () => {
+                setAdd(rowNonDefaulted, cellId);
+                if (cellSchema[REQUIRED] === true) {
+                  setAdd(rowRequiredNonDefaulted, cellId);
+                }
+              },
             );
           },
         );
-        mapSet(tablesSchemaRowCache, tableId, [rowDefaulted, rowNonDefaulted]);
+        mapSet(tablesSchemaRowCache, tableId, [
+          rowDefaulted,
+          rowNonDefaulted,
+          rowRequiredNonDefaulted,
+        ]);
       },
       (_tablesSchema, tableId) => {
         mapSet(tablesSchemaMap, tableId);
@@ -403,45 +769,148 @@ export const createStore: typeof createStoreDecl = (): Store => {
         mapSet(valuesSchemaMap, valueId, valueSchema);
         ifNotUndefined(
           valueSchema[DEFAULT],
-          (def) => mapSet(valuesDefaulted, valueId, def),
-          () => setAdd(valuesNonDefaulted, valueId) as any,
+          (defaultValue) => {
+            mapSet(valuesDefaulted, valueId, defaultValue);
+            collDel(valuesNonDefaulted, valueId);
+            collDel(valuesRequiredNonDefaulted, valueId);
+          },
+          () => {
+            mapSet(valuesDefaulted, valueId);
+            setAdd(valuesNonDefaulted, valueId);
+            if (valueSchema[REQUIRED] === true) {
+              setAdd(valuesRequiredNonDefaulted, valueId);
+            } else {
+              collDel(valuesRequiredNonDefaulted, valueId);
+            }
+          },
         );
       },
       (_valuesSchema, valueId) => {
         mapSet(valuesSchemaMap, valueId);
         mapSet(valuesDefaulted, valueId);
         collDel(valuesNonDefaulted, valueId);
+        collDel(valuesRequiredNonDefaulted, valueId);
       },
     );
+
+  const saveTablesSchema = (): void => {
+    oldTablesSchema ??= [
+      !!hasTablesSchema,
+      mapToObj2<CellSchema>(tablesSchemaMap),
+    ];
+  };
+
+  const saveValuesSchema = (): void => {
+    oldValuesSchema ??= [!!hasValuesSchema, mapToObj(valuesSchemaMap)];
+  };
 
   const setOrDelTables = (tables: Tables) =>
     objIsEmpty(tables) ? delTables() : setTables(tables);
 
-  const setValidContent = ([tables, values]: Content): void => {
-    (objIsEmpty(tables) ? delTables : setTables)(tables);
-    (objIsEmpty(values) ? delValues : setValues)(values);
-  };
+  const setOrDelCell = (
+    tableId: Id,
+    rowId: Id,
+    cellId: Id,
+    cell: CellOrUndefined,
+    skipMiddleware?: boolean,
+    skipRowMiddleware?: boolean,
+  ) =>
+    isUndefined(cell)
+      ? delCell(tableId, rowId, cellId, true, skipMiddleware)
+      : setCell(
+          tableId,
+          rowId,
+          cellId,
+          cell,
+          skipMiddleware,
+          skipRowMiddleware,
+        );
 
-  const setValidTables = (tables: Tables): TablesMap =>
-    mapMatch(
-      tablesMap,
+  const setOrDelValues = (values: Values) =>
+    objIsEmpty(values) ? delValues() : setValues(values);
+
+  const setOrDelValue = (
+    valueId: Id,
+    value: ValueOrUndefined,
+    skipMiddleware?: boolean,
+  ) =>
+    isUndefined(value)
+      ? delValue(valueId, skipMiddleware)
+      : setValue(valueId, value, skipMiddleware);
+
+  const setValidContent = (content: Content): void =>
+    ifTransformed(
+      content,
+      () =>
+        ifNotUndefined(
+          middleware[0],
+          (willSetContent) =>
+            whileMutating(() =>
+              willSetContent(structuredClone(content), acceptingEncodedData),
+            ),
+          () => content,
+        ),
+      ([tables, values]) => {
+        (objIsEmpty(tables) ? delTables : setTables)(tables);
+        (objIsEmpty(values) ? delValues : setValues)(values);
+      },
+      contentOrChangesIsEqual,
+    );
+
+  const setValidTables = (tables: Tables, forceDel?: boolean): TablesMap =>
+    ifTransformed(
       tables,
-      (_tables, tableId, table) => setValidTable(tableId, table),
-      (_tables, tableId) => delValidTable(tableId),
-    );
+      () =>
+        forceDel
+          ? tables
+          : ifNotUndefined(
+              middleware[1],
+              (willSetTables) =>
+                whileMutating(() => willSetTables(structuredClone(tables))),
+              () => tables,
+            ),
+      (validTables) =>
+        mapMatch(
+          tablesMap,
+          validTables,
+          (_tables, tableId, table) => setValidTable(tableId, table),
+          (_tables, tableId) => delValidTable(tableId),
+        ),
+      objIsEqual,
+    ) as TablesMap;
 
-  const setValidTable = (tableId: Id, table: Table): TableMap =>
-    mapMatch(
-      mapEnsure(tablesMap, tableId, () => {
-        tableIdsChanged(tableId, 1);
-        mapSet(tablePoolFunctions, tableId, getPoolFunctions());
-        mapSet(tableCellIds, tableId, mapNew());
-        return mapNew();
-      }),
+  const setValidTable = (
+    tableId: Id,
+    table: Table,
+    forceDel?: boolean,
+  ): TableMap =>
+    ifTransformed(
       table,
-      (tableMap, rowId, row) => setValidRow(tableId, tableMap, rowId, row),
-      (tableMap, rowId) => delValidRow(tableId, tableMap, rowId),
-    );
+      () =>
+        forceDel
+          ? table
+          : ifNotUndefined(
+              middleware[2],
+              (willSetTable) =>
+                whileMutating(() =>
+                  willSetTable(tableId, structuredClone(table)),
+                ),
+              () => table,
+            ),
+      (validTable) =>
+        mapMatch(
+          mapEnsure(tablesMap, tableId, () => {
+            tableIdsChanged(tableId, 1);
+            mapSet(tablePoolFunctions, tableId, getPoolFunctions());
+            mapSet(tableCellIds, tableId, mapNew());
+            return mapNew();
+          }),
+          validTable,
+          (tableMap, rowId, row) => setValidRow(tableId, tableMap, rowId, row),
+          (tableMap, rowId) => delValidRow(tableId, tableMap, rowId),
+        ),
+      objIsEqual,
+    ) as TableMap;
 
   const setValidRow = (
     tableId: Id,
@@ -450,6 +919,41 @@ export const createStore: typeof createStoreDecl = (): Store => {
     row: Row,
     forceDel?: boolean,
   ): RowMap =>
+    ifTransformed(
+      row,
+      () =>
+        forceDel
+          ? row
+          : ifNotUndefined(
+              middleware[3],
+              (willSetRow) =>
+                whileMutating(() =>
+                  willSetRow(tableId, rowId, structuredClone(row)),
+                ),
+              () => row,
+            ),
+      (validRow) =>
+        mapMatch(
+          mapEnsure(tableMap, rowId, () => {
+            rowIdsChanged(tableId, rowId, 1);
+            return mapNew();
+          }),
+          validRow,
+          (rowMap, cellId, cell) =>
+            setValidCell(tableId, rowId, rowMap, cellId, cell),
+          (rowMap, cellId) =>
+            delValidCell(tableId, tableMap, rowId, rowMap, cellId, forceDel),
+        ),
+      objIsEqual,
+    ) as RowMap;
+
+  const applyRowDirectly = (
+    tableId: Id,
+    tableMap: TableMap,
+    rowId: Id,
+    row: Row,
+    skipMiddleware?: boolean,
+  ): void => {
     mapMatch(
       mapEnsure(tableMap, rowId, () => {
         rowIdsChanged(tableId, rowId, 1);
@@ -457,10 +961,22 @@ export const createStore: typeof createStoreDecl = (): Store => {
       }),
       row,
       (rowMap, cellId, cell) =>
-        setValidCell(tableId, rowId, rowMap, cellId, cell),
+        ifNotUndefined(
+          getValidatedCell(tableId, rowId, cellId, decodeIfJson(cell as Cell)),
+          (validCell) =>
+            setValidCell(
+              tableId,
+              rowId,
+              rowMap,
+              cellId,
+              validCell,
+              skipMiddleware,
+            ),
+        ),
       (rowMap, cellId) =>
-        delValidCell(tableId, tableMap, rowId, rowMap, cellId, forceDel),
+        delValidCell(tableId, tableMap, rowId, rowMap, cellId, true),
     );
+  };
 
   const setValidCell = (
     tableId: Id,
@@ -468,57 +984,119 @@ export const createStore: typeof createStoreDecl = (): Store => {
     rowMap: RowMap,
     cellId: Id,
     cell: Cell,
-  ): void => {
-    if (!collHas(rowMap, cellId)) {
-      cellIdsChanged(tableId, rowId, cellId, 1);
-    }
-    const oldCell = mapGet(rowMap, cellId);
-    if (cell !== oldCell) {
-      cellChanged(tableId, rowId, cellId, oldCell, cell);
-      mapSet(rowMap, cellId, cell);
-    }
-  };
+    skipMiddleware?: boolean,
+  ): void =>
+    ifTransformed(
+      cell,
+      () =>
+        ifNotUndefined(
+          skipMiddleware ? undefined : middleware[4],
+          (willSetCell) =>
+            whileMutating(() => willSetCell(tableId, rowId, cellId, cell)),
+          () => cell,
+        ),
+      (cell) =>
+        ifNotUndefined(
+          mutating
+            ? getValidatedCell(tableId, rowId, cellId, decodeIfJson(cell))
+            : cell,
+          (validCell) => {
+            if (!collHas(rowMap, cellId)) {
+              cellIdsChanged(tableId, rowId, cellId, 1);
+            }
+            const oldCell = mapGet(rowMap, cellId);
+            if (validCell !== oldCell) {
+              cellChanged(tableId, rowId, cellId, oldCell, validCell);
+              mapSet(rowMap, cellId, validCell);
+            }
+          },
+        ),
+    );
 
-  const setCellIntoDefaultRow = (
+  const setCellIntoNewRow = (
     tableId: Id,
     tableMap: TableMap,
     rowId: Id,
     cellId: Id,
     validCell: Cell,
+    skipMiddleware?: boolean,
   ): void =>
     ifNotUndefined(
       mapGet(tableMap, rowId),
-      (rowMap): any => setValidCell(tableId, rowId, rowMap, cellId, validCell),
-      () =>
-        setValidRow(
-          tableId,
-          tableMap,
-          rowId,
+      (rowMap): any =>
+        setValidCell(tableId, rowId, rowMap, cellId, validCell, skipMiddleware),
+      () => {
+        const rowMap: RowMap = mapNew();
+        mapSet(tableMap, rowId, rowMap);
+        rowIdsChanged(tableId, rowId, 1);
+        objForEach(
           addDefaultsToRow({[cellId]: validCell}, tableId, rowId),
+          (cell, cellId) =>
+            setValidCell(
+              tableId,
+              rowId,
+              rowMap,
+              cellId,
+              cell as Cell,
+              skipMiddleware,
+            ),
+        );
+      },
+    );
+
+  const setValidValues = (
+    values: Values,
+    forceDel?: boolean,
+  ): RowMap | undefined =>
+    ifTransformed(
+      values,
+      () =>
+        forceDel
+          ? values
+          : ifNotUndefined(
+              middleware[5],
+              (willSetValues) =>
+                whileMutating(() => willSetValues(structuredClone(values))),
+              () => values,
+            ),
+      (validValues) =>
+        mapMatch(
+          valuesMap,
+          validValues,
+          (_valuesMap, valueId, value) => setValidValue(valueId, value),
+          (_valuesMap, valueId) => delValidValue(valueId),
+        ),
+      objIsEqual,
+    );
+
+  const setValidValue = (
+    valueId: Id,
+    value: Value,
+    skipMiddleware?: boolean,
+  ): void =>
+    ifTransformed(
+      value,
+      () =>
+        ifNotUndefined(
+          skipMiddleware ? undefined : middleware[6],
+          (willSetValue) => whileMutating(() => willSetValue(valueId, value)),
+          () => value,
+        ),
+      (value) =>
+        ifNotUndefined(
+          mutating ? getValidatedValue(valueId, decodeIfJson(value)) : value,
+          (validValue) => {
+            if (!collHas(valuesMap, valueId)) {
+              valueIdsChanged(valueId, 1);
+            }
+            const oldValue = mapGet(valuesMap, valueId);
+            if (validValue !== oldValue) {
+              valueChanged(valueId, oldValue, validValue);
+              mapSet(valuesMap, valueId, validValue);
+            }
+          },
         ),
     );
-
-  const setOrDelValues = (values: Values) =>
-    objIsEmpty(values) ? delValues() : setValues(values);
-
-  const setValidValues = (values: Values): RowMap =>
-    mapMatch(
-      valuesMap,
-      values,
-      (_valuesMap, valueId, value) => setValidValue(valueId, value),
-      (_valuesMap, valueId) => delValidValue(valueId),
-    );
-
-  const setValidValue = (valueId: Id, value: Value): void => {
-    if (!collHas(valuesMap, valueId)) {
-      valueIdsChanged(valueId, 1);
-    }
-    const oldValue = mapGet(valuesMap, valueId);
-    if (value !== oldValue) {
-      valueChanged(valueId, oldValue, value);
-      mapSet(valuesMap, valueId, value);
-    }
-  };
 
   const getNewRowId = (tableId: Id, reuse: 0 | 1): Id => {
     const [getId] = mapGet(tablePoolFunctions, tableId) as PoolFunctions;
@@ -530,14 +1108,29 @@ export const createStore: typeof createStoreDecl = (): Store => {
   };
 
   const getOrCreateTable = (tableId: Id) =>
-    mapGet(tablesMap, tableId) ?? setValidTable(tableId, {});
+    mapEnsure(tablesMap, tableId, () => {
+      tableIdsChanged(tableId, 1);
+      mapSet(tablePoolFunctions, tableId, getPoolFunctions());
+      mapSet(tableCellIds, tableId, mapNew());
+      return mapNew();
+    });
 
-  const delValidTable = (tableId: Id): TableMap => setValidTable(tableId, {});
+  const delValidTable = (tableId: Id): TableMap => {
+    if (whileMutating(() => middleware[8]?.(tableId)) ?? true) {
+      return setValidTable(tableId, {}, true);
+    }
+    return mapGet(tablesMap, tableId) as TableMap;
+  };
 
   const delValidRow = (tableId: Id, tableMap: TableMap, rowId: Id): void => {
-    const [, releaseId] = mapGet(tablePoolFunctions, tableId) as PoolFunctions;
-    releaseId(rowId);
-    setValidRow(tableId, tableMap, rowId, {}, true);
+    if (whileMutating(() => middleware[9]?.(tableId, rowId)) ?? true) {
+      const [, releaseId] = mapGet(
+        tablePoolFunctions,
+        tableId,
+      ) as PoolFunctions;
+      releaseId(rowId);
+      setValidRow(tableId, tableMap, rowId, {}, true);
+    }
   };
 
   const delValidCell = (
@@ -547,6 +1140,7 @@ export const createStore: typeof createStoreDecl = (): Store => {
     row: RowMap,
     cellId: Id,
     forceDel?: boolean,
+    skipMiddleware?: boolean,
   ): void => {
     const defaultCell = mapGet(
       mapGet(tablesSchemaRowCache, tableId)?.[0],
@@ -555,35 +1149,45 @@ export const createStore: typeof createStoreDecl = (): Store => {
     if (!isUndefined(defaultCell) && !forceDel) {
       return setValidCell(tableId, rowId, row, cellId, defaultCell);
     }
-    const delCell = (cellId: Id) => {
-      cellChanged(tableId, rowId, cellId, mapGet(row, cellId));
-      cellIdsChanged(tableId, rowId, cellId, -1);
-      mapSet(row, cellId);
-    };
-    if (isUndefined(defaultCell)) {
-      delCell(cellId);
-    } else {
-      mapForEach(row, delCell);
-    }
-    if (collIsEmpty(row)) {
-      rowIdsChanged(tableId, rowId, -1);
-      if (collIsEmpty(mapSet(table, rowId))) {
-        tableIdsChanged(tableId, -1);
-        mapSet(tablesMap, tableId);
-        mapSet(tablePoolFunctions, tableId);
-        mapSet(tableCellIds, tableId);
+    if (
+      skipMiddleware ||
+      (whileMutating(() => middleware[10]?.(tableId, rowId, cellId)) ?? true)
+    ) {
+      const delCell = (cellId: Id) => {
+        cellChanged(tableId, rowId, cellId, mapGet(row, cellId));
+        cellIdsChanged(tableId, rowId, cellId, -1);
+        mapSet(row, cellId);
+      };
+      if (isUndefined(defaultCell)) {
+        delCell(cellId);
+      } else {
+        mapForEach(row, delCell);
+      }
+      if (collIsEmpty(row)) {
+        rowIdsChanged(tableId, rowId, -1);
+        if (collIsEmpty(mapSet(table, rowId))) {
+          tableIdsChanged(tableId, -1);
+          mapSet(tablesMap, tableId);
+          mapSet(tablePoolFunctions, tableId);
+          mapSet(tableCellIds, tableId);
+        }
       }
     }
   };
 
-  const delValidValue = (valueId: Id): void => {
+  const delValidValue = (valueId: Id, skipMiddleware?: boolean): void => {
     const defaultValue = mapGet(valuesDefaulted, valueId);
     if (!isUndefined(defaultValue)) {
       return setValidValue(valueId, defaultValue);
     }
-    valueChanged(valueId, mapGet(valuesMap, valueId));
-    valueIdsChanged(valueId, -1);
-    mapSet(valuesMap, valueId);
+    if (
+      skipMiddleware ||
+      (whileMutating(() => middleware[12]?.(valueId)) ?? true)
+    ) {
+      valueChanged(valueId, mapGet(valuesMap, valueId));
+      valueIdsChanged(valueId, -1);
+      mapSet(valuesMap, valueId);
+    }
   };
 
   const tableIdsChanged = (
@@ -628,7 +1232,7 @@ export const createStore: typeof createStoreDecl = (): Store => {
     mapSet(
       cellIds,
       cellId,
-      count != -addedOrRemoved ? count + addedOrRemoved : null,
+      count != -addedOrRemoved ? count + addedOrRemoved : undefined,
     );
 
     idsChanged(
@@ -649,6 +1253,11 @@ export const createStore: typeof createStoreDecl = (): Store => {
     oldCell?: CellOrUndefined,
     newCell?: CellOrUndefined,
   ): void => {
+    const defaulted =
+      collHas(mapGet(mapGet(defaultedCells, tableId), rowId), cellId) &&
+      isUndefined(oldCell)
+        ? 1
+        : 0;
     mapEnsure<Id, ChangedCell>(
       mapEnsure<Id, IdMap<ChangedCell>>(
         mapEnsure<Id, IdMap2<ChangedCell>>(changedCells, tableId, mapNew),
@@ -658,7 +1267,15 @@ export const createStore: typeof createStoreDecl = (): Store => {
       cellId,
       () => [oldCell, 0],
     )[1] = newCell;
-    internalListeners[3]?.(tableId, rowId, cellId, newCell);
+    internalListeners[3]?.(
+      tableId,
+      rowId,
+      cellId,
+      newCell,
+      mutating,
+      defaulted,
+    );
+    collDel(mapGet(mapGet(defaultedCells, tableId), rowId), cellId);
   };
 
   const valueIdsChanged = (
@@ -671,11 +1288,14 @@ export const createStore: typeof createStoreDecl = (): Store => {
     oldValue?: ValueOrUndefined,
     newValue?: ValueOrUndefined,
   ): void => {
+    const defaulted =
+      collHas(defaultedValues, valueId) && isUndefined(oldValue) ? 1 : 0;
     mapEnsure<Id, ChangedValue>(changedValues, valueId, () => [
       oldValue,
       0,
     ])[1] = newValue;
-    internalListeners[4]?.(valueId, newValue);
+    internalListeners[4]?.(valueId, newValue, mutating, defaulted);
+    collDel(defaultedValues, valueId);
   };
 
   const cellInvalid = (
@@ -719,14 +1339,22 @@ export const createStore: typeof createStoreDecl = (): Store => {
   const getCellChange: GetCellChange = (tableId: Id, rowId: Id, cellId: Id) =>
     ifNotUndefined(
       mapGet(mapGet(mapGet(changedCells, tableId), rowId), cellId),
-      ([oldCell, newCell]) => [true, oldCell, newCell],
+      ([oldCell, newCell]) => [
+        true,
+        decodeIfJson(oldCell),
+        decodeIfJson(newCell),
+      ],
       () => [false, ...pairNew(getCell(tableId, rowId, cellId))] as CellChange,
     ) as CellChange;
 
   const getValueChange: GetValueChange = (valueId: Id) =>
     ifNotUndefined(
       mapGet(changedValues, valueId),
-      ([oldValue, newValue]) => [true, oldValue, newValue],
+      ([oldValue, newValue]) => [
+        true,
+        decodeIfJson(oldValue),
+        decodeIfJson(newValue),
+      ],
       () => [false, ...pairNew(getValue(valueId))] as ValueChange,
     ) as ValueChange;
 
@@ -775,16 +1403,19 @@ export const createStore: typeof createStoreDecl = (): Store => {
     }
   };
 
-  const callTabularListenersForChanges = (mutator: 0 | 1) => {
-    const hasTablesNow = hasTables();
-    if (hasTablesNow != hadTables) {
-      callListeners(hasTablesListeners[mutator], undefined, hasTablesNow);
-    }
+  const clonedChangedCells = (
+    changedCells: IdMap3<ChangedCell>,
+  ): IdMap3<ChangedCell> =>
+    mapClone(changedCells, (map) =>
+      mapClone(map, (map) => mapClone(map, pairClone)),
+    );
 
-    const emptySortedRowIdListeners = collIsEmpty(
+  const callTabularListenersForChanges = (mutator: 0 | 1): void => {
+    const hasHasTablesListeners = !collIsEmpty(hasTablesListeners[mutator]);
+    const hasSortedRowIdListeners = !collIsEmpty(
       sortedRowIdsListeners[mutator],
     );
-    const emptyIdAndHasListeners =
+    const hasIdOrHasListeners = !(
       collIsEmpty(cellIdsListeners[mutator]) &&
       collIsEmpty(hasCellListeners[mutator]) &&
       collIsEmpty(rowIdsListeners[mutator]) &&
@@ -792,15 +1423,18 @@ export const createStore: typeof createStoreDecl = (): Store => {
       collIsEmpty(tableCellIdsListeners[mutator]) &&
       collIsEmpty(hasTableCellListeners[mutator]) &&
       collIsEmpty(rowCountListeners[mutator]) &&
-      emptySortedRowIdListeners &&
+      !hasSortedRowIdListeners &&
       collIsEmpty(tableIdsListeners[mutator]) &&
-      collIsEmpty(hasTableListeners[mutator]);
-    const emptyOtherListeners =
+      collIsEmpty(hasTableListeners[mutator])
+    );
+    const hasOtherListeners = !(
       collIsEmpty(cellListeners[mutator]) &&
       collIsEmpty(rowListeners[mutator]) &&
       collIsEmpty(tableListeners[mutator]) &&
-      collIsEmpty(tablesListeners[mutator]);
-    if (!emptyIdAndHasListeners || !emptyOtherListeners) {
+      collIsEmpty(tablesListeners[mutator])
+    );
+
+    if (hasHasTablesListeners || hasIdOrHasListeners || hasOtherListeners) {
       const changes: [
         ChangedIdsMap,
         ChangedIdsMap2,
@@ -815,7 +1449,7 @@ export const createStore: typeof createStoreDecl = (): Store => {
             mapClone(changedRowCount),
             mapClone2(changedRowIds),
             mapClone3(changedCellIds),
-            mapClone3(changedCells),
+            clonedChangedCells(changedCells),
           ]
         : [
             changedTableIds,
@@ -826,7 +1460,14 @@ export const createStore: typeof createStoreDecl = (): Store => {
             changedCells,
           ];
 
-      if (!emptyIdAndHasListeners) {
+      if (hasHasTablesListeners) {
+        const hasTablesNow = hasTables();
+        if (hasTablesNow != hadTables) {
+          callListeners(hasTablesListeners[mutator], undefined, hasTablesNow);
+        }
+      }
+
+      if (hasIdOrHasListeners) {
         callIdsAndHasListenersIfChanged(
           changes[0],
           tableIdsListeners[mutator],
@@ -861,14 +1502,14 @@ export const createStore: typeof createStoreDecl = (): Store => {
               hasRowListeners[mutator],
               [tableId],
             ) &&
-            !emptySortedRowIdListeners
+            hasSortedRowIdListeners
           ) {
             callListeners(sortedRowIdsListeners[mutator], [tableId, null]);
             setAdd(calledSortableTableIds, tableId);
           }
         });
 
-        if (!emptySortedRowIdListeners) {
+        if (hasSortedRowIdListeners) {
           collForEach(changes[5], (rows, tableId) => {
             if (!collHas(calledSortableTableIds, tableId)) {
               const sortableCellIds: IdSet = setNew();
@@ -901,7 +1542,7 @@ export const createStore: typeof createStoreDecl = (): Store => {
         );
       }
 
-      if (!emptyOtherListeners) {
+      if (hasOtherListeners) {
         let tablesChanged;
         collForEach(changes[5], (rows, tableId) => {
           let tableChanged;
@@ -912,8 +1553,8 @@ export const createStore: typeof createStoreDecl = (): Store => {
                 callListeners(
                   cellListeners[mutator],
                   [tableId, rowId, cellId],
-                  newCell,
-                  oldCell,
+                  decodeIfJson(newCell),
+                  decodeIfJson(oldCell),
                   getCellChange,
                 );
                 tablesChanged = tableChanged = rowChanged = 1;
@@ -938,24 +1579,27 @@ export const createStore: typeof createStoreDecl = (): Store => {
     }
   };
 
-  const callValuesListenersForChanges = (mutator: 0 | 1) => {
-    const hasValuesNow = hasValues();
-    if (hasValuesNow != hadValues) {
-      callListeners(hasValuesListeners[mutator], undefined, hasValuesNow);
-    }
-
-    const emptyIdAndHasListeners =
-      collIsEmpty(valueIdsListeners[mutator]) &&
-      collIsEmpty(hasValueListeners[mutator]);
-    const emptyOtherListeners =
-      collIsEmpty(valueListeners[mutator]) &&
-      collIsEmpty(valuesListeners[mutator]);
-    if (!emptyIdAndHasListeners || !emptyOtherListeners) {
+  const callValuesListenersForChanges = (mutator: 0 | 1): void => {
+    const hasHasValuesListeners = !collIsEmpty(hasValuesListeners[mutator]);
+    const hasIdOrHasListeners =
+      !collIsEmpty(valueIdsListeners[mutator]) ||
+      !collIsEmpty(hasValueListeners[mutator]);
+    const hasOtherListeners =
+      !collIsEmpty(valueListeners[mutator]) ||
+      !collIsEmpty(valuesListeners[mutator]);
+    if (hasHasValuesListeners || hasIdOrHasListeners || hasOtherListeners) {
       const changes: [ChangedIdsMap, IdMap<ChangedCell>] = mutator
-        ? [mapClone(changedValueIds), mapClone(changedValues)]
+        ? [mapClone(changedValueIds), mapClone(changedValues, pairClone)]
         : [changedValueIds, changedValues];
 
-      if (!emptyIdAndHasListeners) {
+      if (hasHasValuesListeners) {
+        const hasValuesNow = hasValues();
+        if (hasValuesNow != hadValues) {
+          callListeners(hasValuesListeners[mutator], undefined, hasValuesNow);
+        }
+      }
+
+      if (hasIdOrHasListeners) {
         callIdsAndHasListenersIfChanged(
           changes[0],
           valueIdsListeners[mutator],
@@ -963,15 +1607,15 @@ export const createStore: typeof createStoreDecl = (): Store => {
         );
       }
 
-      if (!emptyOtherListeners) {
+      if (hasOtherListeners) {
         let valuesChanged;
         collForEach(changes[1], ([oldValue, newValue], valueId) => {
           if (newValue !== oldValue) {
             callListeners(
               valueListeners[mutator],
               [valueId],
-              newValue,
-              oldValue,
+              decodeIfJson(newValue),
+              decodeIfJson(oldValue),
               getValueChange,
             );
             valuesChanged = 1;
@@ -995,17 +1639,45 @@ export const createStore: typeof createStoreDecl = (): Store => {
   const addSortedRowIdsListenerImpl = (
     tableId: Id,
     cellId: Id | undefined,
-    otherArgs: [descending: boolean, offset: number, limit: number | undefined],
+    otherArgs: [
+      descending: boolean,
+      offset: number,
+      limit: number | undefined,
+      sorter: Sorter | undefined,
+    ],
     listener: SortedRowIdsListener,
     mutator?: boolean,
   ): Id => {
-    let sortedRowIds = getSortedRowIds(tableId, cellId, ...otherArgs);
+    const [descending, offset, limit, sorter] = otherArgs;
+    let sortedRowIds = getSortedRowIds(
+      tableId,
+      cellId,
+      descending,
+      offset,
+      limit,
+      sorter,
+    );
     return addListener(
       () => {
-        const newSortedRowIds = getSortedRowIds(tableId, cellId, ...otherArgs);
+        const newSortedRowIds = getSortedRowIds(
+          tableId,
+          cellId,
+          descending,
+          offset,
+          limit,
+          sorter,
+        );
         if (!arrayIsEqual(newSortedRowIds, sortedRowIds)) {
           sortedRowIds = newSortedRowIds;
-          listener(store, tableId, cellId, ...otherArgs, sortedRowIds);
+          listener(
+            store,
+            tableId,
+            cellId,
+            descending,
+            offset,
+            limit,
+            sortedRowIds,
+          );
         }
       },
       sortedRowIdsListeners[mutator ? 1 : 0],
@@ -1014,16 +1686,52 @@ export const createStore: typeof createStoreDecl = (): Store => {
     );
   };
 
+  const getTransactionChangesImpl = (encoded = false): Changes => [
+    mapToObj(
+      changedCells,
+      (table, tableId) =>
+        mapGet(changedTableIds, tableId) === -1
+          ? undefined
+          : mapToObj(
+              table,
+              (row, rowId) =>
+                mapGet(mapGet(changedRowIds, tableId), rowId) === -1
+                  ? undefined
+                  : mapToObj(
+                      row,
+                      ([, newCell]) =>
+                        decodeIfJson(newCell, EMPTY_STRING, encoded),
+                      (changedCell) => pairIsEqual(changedCell),
+                    ),
+              collIsEmpty,
+              objIsEmpty,
+            ),
+      collIsEmpty,
+      objIsEmpty,
+    ),
+    mapToObj(
+      changedValues,
+      ([, newValue]) => decodeIfJson(newValue, EMPTY_STRING, encoded),
+      (changedValue) => pairIsEqual(changedValue),
+    ),
+    1,
+  ];
+
   // --
 
   const getContent = (): Content => [getTables(), getValues()];
 
-  const getTables = (): Tables => mapToObj3(tablesMap);
+  const getEncodedContent = (): Content => [
+    mapToObj3(tablesMap),
+    mapToObj(valuesMap),
+  ];
+
+  const getTables = (): Tables => mapToObj3(tablesMap, decodeIfJson);
 
   const getTableIds = (): Ids => mapKeys(tablesMap);
 
   const getTable = (tableId: Id): Table =>
-    mapToObj2(mapGet(tablesMap, id(tableId)));
+    mapToObj2(mapGet(tablesMap, id(tableId)), decodeIfJson);
 
   const getTableCellIds = (tableId: Id): Ids =>
     mapKeys(mapGet(tableCellIds, id(tableId)));
@@ -1040,6 +1748,7 @@ export const createStore: typeof createStoreDecl = (): Store => {
     descending?: boolean,
     offset = 0,
     limit?: number,
+    sorter: Sorter = defaultSorter,
   ): Ids =>
     isObject(tableIdOrArgs)
       ? getSortedRowIds(
@@ -1048,21 +1757,22 @@ export const createStore: typeof createStoreDecl = (): Store => {
           tableIdOrArgs.descending,
           tableIdOrArgs.offset,
           tableIdOrArgs.limit,
+          tableIdOrArgs.sorter,
         )
       : arrayMap(
           slice(
             arraySort(
-              mapMap<Id, RowMap, [Cell, Id]>(
+              mapMap<Id, RowMap, [SortKey, Id]>(
                 mapGet(tablesMap, id(tableIdOrArgs)),
                 (row, rowId) => [
                   isUndefined(cellId)
                     ? rowId
-                    : (mapGet(row, id(cellId)) as Cell),
+                    : decodeIfJson(mapGet(row, id(cellId)) as SortKey),
                   rowId,
                 ],
               ),
               ([cell1], [cell2]) =>
-                defaultSorter(cell1, cell2) * (descending ? -1 : 1),
+                sorter(cell1, cell2) * (descending ? -1 : 1),
             ),
             offset,
             isUndefined(limit) ? limit : offset + limit,
@@ -1071,20 +1781,22 @@ export const createStore: typeof createStoreDecl = (): Store => {
         );
 
   const getRow = (tableId: Id, rowId: Id): Row =>
-    mapToObj(mapGet(mapGet(tablesMap, id(tableId)), id(rowId)));
+    mapToObj(mapGet(mapGet(tablesMap, id(tableId)), id(rowId)), decodeIfJson);
 
   const getCellIds = (tableId: Id, rowId: Id): Ids =>
     mapKeys(mapGet(mapGet(tablesMap, id(tableId)), id(rowId)));
 
   const getCell = (tableId: Id, rowId: Id, cellId: Id): CellOrUndefined =>
-    mapGet(mapGet(mapGet(tablesMap, id(tableId)), id(rowId)), id(cellId));
+    decodeIfJson(
+      mapGet(mapGet(mapGet(tablesMap, id(tableId)), id(rowId)), id(cellId)),
+    );
 
-  const getValues = (): Values => mapToObj(valuesMap);
+  const getValues = (): Values => mapToObj(valuesMap, decodeIfJson);
 
   const getValueIds = (): Ids => mapKeys(valuesMap);
 
   const getValue = (valueId: Id): ValueOrUndefined =>
-    mapGet(valuesMap, id(valueId));
+    decodeIfJson(mapGet(valuesMap, id(valueId)));
 
   const hasTables = (): boolean => !collIsEmpty(tablesMap);
 
@@ -1109,12 +1821,17 @@ export const createStore: typeof createStoreDecl = (): Store => {
 
   const getJson = (): Json => jsonStringWithMap([tablesMap, valuesMap]);
 
-  const getTablesSchemaJson = (): Json => jsonStringWithMap(tablesSchemaMap);
+  const getTablesSchemaJson = (): Json =>
+    jsonStringWithMap(mapToObj2(tablesSchemaMap, decodeSchema));
 
-  const getValuesSchemaJson = (): Json => jsonStringWithMap(valuesSchemaMap);
+  const getValuesSchemaJson = (): Json =>
+    jsonStringWithMap(mapToObj(valuesSchemaMap, decodeSchema));
 
   const getSchemaJson = (): Json =>
-    jsonStringWithMap([tablesSchemaMap, valuesSchemaMap]);
+    jsonStringWithMap([
+      mapToObj2(tablesSchemaMap, decodeSchema),
+      mapToObj(valuesSchemaMap, decodeSchema),
+    ]);
 
   const setContent = (content: Content | (() => Content)): Store =>
     fluentTransaction(() => {
@@ -1125,23 +1842,27 @@ export const createStore: typeof createStoreDecl = (): Store => {
     });
 
   const setTables = (tables: Tables): Store =>
-    fluentTransaction(() =>
-      validateTables(tables) ? setValidTables(tables) : 0,
-    );
+    fluentTransaction(() => {
+      const tables2 = cloneTables(tables);
+      return validateTables(tables2) ? setValidTables(tables2) : 0;
+    });
 
   const setTable = (tableId: Id, table: Table): Store =>
-    fluentTransaction(
-      (tableId) =>
-        validateTable(table, tableId) ? setValidTable(tableId, table) : 0,
-      tableId,
-    );
+    fluentTransaction((tableId) => {
+      const table2 = cloneTable(table);
+      return validateTable(table2, tableId)
+        ? setValidTable(tableId, table2)
+        : 0;
+    }, tableId);
 
   const setRow = (tableId: Id, rowId: Id, row: Row): Store =>
     fluentTransaction(
-      (tableId, rowId) =>
-        validateRow(tableId, rowId, row)
-          ? setValidRow(tableId, getOrCreateTable(tableId), rowId, row)
-          : 0,
+      (tableId, rowId) => {
+        const row2 = cloneRow(row);
+        return validateRow(tableId, rowId, row2)
+          ? setValidRow(tableId, getOrCreateTable(tableId), rowId, row2)
+          : 0;
+      },
       tableId,
       rowId,
     );
@@ -1149,13 +1870,14 @@ export const createStore: typeof createStoreDecl = (): Store => {
   const addRow = (tableId: Id, row: Row, reuseRowIds = true): Id | undefined =>
     transaction(() => {
       let rowId: Id | undefined = undefined;
-      if (validateRow(tableId, rowId, row)) {
+      const row2 = cloneRow(row);
+      if (validateRow(tableId, rowId, row2)) {
         tableId = id(tableId);
         setValidRow(
           tableId,
           getOrCreateTable(tableId),
           (rowId = getNewRowId(tableId, reuseRowIds ? 1 : 0)),
-          row,
+          row2,
         );
       }
       return rowId;
@@ -1164,10 +1886,11 @@ export const createStore: typeof createStoreDecl = (): Store => {
   const setPartialRow = (tableId: Id, rowId: Id, partialRow: Row): Store =>
     fluentTransaction(
       (tableId, rowId) => {
-        if (validateRow(tableId, rowId, partialRow, 1)) {
+        const partialRow2 = cloneRow(partialRow);
+        if (validateRow(tableId, rowId, partialRow2, 1)) {
           const table = getOrCreateTable(tableId);
-          objMap(partialRow, (cell, cellId) =>
-            setCellIntoDefaultRow(tableId, table, rowId, cellId, cell as Cell),
+          objForEach(partialRow2, (cell, cellId) =>
+            setCellIntoNewRow(tableId, table, rowId, cellId, cell as Cell),
           );
         }
       },
@@ -1180,6 +1903,8 @@ export const createStore: typeof createStoreDecl = (): Store => {
     rowId: Id,
     cellId: Id,
     cell: Cell | MapCell,
+    skipMiddleware?: boolean,
+    skipRowMiddleware?: boolean,
   ): Store =>
     fluentTransaction(
       (tableId, rowId, cellId) =>
@@ -1190,14 +1915,43 @@ export const createStore: typeof createStoreDecl = (): Store => {
             cellId,
             isFunction(cell) ? cell(getCell(tableId, rowId, cellId)) : cell,
           ),
-          (validCell) =>
-            setCellIntoDefaultRow(
-              tableId,
-              getOrCreateTable(tableId),
-              rowId,
-              cellId,
-              validCell,
-            ),
+          (validCell) => {
+            const tableMap = getOrCreateTable(tableId);
+            ifNotUndefined(
+              skipMiddleware || skipRowMiddleware || !middleware[14]?.()
+                ? undefined
+                : middleware[3],
+              (willSetRow) => {
+                const existingRowMap = mapGet(tableMap, rowId);
+                const prospectiveRow: Row = {
+                  ...(existingRowMap ? mapToObj<Cell>(existingRowMap) : {}),
+                  [cellId]: validCell,
+                };
+                ifNotUndefined(
+                  whileMutating(() =>
+                    willSetRow(tableId, rowId, structuredClone(prospectiveRow)),
+                  ),
+                  (row) =>
+                    applyRowDirectly(
+                      tableId,
+                      tableMap,
+                      rowId,
+                      row,
+                      skipMiddleware,
+                    ),
+                );
+              },
+              () =>
+                setCellIntoNewRow(
+                  tableId,
+                  tableMap,
+                  rowId,
+                  cellId,
+                  validCell,
+                  skipMiddleware,
+                ),
+            );
+          },
         ),
       tableId,
       rowId,
@@ -1205,20 +1959,26 @@ export const createStore: typeof createStoreDecl = (): Store => {
     );
 
   const setValues = (values: Values): Store =>
-    fluentTransaction(() =>
-      validateValues(values) ? setValidValues(values) : 0,
-    );
+    fluentTransaction(() => {
+      const values2 = cloneValues(values);
+      return validateValues(values2) ? setValidValues(values2) : 0;
+    });
 
   const setPartialValues = (partialValues: Values): Store =>
-    fluentTransaction(() =>
-      validateValues(partialValues, 1)
-        ? objMap(partialValues, (value, valueId) =>
+    fluentTransaction(() => {
+      const partialValues2 = cloneValues(partialValues);
+      return validateValues(partialValues2, 1)
+        ? objForEach(partialValues2, (value, valueId) =>
             setValidValue(valueId, value as Value),
           )
-        : 0,
-    );
+        : 0;
+    });
 
-  const setValue = (valueId: Id, value: Value): Store =>
+  const setValue = (
+    valueId: Id,
+    value: Value,
+    skipMiddleware?: boolean,
+  ): Store =>
     fluentTransaction(
       (valueId) =>
         ifNotUndefined(
@@ -1226,61 +1986,94 @@ export const createStore: typeof createStoreDecl = (): Store => {
             valueId,
             isFunction(value) ? value(getValue(valueId)) : value,
           ),
-          (validValue) => setValidValue(valueId, validValue),
+          (validValue) => setValidValue(valueId, validValue, skipMiddleware),
         ),
       valueId,
     );
 
   const applyChanges = (changes: Changes): Store =>
-    fluentTransaction(() => {
-      objMap(changes[0], (table, tableId) =>
-        isUndefined(table)
-          ? delTable(tableId)
-          : objMap(table, (row, rowId) =>
-              isUndefined(row)
-                ? delRow(tableId, rowId)
-                : objMap(row, (cell, cellId) =>
-                    setOrDelCell(
-                      store,
-                      tableId,
-                      rowId,
-                      cellId,
-                      cell as CellOrUndefined,
-                    ),
-                  ),
-            ),
-      );
-      objMap(changes[1], (value, valueId) =>
-        setOrDelValue(store, valueId, value as ValueOrUndefined),
-      );
-    });
+    fluentTransaction(() =>
+      ifTransformed(
+        changes,
+        () =>
+          ifNotUndefined(
+            middleware[13],
+            (willApplyChanges) =>
+              whileMutating(() =>
+                willApplyChanges(
+                  structuredClone(changes),
+                  acceptingEncodedData,
+                ),
+              ),
+            () => changes,
+          ),
+        (changes): void => {
+          objForEach(changes[0], (table, tableId) =>
+            isUndefined(table)
+              ? delTable(tableId)
+              : objForEach(table, (row, rowId) =>
+                  isUndefined(row)
+                    ? delRow(tableId, rowId)
+                    : objForEach(row, (cell, cellId) =>
+                        setOrDelCell(
+                          tableId,
+                          rowId,
+                          cellId,
+                          cell as CellOrUndefined,
+                          undefined,
+                          true,
+                        ),
+                      ),
+                ),
+          );
+          objForEach(changes[1], (value, valueId) =>
+            setOrDelValue(valueId, value as ValueOrUndefined),
+          );
+        },
+        contentOrChangesIsEqual,
+      ),
+    );
 
   const setTablesJson = (tablesJson: Json): Store => {
-    tryCatch(() => setOrDelTables(jsonParse(tablesJson)));
+    tryCatchSync(() =>
+      whileAcceptingEncodedData(() => setOrDelTables(jsonParse(tablesJson))),
+    );
     return store;
   };
 
   const setValuesJson = (valuesJson: Json): Store => {
-    tryCatch(() => setOrDelValues(jsonParse(valuesJson)));
+    tryCatchSync(() =>
+      whileAcceptingEncodedData(() => setOrDelValues(jsonParse(valuesJson))),
+    );
     return store;
   };
 
   const setJson = (tablesAndValuesJson: Json): Store =>
     fluentTransaction(() =>
-      tryCatch(
-        () => {
-          const [tables, values] = jsonParse(tablesAndValuesJson);
-          setOrDelTables(tables);
-          setOrDelValues(values);
-        },
+      tryCatchSync(
+        () =>
+          whileAcceptingEncodedData(() => {
+            const [tables, values] = jsonParse(tablesAndValuesJson);
+            setOrDelTables(tables);
+            setOrDelValues(values);
+          }),
         () => setTablesJson(tablesAndValuesJson),
       ),
     );
 
+  const setEncodedContent = (content: Content): Store =>
+    whileAcceptingEncodedData(() => setContent(content));
+
+  const applyEncodedChanges = (changes: Changes): Store =>
+    whileAcceptingEncodedData(() => applyChanges(changes));
+
   const setTablesSchema = (tablesSchema: TablesSchema): Store =>
     fluentTransaction(() => {
-      if ((hasTablesSchema = validateTablesSchema(tablesSchema))) {
-        setValidTablesSchema(tablesSchema);
+      const tablesSchema2 = cloneSchema(tablesSchema);
+      if (validateTablesSchema(tablesSchema2)) {
+        saveTablesSchema();
+        hasTablesSchema = true;
+        setValidTablesSchema(tablesSchema2);
         if (!collIsEmpty(tablesMap)) {
           const tables = getTables();
           delTables();
@@ -1291,12 +2084,14 @@ export const createStore: typeof createStoreDecl = (): Store => {
 
   const setValuesSchema = (valuesSchema: ValuesSchema): Store =>
     fluentTransaction(() => {
-      if ((hasValuesSchema = validateValuesSchema(valuesSchema))) {
+      const valuesSchema2 = cloneSchema(valuesSchema);
+      if (validateValuesSchema(valuesSchema2)) {
+        saveValuesSchema();
         const values = getValues();
         delValuesSchema();
         delValues();
         hasValuesSchema = true;
-        setValidValuesSchema(valuesSchema);
+        setValidValuesSchema(valuesSchema2);
         setValues(values);
       }
     });
@@ -1310,7 +2105,12 @@ export const createStore: typeof createStoreDecl = (): Store => {
       setValuesSchema(valuesSchema as ValuesSchema);
     });
 
-  const delTables = (): Store => fluentTransaction(() => setValidTables({}));
+  const delTables = (): Store =>
+    fluentTransaction(() =>
+      (whileMutating(() => middleware[7]?.()) ?? true)
+        ? setValidTables({}, true)
+        : 0,
+    );
 
   const delTable = (tableId: Id): Store =>
     fluentTransaction(
@@ -1333,13 +2133,22 @@ export const createStore: typeof createStoreDecl = (): Store => {
     rowId: Id,
     cellId: Id,
     forceDel?: boolean,
+    skipMiddleware?: boolean,
   ): Store =>
     fluentTransaction(
       (tableId, rowId, cellId) =>
         ifNotUndefined(mapGet(tablesMap, tableId), (tableMap) =>
           ifNotUndefined(mapGet(tableMap, rowId), (rowMap) =>
             collHas(rowMap, cellId)
-              ? delValidCell(tableId, tableMap, rowId, rowMap, cellId, forceDel)
+              ? delValidCell(
+                  tableId,
+                  tableMap,
+                  rowId,
+                  rowMap,
+                  cellId,
+                  forceDel,
+                  skipMiddleware,
+                )
               : 0,
           ),
         ),
@@ -1348,22 +2157,32 @@ export const createStore: typeof createStoreDecl = (): Store => {
       cellId,
     );
 
-  const delValues = (): Store => fluentTransaction(() => setValidValues({}));
+  const delValues = (): Store =>
+    fluentTransaction(() =>
+      (whileMutating(() => middleware[11]?.()) ?? true)
+        ? setValidValues({}, true)
+        : 0,
+    );
 
-  const delValue = (valueId: Id): Store =>
+  const delValue = (valueId: Id, skipMiddleware?: boolean): Store =>
     fluentTransaction(
-      (valueId) => (collHas(valuesMap, valueId) ? delValidValue(valueId) : 0),
+      (valueId) =>
+        collHas(valuesMap, valueId)
+          ? delValidValue(valueId, skipMiddleware)
+          : 0,
       valueId,
     );
 
   const delTablesSchema = (): Store =>
     fluentTransaction(() => {
+      saveTablesSchema();
       setValidTablesSchema({});
       hasTablesSchema = false;
     });
 
   const delValuesSchema = (): Store =>
     fluentTransaction(() => {
+      saveValuesSchema();
       setValidValuesSchema({});
       hasValuesSchema = false;
     });
@@ -1382,9 +2201,18 @@ export const createStore: typeof createStoreDecl = (): Store => {
   ): Return => {
     if (transactions != -1) {
       startTransaction();
-      const result = actions();
-      finishTransaction(doRollback);
-      return result as Return;
+      try {
+        const result = actions();
+        finishTransaction(doRollback);
+        return result as Return;
+      } catch (error) {
+        if (transactions > 0) {
+          rollbackRequested = 1;
+          // Preserve the original error from the transaction actions.
+          tryCatchSync(finishTransaction);
+        }
+        throw error;
+      }
     }
   };
 
@@ -1393,41 +2221,23 @@ export const createStore: typeof createStoreDecl = (): Store => {
       transactions++;
     }
     if (transactions == 1) {
-      internalListeners[0]?.();
-      callListeners(startTransactionListeners);
+      try {
+        internalListeners[0]?.();
+        callListeners(startTransactionListeners);
+      } catch (error) {
+        rollbackRequested = 1;
+        // Preserve the original error from the transaction listener.
+        tryCatchSync(finishTransaction);
+        throw error;
+      }
     }
     return store;
   };
 
-  const getTransactionChanges = (): Changes => [
-    mapToObj(
-      changedCells,
-      (table, tableId) =>
-        mapGet(changedTableIds, tableId) === -1
-          ? undefined
-          : mapToObj(
-              table,
-              (row, rowId) =>
-                mapGet(mapGet(changedRowIds, tableId), rowId) === -1
-                  ? undefined
-                  : mapToObj(
-                      row,
-                      ([, newCell]) => newCell,
-                      (changedCell) => pairIsEqual(changedCell),
-                    ),
-              collIsEmpty,
-              objIsEmpty,
-            ),
-      collIsEmpty,
-      objIsEmpty,
-    ),
-    mapToObj(
-      changedValues,
-      ([, newValue]) => newValue,
-      (changedValue) => pairIsEqual(changedValue),
-    ),
-    1,
-  ];
+  const getTransactionChanges = (): Changes => getTransactionChangesImpl();
+
+  const getEncodedTransactionChanges = (): Changes =>
+    getTransactionChangesImpl(true);
 
   const getTransactionLog = (): TransactionLog => [
     !collIsEmpty(changedCells),
@@ -1442,68 +2252,151 @@ export const createStore: typeof createStoreDecl = (): Store => {
     mapToObj(changedValueIds),
   ];
 
+  const rollbackTransaction = (): void => {
+    ifNotUndefined(oldTablesSchema, ([hasSchema, schema]) => {
+      setValidTablesSchema(schema);
+      hasTablesSchema = hasSchema;
+    });
+    ifNotUndefined(oldValuesSchema, ([hasSchema, schema]) => {
+      setValidValuesSchema(schema);
+      hasValuesSchema = hasSchema;
+    });
+    collForEach(changedCells, (table, tableId) =>
+      collForEach(table, (row, rowId) =>
+        collForEach(row, ([oldCell], cellId) =>
+          setOrDelCell(tableId, rowId, cellId, oldCell, true),
+        ),
+      ),
+    );
+    collClear(changedCells);
+    collForEach(changedValues, ([oldValue], valueId) =>
+      setOrDelValue(valueId, oldValue, true),
+    );
+    collClear(changedValues);
+  };
+
+  const resetTransaction = (): void => {
+    transactions = 0;
+    rollbackRequested = 0;
+    oldTablesSchema = oldValuesSchema = undefined;
+    hadTables = hasTables();
+    hadValues = hasValues();
+    arrayForEach(
+      [
+        changedTableIds,
+        changedTableCellIds,
+        changedRowCount,
+        changedRowIds,
+        changedCellIds,
+        changedCells,
+        defaultedCells,
+        invalidCells,
+        changedValueIds,
+        changedValues,
+        defaultedValues,
+        invalidValues,
+      ],
+      collClear,
+    );
+  };
+
   const finishTransaction = (doRollback?: DoRollback): Store => {
     if (transactions > 0) {
       transactions--;
 
       if (transactions == 0) {
         transactions = 1;
-        callInvalidCellListeners(1);
-        if (!collIsEmpty(changedCells)) {
-          callTabularListenersForChanges(1);
-        }
-        callInvalidValueListeners(1);
-        if (!collIsEmpty(changedValues)) {
-          callValuesListenersForChanges(1);
-        }
+        let committed = false;
+        let rolledBack = false;
+        const rollback = (): void => {
+          rolledBack = true;
+          rollbackTransaction();
+        };
+        let callDidFinish = false;
+        let internalPostFinished = false;
+        tryFinally(
+          () => {
+            let errorToThrow: any;
+            let failed = false;
+            const captureError = (error: any): void => {
+              if (!failed) {
+                errorToThrow = error;
+              }
+              failed = true;
+            };
+            tryCatchSync(() => {
+              try {
+                if (rollbackRequested) {
+                  rollback();
+                } else {
+                  whileMutating(() => {
+                    callInvalidCellListeners(1);
+                    if (!collIsEmpty(changedCells)) {
+                      callTabularListenersForChanges(1);
+                    }
+                    callInvalidValueListeners(1);
+                    if (!collIsEmpty(changedValues)) {
+                      callValuesListenersForChanges(1);
+                    }
+                  });
 
-        if (doRollback?.(store)) {
-          collForEach(changedCells, (table, tableId) =>
-            collForEach(table, (row, rowId) =>
-              collForEach(row, ([oldCell], cellId) =>
-                setOrDelCell(store, tableId, rowId, cellId, oldCell),
-              ),
+                  if (doRollback?.(store)) {
+                    rollback();
+                  }
+
+                  internalListeners[1]?.(rolledBack);
+                  callDidFinish = true;
+                  callListenersThenThrow(
+                    finishTransactionListeners[0],
+                    undefined,
+                  );
+
+                  transactions = -1;
+                  committed = true;
+                  callInvalidCellListeners(0);
+                  if (!collIsEmpty(changedCells)) {
+                    callTabularListenersForChanges(0);
+                  }
+                  callInvalidValueListeners(0);
+                  if (!collIsEmpty(changedValues)) {
+                    callValuesListenersForChanges(0);
+                  }
+                }
+              } catch (error) {
+                if (!committed) {
+                  rollback();
+                }
+                throw error;
+              }
+            }, captureError);
+            if (callDidFinish && rolledBack) {
+              if (!committed) {
+                tryCatchSync(() => internalListeners[1]?.(true), captureError);
+              }
+              tryCatchSync(() => {
+                internalListeners[2]?.(true);
+                internalPostFinished = true;
+              }, captureError);
+            }
+            if (callDidFinish) {
+              tryCatchSync(() => {
+                transactions = -1;
+                callListenersThenThrow(
+                  finishTransactionListeners[1],
+                  undefined,
+                );
+              }, captureError);
+            }
+            if (failed) {
+              throw errorToThrow;
+            }
+          },
+          () =>
+            tryFinally(
+              () =>
+                internalPostFinished ? 0 : internalListeners[2]?.(rolledBack),
+              resetTransaction,
             ),
-          );
-          collClear(changedCells);
-          collForEach(changedValues, ([oldValue], valueId) =>
-            setOrDelValue(store, valueId, oldValue),
-          );
-          collClear(changedValues);
-        }
-
-        callListeners(finishTransactionListeners[0], undefined);
-
-        transactions = -1;
-        callInvalidCellListeners(0);
-        if (!collIsEmpty(changedCells)) {
-          callTabularListenersForChanges(0);
-        }
-        callInvalidValueListeners(0);
-        if (!collIsEmpty(changedValues)) {
-          callValuesListenersForChanges(0);
-        }
-        internalListeners[1]?.();
-        callListeners(finishTransactionListeners[1], undefined);
-        internalListeners[2]?.();
-
-        transactions = 0;
-        hadTables = hasTables();
-        hadValues = hasValues();
-        arrayForEach(
-          [
-            changedTableIds,
-            changedTableCellIds,
-            changedRowCount,
-            changedRowIds,
-            changedCellIds,
-            changedCells,
-            invalidCells,
-            changedValueIds,
-            changedValues,
-            invalidValues,
-          ],
-          collClear,
         );
       }
     }
@@ -1515,7 +2408,9 @@ export const createStore: typeof createStoreDecl = (): Store => {
       tableCallback(tableId, (rowCallback) =>
         collForEach(tableMap, (rowMap, rowId) =>
           rowCallback(rowId, (cellCallback) =>
-            mapForEach(rowMap, cellCallback),
+            mapForEach(rowMap, (cellId, cell) =>
+              cellCallback(cellId, decodeIfJson(cell)),
+            ),
           ),
         ),
       ),
@@ -1528,7 +2423,11 @@ export const createStore: typeof createStoreDecl = (): Store => {
 
   const forEachRow = (tableId: Id, rowCallback: RowCallback): void =>
     collForEach(mapGet(tablesMap, id(tableId)), (rowMap, rowId) =>
-      rowCallback(rowId, (cellCallback) => mapForEach(rowMap, cellCallback)),
+      rowCallback(rowId, (cellCallback) =>
+        mapForEach(rowMap, (cellId, cell) =>
+          cellCallback(cellId, decodeIfJson(cell)),
+        ),
+      ),
     );
 
   const forEachCell = (
@@ -1536,10 +2435,15 @@ export const createStore: typeof createStoreDecl = (): Store => {
     rowId: Id,
     cellCallback: CellCallback,
   ): void =>
-    mapForEach(mapGet(mapGet(tablesMap, id(tableId)), id(rowId)), cellCallback);
+    mapForEach(
+      mapGet(mapGet(tablesMap, id(tableId)), id(rowId)),
+      (cellId, cell) => cellCallback(cellId, decodeIfJson(cell)),
+    );
 
   const forEachValue = (valueCallback: ValueCallback): void =>
-    mapForEach(valuesMap, valueCallback);
+    mapForEach(valuesMap, (valueId, value) =>
+      valueCallback(valueId, decodeIfJson(value) as Value),
+    );
 
   const addSortedRowIdsListener = (
     tableIdOrArgs: Id | SortedRowIdsArgs,
@@ -1558,6 +2462,7 @@ export const createStore: typeof createStoreDecl = (): Store => {
             tableIdOrArgs.descending ?? false,
             tableIdOrArgs.offset ?? 0,
             tableIdOrArgs.limit,
+            tableIdOrArgs.sorter,
           ],
           cellIdOrListener as SortedRowIdsListener,
           descendingOrMutator,
@@ -1565,7 +2470,7 @@ export const createStore: typeof createStoreDecl = (): Store => {
       : addSortedRowIdsListenerImpl(
           tableIdOrArgs,
           cellIdOrListener as Id | undefined,
-          [descendingOrMutator as boolean, offset as number, limit],
+          [descendingOrMutator as boolean, offset as number, limit, undefined],
           listener as SortedRowIdsListener,
           mutator,
         );
@@ -1618,17 +2523,67 @@ export const createStore: typeof createStoreDecl = (): Store => {
       pairCollSize2(finishTransactionListeners),
   });
 
+  const setMiddleware = (
+    willSetContent?: (content: Content, encoded?: 0 | 1) => Content | undefined,
+    willSetTables?: (tables: Tables) => Tables | undefined,
+    willSetTable?: (tableId: Id, table: Table) => Table | undefined,
+    willSetRow?: (tableId: Id, rowId: Id, row: Row) => Row | undefined,
+    willSetCell?: (
+      tableId: Id,
+      rowId: Id,
+      cellId: Id,
+      cell: Cell,
+    ) => CellOrUndefined,
+    willSetValues?: (values: Values) => Values | undefined,
+    willSetValue?: (valueId: Id, value: Value) => ValueOrUndefined,
+    willDelTables?: () => boolean,
+    willDelTable?: (tableId: Id) => boolean,
+    willDelRow?: (tableId: Id, rowId: Id) => boolean,
+    willDelCell?: (tableId: Id, rowId: Id, cellId: Id) => boolean,
+    willDelValues?: () => boolean,
+    willDelValue?: (valueId: Id) => boolean,
+    willApplyChanges?: (
+      changes: Changes,
+      encoded?: 0 | 1,
+    ) => Changes | undefined,
+    hasWillSetRowCallbacks?: () => boolean,
+  ) =>
+    (middleware = [
+      willSetContent,
+      willSetTables,
+      willSetTable,
+      willSetRow,
+      willSetCell,
+      willSetValues,
+      willSetValue,
+      willDelTables,
+      willDelTable,
+      willDelRow,
+      willDelCell,
+      willDelValues,
+      willDelValue,
+      willApplyChanges,
+      hasWillSetRowCallbacks,
+    ]);
+
   const setInternalListeners = (
     preStartTransaction: () => void,
-    preFinishTransaction: () => void,
-    postFinishTransaction: () => void,
+    preFinishTransaction: (rolledBack: boolean) => void,
+    postFinishTransaction: (rolledBack: boolean) => void,
     cellChanged: (
       tableId: Id,
       rowId: Id,
       cellId: Id,
       newCell: CellOrUndefined,
+      mutating: 0 | 1,
+      defaulted: 0 | 1,
     ) => void,
-    valueChanged: (valueId: Id, newValue: ValueOrUndefined) => void,
+    valueChanged: (
+      valueId: Id,
+      newValue: ValueOrUndefined,
+      mutating: 0 | 1,
+      defaulted: 0 | 1,
+    ) => void,
   ) =>
     (internalListeners = [
       preStartTransaction,
@@ -1725,15 +2680,23 @@ export const createStore: typeof createStoreDecl = (): Store => {
 
     isMergeable: () => false,
 
-    // only used internally by other modules
-    createStore,
-    addListener,
-    callListeners,
-    setInternalListeners,
+    _: [
+      createStore,
+      addListener,
+      callListeners,
+      setInternalListeners,
+      setMiddleware,
+      setOrDelCell,
+      setOrDelValue,
+      getEncodedContent,
+      getEncodedTransactionChanges,
+      setEncodedContent,
+      applyEncodedChanges,
+    ] as ProtectedMethods,
   };
 
   // and now for some gentle meta-programming
-  objMap(
+  objForEach(
     {
       [HAS + TABLES]: [0, hasTablesListeners, [], () => [hasTables()]],
       [TABLES]: [0, tablesListeners],

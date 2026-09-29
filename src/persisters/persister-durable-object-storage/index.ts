@@ -17,10 +17,25 @@ import type {
   createDurableObjectStoragePersister as createDurableObjectStoragePersisterDecl,
 } from '../../@types/persisters/persister-durable-object-storage/index.d.ts';
 import type {Cell, Value} from '../../@types/store/index.d.ts';
-import {jsonStringWithUndefined} from '../../common/json.ts';
-import {IdMap, mapNew, mapSet, mapToObj} from '../../common/map.ts';
-import {objEnsure, objForEach} from '../../common/obj.ts';
-import {ifNotUndefined, noop, slice} from '../../common/other.ts';
+import {arrayEvery} from '../../common/array.ts';
+import {tryReturn} from '../../common/error.ts';
+import {jsonParse, jsonString} from '../../common/json.ts';
+import {IdMap, mapForEach, mapMap, mapNew, mapSet} from '../../common/map.ts';
+import {
+  objEnsure,
+  objForEach,
+  objIsEmpty,
+  objNew,
+  objSet,
+} from '../../common/obj.ts';
+import {
+  ifNotUndefined,
+  isArray,
+  isString,
+  noop,
+  size,
+  slice,
+} from '../../common/other.ts';
 import {stampNewWithHash, stampUpdate} from '../../common/stamps.ts';
 import {EMPTY_STRING, T, V, strStartsWith} from '../../common/strings.ts';
 import {createCustomPersister} from '../common/create.ts';
@@ -28,7 +43,10 @@ import {createCustomPersister} from '../common/create.ts';
 type StorageKeyType = typeof T | typeof V;
 type StoredValue = Stamp<0 | Cell | Value | undefined, true>;
 
-const stampNewObjectWithHash = () => stampNewWithHash({}, EMPTY_STRING, 0);
+const stampNewObjectWithHash = <Thing>() =>
+  stampNewWithHash(objNew<Thing>(), EMPTY_STRING, 0);
+
+const MAX_BATCH_SIZE = 128;
 
 export const createDurableObjectStoragePersister = ((
   store: MergeableStore,
@@ -37,29 +55,36 @@ export const createDurableObjectStoragePersister = ((
   onIgnoredError?: (error: any) => void,
 ): DurableObjectStoragePersister => {
   const constructKey = (type: StorageKeyType, ...ids: Ids) =>
-    storagePrefix + type + slice(jsonStringWithUndefined(ids), 1, -1);
+    storagePrefix + type + slice(jsonString(ids), 1, -1);
 
   const deconstructKey = (
     key: string,
   ): [type: string, ...ids: Ids] | undefined => {
     if (strStartsWith(key, storagePrefix)) {
-      const type = slice(key, storagePrefix.length, 1);
-      return type == T || type == V
-        ? [
-            type,
-            ...JSON.parse('[' + slice(key, storagePrefix.length + 1) + ']'),
-          ]
-        : undefined;
+      const type = slice(key, size(storagePrefix), size(storagePrefix) + 1);
+      if (type == T || type == V) {
+        const ids = tryReturn(() =>
+          jsonParse('[' + slice(key, size(storagePrefix) + 1) + ']'),
+        );
+        if (
+          isArray(ids) &&
+          size(ids) <= (type == T ? 3 : 1) &&
+          arrayEvery(ids, isString)
+        ) {
+          return [type, ...(ids as Ids)];
+        }
+      }
     }
   };
 
   const getPersisted = async (): Promise<
-    PersistedContent<PersistsType.MergeableStoreOnly>
+    PersistedContent<PersistsType.MergeableStoreOnly> | undefined
   > => {
     const tables: TablesStamp<true> = stampNewObjectWithHash();
     const values: ValuesStamp<true> = stampNewObjectWithHash();
-    (await storage.list<StoredValue>({prefix: storagePrefix})).forEach(
-      async ([zeroOrCellOrValue, time, hash], key) =>
+    mapForEach(
+      await storage.list<StoredValue>({prefix: storagePrefix}),
+      (key, [zeroOrCellOrValue, time, hash]) =>
         ifNotUndefined(deconstructKey(key), ([type, ...ids]) =>
           type == T
             ? ifNotUndefined(
@@ -81,7 +106,11 @@ export const createDurableObjectStoragePersister = ((
                       ifNotUndefined(
                         ids[2],
                         (cellId) =>
-                          (row[0][cellId] = [zeroOrCellOrValue, time, hash]),
+                          objSet(row[0], cellId, [
+                            zeroOrCellOrValue,
+                            time,
+                            hash,
+                          ]),
                         () => stampUpdate(row, time, hash),
                       );
                     },
@@ -94,13 +123,16 @@ export const createDurableObjectStoragePersister = ((
               ? ifNotUndefined(
                   ids[0],
                   (valueId) =>
-                    (values[0][valueId] = [zeroOrCellOrValue, time, hash]),
+                    objSet(values[0], valueId, [zeroOrCellOrValue, time, hash]),
                   () => stampUpdate(values, time, hash),
                 )
               : 0,
         ),
     );
-    return [tables, values];
+
+    return objIsEmpty(tables[0]) && objIsEmpty(values[0])
+      ? undefined
+      : [tables, values];
   };
 
   const setPersisted = async (
@@ -144,7 +176,17 @@ export const createDurableObjectStoragePersister = ((
     objForEach(valuesObj, (valueStamp, valueId) =>
       mapSet(keysToSet, constructKey(V, valueId), valueStamp),
     );
-    await storage.put(mapToObj(keysToSet));
+    const entries = mapMap(keysToSet, (value, key): [string, StoredValue] => [
+      key,
+      value,
+    ]);
+    await storage.transaction(async (transaction) => {
+      for (let index = 0; index < size(entries); index += MAX_BATCH_SIZE) {
+        await transaction.put(
+          objNew(slice(entries, index, index + MAX_BATCH_SIZE)),
+        );
+      }
+    });
   };
 
   return createCustomPersister(

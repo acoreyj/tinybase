@@ -44,8 +44,7 @@ export function createDurableObjectSqlStoragePersister<
   store: Store<Schemas> | MergeableStore<Schemas>,
   sqlStorage: SqlStorage,
   configOrStoreTableName?:
-    | DurableObjectSqlDatabasePersisterConfig<Schemas>
-    | string,
+    DurableObjectSqlDatabasePersisterConfig<Schemas> | string,
   onSqlCommand?: (sql: string, params?: any[]) => void,
   onIgnoredError?: (error: any) => void,
   options?: Options,

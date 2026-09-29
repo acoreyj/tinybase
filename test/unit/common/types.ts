@@ -1,14 +1,5 @@
 import type {Id, IdOrNull} from 'tinybase';
 
-declare global {
-  // eslint-disable-next-line @typescript-eslint/no-namespace
-  namespace jest {
-    interface Matchers<R> {
-      toEqualWithOrder(expected: any): R;
-    }
-  }
-}
-
 export type IdObj<Value> = {[id: string]: Value};
 export type IdObj2<Value> = IdObj<IdObj<Value>>;
 export type Logs = IdObj<any[]>;
@@ -74,7 +65,9 @@ export type MetricsListener = Listener &
 export type IndexesListener = Listener &
   Readonly<{
     listenToIndexIds: (id: Id) => Id;
+    listenToHasIndex: (id: Id, indexId: IdOrNull) => Id;
     listenToSliceIds: (id: Id, indexId: IdOrNull) => Id;
+    listenToHasSlice: (id: Id, indexId: IdOrNull, sliceId: IdOrNull) => Id;
     listenToSliceRowIds: (id: Id, indexId: IdOrNull, sliceId: IdOrNull) => Id;
   }>;
 

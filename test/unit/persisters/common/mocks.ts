@@ -2,8 +2,6 @@ import {DocHandle, Repo} from '@automerge/automerge-repo';
 import crypto from 'crypto';
 import fs from 'fs';
 import {deleteDB, openDB} from 'idb';
-import type {FetchMock} from 'jest-fetch-mock';
-import fm from 'jest-fetch-mock';
 import type {
   Changes,
   Content,
@@ -15,7 +13,7 @@ import type {
   Tables,
   Values,
 } from 'tinybase';
-import {createMergeableStore} from 'tinybase';
+import {createMergeableStore, getUniqueId} from 'tinybase';
 import type {
   AnyPersister,
   DatabasePersisterConfig,
@@ -27,8 +25,10 @@ import {createCustomPersister} from 'tinybase/persisters';
 import {createAutomergePersister} from 'tinybase/persisters/persister-automerge';
 import {
   createLocalPersister,
+  createOpfsPersister,
   createSessionPersister,
 } from 'tinybase/persisters/persister-browser';
+import {createDurableObjectStoragePersister} from 'tinybase/persisters/persister-durable-object-storage';
 import {createFilePersister} from 'tinybase/persisters/persister-file';
 import {createIndexedDbPersister} from 'tinybase/persisters/persister-indexed-db';
 import {createRemotePersister} from 'tinybase/persisters/persister-remote';
@@ -39,13 +39,10 @@ import type {LocalSynchronizer} from 'tinybase/synchronizers/synchronizer-local'
 import {createLocalSynchronizer} from 'tinybase/synchronizers/synchronizer-local';
 import tmp from 'tmp';
 import {Doc as YDoc, Map as YMap} from 'yjs';
-import {mockFetchWasm} from '../../common/other.ts';
-import {Variants} from './databases.ts';
+import {DatabaseDialect, getPlaceholder, Variants} from './databases.ts';
 import {GetLocationMethod, Persistable} from './other.ts';
 
 tmp.setGracefulCleanup();
-
-const fetchMock = fm as any as FetchMock;
 
 const UNDEFINED_MARKER = '\uFFFC';
 
@@ -176,6 +173,7 @@ const getMockedCustom = (
   },
   getChanges: () => customPersisterChanges,
   testMissing: true,
+  testAutoLoad: true,
 });
 
 const getMockedStorage = (
@@ -218,6 +216,7 @@ const getMockedStorage = (
     del: async (location: string): Promise<void> =>
       storage.removeItem(location),
     testMissing: true,
+    testAutoLoad: true,
   };
   return mockStorage;
 };
@@ -238,12 +237,13 @@ const getMockedDatabase = <Location>(
   close: (location: Location) => Promise<void>,
   autoLoadPause = 2,
   autoLoadIntervalSeconds = 0.001,
-  _isPostgres = false,
+  dialect: DatabaseDialect | undefined = undefined,
   _supportsMultipleConnections = false,
   _skipSqlChecks = false,
 ): Persistable<Location> => {
+  const placeholder = getPlaceholder(dialect);
+  const isMsSql = dialect == 'mssql';
   const mockDatabase = {
-    beforeEach: mockFetchWasm,
     getLocation,
     getLocationMethod,
     getPersister: (store: Store, location: Location) =>
@@ -254,23 +254,37 @@ const getMockedDatabase = <Location>(
     get: async (location: Location): Promise<Content | void> =>
       JSON.parse(
         (
-          await cmd(location, 'SELECT store FROM tinybase WHERE _id = $1', [
-            '_',
-          ])
+          await cmd(
+            location,
+            `SELECT store FROM tinybase WHERE _id = ${placeholder(1)}`,
+            ['_'],
+          )
         )[0]['store'],
       ),
     set: async (location: Location, rawContent: any): Promise<void> =>
       await mockDatabase.write(location, JSON.stringify(rawContent)),
     write: async (location: Location, rawContent: any): Promise<void> => {
+      // SQL Server has neither IF NOT EXISTS nor ON CONFLICT.
       await cmd(
         location,
-        'CREATE TABLE IF NOT EXISTS tinybase ' +
-          '(_id text PRIMARY KEY, store text);',
+        isMsSql
+          ? `IF OBJECT_ID('tinybase','U') IS NULL CREATE TABLE tinybase ` +
+              '(_id nvarchar(450) PRIMARY KEY, store nvarchar(max));'
+          : 'CREATE TABLE IF NOT EXISTS tinybase ' +
+              '(_id text PRIMARY KEY, store text);',
       );
       await cmd(
         location,
-        'INSERT INTO tinybase (_id, store) VALUES ($1, $2) ' +
-          'ON CONFLICT (_id) DO UPDATE SET store=excluded.store',
+        isMsSql
+          ? 'MERGE INTO tinybase WITH(HOLDLOCK) AS t USING(VALUES(' +
+              `${placeholder(1)},${placeholder(2)})) AS s(_id, store) ` +
+              'ON t._id=s._id ' +
+              'WHEN MATCHED THEN UPDATE SET t.store=s.store ' +
+              'WHEN NOT MATCHED THEN INSERT(_id, store) ' +
+              'VALUES(s._id, s.store);'
+          : `INSERT INTO tinybase (_id, store) VALUES (${placeholder(1)}, ` +
+              `${placeholder(2)}) ` +
+              'ON CONFLICT (_id) DO UPDATE SET store=excluded.store',
         ['_', rawContent],
       );
     },
@@ -280,8 +294,9 @@ const getMockedDatabase = <Location>(
       } catch {}
     },
     afterEach: (location: Location) => mockDatabase.del(location),
-    testMissing: true,
     autoLoadPause,
+    testMissing: true,
+    testAutoLoad: true,
   };
   return mockDatabase;
 };
@@ -373,6 +388,7 @@ export const mockFile: Persistable = {
     fs.writeFileSync(location, rawContent, 'utf-8'),
   del: async (location: string): Promise<void> => fs.unlinkSync(location),
   testMissing: true,
+  testAutoLoad: true,
 };
 
 export const mockLocalSynchronizer: Persistable<
@@ -408,6 +424,7 @@ export const mockLocalSynchronizer: Persistable<
     ]);
   },
   testMissing: false,
+  testAutoLoad: true,
   afterEach: async (location: [LocalSynchronizer, MergeableStore]) => {
     await location[0].destroy();
   },
@@ -421,21 +438,21 @@ const createCustomLocalSynchronizer = (
   return createCustomSynchronizer(
     store,
     (toClientId, requestId, messageType, messageBody): void => {
+      const toClientIds =
+        toClientId == null
+          ? [...clients.keys()].filter(
+              (otherClientId) => otherClientId != clientId,
+            )
+          : [toClientId];
       setTimeout(() => {
-        if (toClientId == null) {
-          clients.forEach((receive, otherClientId) =>
-            otherClientId != clientId
-              ? receive(clientId, requestId, messageType, messageBody)
-              : 0,
-          );
-        } else {
+        toClientIds.forEach((toClientId) =>
           clients.get(toClientId)?.(
             clientId,
             requestId,
             messageType,
             messageBody,
-          );
-        }
+          ),
+        );
       }, 0);
     },
     (receive: Receive): void => {
@@ -488,6 +505,7 @@ export const mockCustomSynchronizer: Persistable<
     ]);
   },
   testMissing: false,
+  testAutoLoad: true,
   afterEach: async (
     location: [Map<string, Receive>, Synchronizer, MergeableStore],
   ) => {
@@ -505,10 +523,54 @@ export const mockSessionStorage = getMockedStorage(
   createSessionPersister,
 );
 
+export const mockOpfs: Persistable<
+  [FileSystemDirectoryHandle, FileSystemFileHandle]
+> = {
+  autoLoadPause: 200,
+  getLocation: async (): Promise<
+    [FileSystemDirectoryHandle, FileSystemFileHandle]
+  > => {
+    const opfs = await navigator.storage.getDirectory();
+    return [opfs, await opfs.getFileHandle(getUniqueId(), {create: true})];
+  },
+  getLocationMethod: ['getHandle', ([, handle]) => handle],
+  getPersister: (
+    store: Store | MergeableStore,
+    [, handle]: [FileSystemDirectoryHandle, FileSystemFileHandle],
+  ) => createOpfsPersister(store, handle),
+  get: async ([, handle]: [
+    FileSystemDirectoryHandle,
+    FileSystemFileHandle,
+  ]): Promise<Content | MergeableContent | void> => {
+    try {
+      const file = await handle.getFile();
+      return JSON.parse(await file.text());
+    } catch {}
+  },
+  set: (
+    location: [FileSystemDirectoryHandle, FileSystemFileHandle],
+    content: Content | MergeableContent,
+  ): Promise<void> => mockOpfs.write(location, JSON.stringify(content)),
+  write: async (
+    [, handle]: [FileSystemDirectoryHandle, FileSystemFileHandle],
+    rawContent: any,
+  ): Promise<void> => {
+    const writable = await handle.createWritable();
+    await writable.write(rawContent);
+    await writable.close();
+  },
+  del: async ([opfs, handle]: [
+    FileSystemDirectoryHandle,
+    FileSystemFileHandle,
+  ]): Promise<void> => {
+    await opfs.removeEntry(handle.name);
+  },
+  testMissing: true,
+  testAutoLoad: false,
+};
+
 export const mockRemote: Persistable = {
   beforeEach: (): void => {
-    fetchMock.enableMocks();
-    fetchMock.resetMocks();
     fetchMock.doMock(async (req) => {
       if (req.url.startsWith(GET_HOST)) {
         const rawBody = await mockRemote.get(req.url.substr(GET_HOST.length));
@@ -550,9 +612,24 @@ export const mockRemote: Persistable = {
     fs.writeFileSync(location, rawContent, 'utf-8'),
   del: async (location: string): Promise<void> => fs.unlinkSync(location),
   testMissing: true,
+  testAutoLoad: true,
 };
 
-export const mockIndexedDb = {
+const INDEXED_DB_OBJECT_STORE_NAMES = ['t', 'v', 'm'];
+
+const getKeyValue = ({k, v}: {k: string; v: any}) => [k, v];
+
+const openIndexedDb = (dbName: string) =>
+  openDB(dbName, 3, {
+    upgrade: (db) =>
+      INDEXED_DB_OBJECT_STORE_NAMES.forEach((objectStoreName) =>
+        db.objectStoreNames.contains(objectStoreName)
+          ? 0
+          : db.createObjectStore(objectStoreName, {keyPath: 'k'}),
+      ),
+  });
+
+export const mockIndexedDb: Persistable = {
   autoLoadPause: 11,
   getLocation: async (): Promise<string> => 'test' + Math.random(),
   getLocationMethod: [
@@ -563,16 +640,14 @@ export const mockIndexedDb = {
     createIndexedDbPersister(store, dbName, 0.01),
   get: async (dbName: string): Promise<Content | void> => {
     try {
-      const db = await openDB(dbName, 2, {
-        upgrade: (db) => {
-          db.createObjectStore('t', {keyPath: 'k'});
-          db.createObjectStore('v', {keyPath: 'k'});
-        },
-      });
-      const result = [
-        Object.fromEntries((await db.getAll('t')).map(({k, v}) => [k, v])),
-        Object.fromEntries((await db.getAll('v')).map(({k, v}) => [k, v])),
-      ];
+      const db = await openIndexedDb(dbName);
+      const entries = async (objectStoreName: string) =>
+        Object.fromEntries((await db.getAll(objectStoreName)).map(getKeyValue));
+      const mergeable = await entries('m');
+      const result =
+        't' in mergeable
+          ? [mergeable.t, mergeable.v]
+          : [await entries('t'), await entries('v')];
       db.close();
       return result as any;
     } catch {}
@@ -581,25 +656,28 @@ export const mockIndexedDb = {
     await mockIndexedDb.write(dbName, rawContent),
   write: async (dbName: string, rawContent: any): Promise<void> => {
     if (typeof rawContent != 'string') {
-      const db = await openDB(dbName, 1, {
-        upgrade: (db) => {
-          db.createObjectStore('t', {keyPath: 'k'});
-          db.createObjectStore('v', {keyPath: 'k'});
-        },
-      });
+      const db = await openIndexedDb(dbName);
       await db.clear('t');
       await db.clear('v');
-      const [tables, values] = rawContent;
-      for (const [k, v] of Object.entries(tables)) {
-        await db.put('t', {v, k});
-      }
-      if (values) {
-        for (const [k, v] of Object.entries(values)) {
-          await db.put('v', {v, k});
+      await db.clear('m');
+      // MergeableContent halves are Stamp arrays; Content halves are objects.
+      if (Array.isArray(rawContent[0])) {
+        await db.put('m', {v: rawContent[0], k: 't'});
+        await db.put('m', {v: rawContent[1], k: 'v'});
+      } else {
+        const [tables, values] = rawContent;
+        for (const [k, v] of Object.entries(tables)) {
+          await db.put('t', {v, k});
+        }
+        if (values) {
+          for (const [k, v] of Object.entries(values)) {
+            await db.put('v', {v, k});
+          }
         }
       }
       db.close();
     } else {
+      await deleteDB(dbName);
       const db = await openDB(dbName, 1, {
         upgrade: (db) => db.createObjectStore('broken'),
       });
@@ -608,6 +686,7 @@ export const mockIndexedDb = {
   },
   del: (dbName: string): Promise<void> => deleteDB(dbName),
   testMissing: true,
+  testAutoLoad: true,
 };
 
 export const getMockDatabases = (variants: Variants) =>
@@ -677,6 +756,7 @@ export const mockYjs: Persistable<YDoc> = {
   },
   del: async (location: YDoc): Promise<void> => location.destroy(),
   testMissing: false,
+  testAutoLoad: true,
 };
 
 export const mockAutomerge: Persistable<DocHandle<any>> = {
@@ -685,7 +765,7 @@ export const mockAutomerge: Persistable<DocHandle<any>> = {
   getLocationMethod: ['getDocHandle', (location) => location],
   getPersister: createAutomergePersister,
   get: async (docHandle: DocHandle<any>): Promise<Content | void> => {
-    const docContent = (await docHandle.doc())?.['tinybase'];
+    const docContent = docHandle.doc()?.['tinybase'];
     if (Object.keys(docContent).length > 0) {
       return [docContent['t'], docContent['v']] as Content;
     }
@@ -728,4 +808,154 @@ export const mockAutomerge: Persistable<DocHandle<any>> = {
   },
   del: async (docHandle: DocHandle<any>): Promise<void> => docHandle.delete(),
   testMissing: false,
+  testAutoLoad: true,
+};
+
+// Mock DurableObjectStorage - simple Map-based implementation
+class MockDurableObjectStorage {
+  private data = new Map<string, any>();
+
+  async get<T>(key: string): Promise<T | undefined>;
+  async get<T>(keys: string[]): Promise<Map<string, T>>;
+  async get<T>(
+    keyOrKeys: string | string[],
+  ): Promise<T | undefined | Map<string, T>> {
+    if (Array.isArray(keyOrKeys)) {
+      const result = new Map<string, T>();
+      for (const key of keyOrKeys) {
+        const value = this.data.get(key);
+        if (value !== undefined) result.set(key, value);
+      }
+      return result;
+    }
+    return this.data.get(keyOrKeys);
+  }
+
+  async put(entries: Record<string, any>): Promise<void> {
+    for (const [key, value] of Object.entries(entries)) {
+      this.data.set(key, value);
+    }
+  }
+
+  async transaction<T>(
+    closure: (transaction: DurableObjectTransaction) => Promise<T>,
+  ): Promise<T> {
+    const data = new Map(this.data);
+    const result = await closure({
+      put: async (entries: Record<string, any>) => {
+        for (const [key, value] of Object.entries(entries)) {
+          data.set(key, value);
+        }
+      },
+    } as DurableObjectTransaction);
+    this.data = data;
+    return result;
+  }
+
+  async list<T>(options?: {prefix?: string}): Promise<Map<string, T>> {
+    const result = new Map<string, T>();
+    const prefix = options?.prefix ?? '';
+    for (const [key, value] of this.data.entries()) {
+      if (key.startsWith(prefix)) {
+        result.set(key, value);
+      }
+    }
+    return result;
+  }
+
+  async delete(key: string): Promise<boolean> {
+    return this.data.delete(key);
+  }
+
+  clear(): void {
+    this.data.clear();
+  }
+}
+
+const STORAGE_PREFIX = 'tinybase_';
+const T = 't';
+const V = 'v';
+
+// Key construction matching the persister's format
+const constructStorageKey = (type: string, ...ids: string[]) =>
+  STORAGE_PREFIX + type + JSON.stringify(ids).slice(1, -1);
+
+export const mockDurableObjectStorage: Persistable<MockDurableObjectStorage> = {
+  autoLoadPause: 10,
+  getLocation: async () => new MockDurableObjectStorage(),
+  getLocationMethod: ['getStorage', (storage) => storage],
+  getPersister: (
+    store: Store | MergeableStore,
+    storage: MockDurableObjectStorage,
+  ) =>
+    createDurableObjectStoragePersister(
+      store as MergeableStore,
+      storage as unknown as DurableObjectStorage,
+      STORAGE_PREFIX,
+    ),
+  get: async (
+    storage: MockDurableObjectStorage,
+  ): Promise<MergeableContent | void> => {
+    const entries = await storage.list({prefix: STORAGE_PREFIX});
+    if (entries.size > 0) {
+      return undefined;
+    }
+  },
+  set: async (
+    storage: MockDurableObjectStorage,
+    content: Content | MergeableContent,
+  ): Promise<void> => {
+    // Convert MergeableContent to the key-value format the persister uses
+    const [
+      [tablesObj, tablesHlc, tablesHash],
+      [valuesObj, valuesHlc, valuesHash],
+    ] = content as MergeableContent;
+    const entries: Record<string, any> = {};
+
+    // Store tables root
+    entries[constructStorageKey(T)] = [0, tablesHlc, tablesHash];
+
+    // Process tables
+    Object.entries(tablesObj).forEach(
+      ([tableId, [tableObj, tableHlc, tableHash]]: any) => {
+        entries[constructStorageKey(T, tableId)] = [0, tableHlc, tableHash];
+        Object.entries(tableObj).forEach(
+          ([rowId, [rowObj, rowHlc, rowHash]]: any) => {
+            entries[constructStorageKey(T, tableId, rowId)] = [
+              0,
+              rowHlc,
+              rowHash,
+            ];
+            Object.entries(rowObj).forEach(([cellId, cellStamp]) => {
+              entries[constructStorageKey(T, tableId, rowId, cellId)] =
+                cellStamp;
+            });
+          },
+        );
+      },
+    );
+
+    // Store values root
+    entries[constructStorageKey(V)] = [0, valuesHlc, valuesHash];
+
+    // Process values
+    Object.entries(valuesObj).forEach(([valueId, valueStamp]) => {
+      entries[constructStorageKey(V, valueId)] = valueStamp;
+    });
+
+    await storage.put(entries);
+  },
+  write: async (
+    _storage: MockDurableObjectStorage,
+    _rawContent: any,
+  ): Promise<void> => {
+    // Not used for DO storage
+  },
+  del: async (storage: MockDurableObjectStorage): Promise<void> => {
+    storage.clear();
+  },
+  testMissing: false,
+  testAutoLoad: false,
+  // get() cannot reconstruct content from the key-per-node layout.
+  testContent: false,
 };

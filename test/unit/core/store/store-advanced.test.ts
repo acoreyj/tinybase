@@ -1,10 +1,13 @@
+import {beforeEach, describe, expect, test, vi} from 'vitest';
+
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import type {Row, Store, Table, Tables, Values} from 'tinybase';
 import {createMergeableStore, createStore} from 'tinybase';
+import {createCustomPersister, Persists} from 'tinybase/persisters';
 import {expectChanges, expectNoChanges} from '../../common/expect.ts';
 import {createStoreListener} from '../../common/listeners.ts';
+import {noop, pause} from '../../common/other.ts';
 import {StoreListener} from '../../common/types.ts';
-import {noop} from '../../persisters/common/other.ts';
 
 describe.each([
   ['store', createStore],
@@ -151,11 +154,6 @@ describe.each([
       expect(store.getValues()).toEqual({v1: 1});
     });
 
-    test('part invalid object', () => {
-      store.setValuesJson('{"v1": [1, 2, 3]}');
-      expect(store.getValues()).toEqual({v1: 1});
-    });
-
     test('empty object', () => {
       store.setValuesJson('{}');
       expect(store.getValues()).toEqual({});
@@ -282,6 +280,66 @@ describe.each([
       ).toEqual(['r5', 'r4', 'r1']);
     });
 
+    test('Cell sort, custom sorter', () => {
+      const numericSorter = (sortKey1: any, sortKey2: any) =>
+        Number(sortKey1) - Number(sortKey2);
+      store = createStore();
+      ['1', '10', '0', '11', '12', '2'].forEach((rowId) =>
+        store.setRow('t1', rowId, {c1: true}),
+      );
+
+      expect(store.getSortedRowIds('t1')).toEqual([
+        '0',
+        '1',
+        '10',
+        '11',
+        '12',
+        '2',
+      ]);
+      expect(
+        store.getSortedRowIds(
+          't1',
+          undefined,
+          false,
+          0,
+          undefined,
+          numericSorter,
+        ),
+      ).toEqual(['0', '1', '2', '10', '11', '12']);
+      expect(
+        store.getSortedRowIds({tableId: 't1', sorter: numericSorter}),
+      ).toEqual(['0', '1', '2', '10', '11', '12']);
+    });
+
+    test('Cell sort, custom sorter with object and array cells', () => {
+      store = createStore()
+        .setTablesSchema({t1: {c1: {type: 'object'}, c2: {type: 'array'}}})
+        .setTable('t1', {
+          r1: {c1: {rank: 2}, c2: ['b']},
+          r2: {c1: {rank: 1}, c2: ['c']},
+          r3: {c1: {rank: 3}, c2: ['a']},
+        });
+
+      expect(
+        store.getSortedRowIds(
+          't1',
+          'c1',
+          false,
+          0,
+          undefined,
+          (sortKey1: any, sortKey2: any) => sortKey1.rank - sortKey2.rank,
+        ),
+      ).toEqual(['r2', 'r1', 'r3']);
+      expect(
+        store.getSortedRowIds({
+          tableId: 't1',
+          cellId: 'c2',
+          sorter: (sortKey1: any, sortKey2: any) =>
+            sortKey1[0].localeCompare(sortKey2[0]),
+        }),
+      ).toEqual(['r3', 'r1', 'r2']);
+    });
+
     test('Cell sort, offset', () => {
       expect(store.getSortedRowIds('t1', 'c2', false, 3)).toEqual([
         'r6',
@@ -389,6 +447,31 @@ describe.each([
       store.setRow('t1', 'r7', {c1: 7, c2: 'seven'});
     });
 
+    test('Cell sort listener, custom sorter', () => {
+      expect.assertions(7);
+      const numericSorter = (sortKey1: any, sortKey2: any) =>
+        Number(sortKey1) - Number(sortKey2);
+      store = createStore();
+      ['1', '10', '0'].forEach((rowId) =>
+        store.setRow('t1', rowId, {c1: true}),
+      );
+      store.addSortedRowIdsListener(
+        {tableId: 't1', sorter: numericSorter},
+        (_store, tableId, cellId, descending, offset, limit, sortedRowIds) => {
+          expect(tableId).toEqual('t1');
+          expect(cellId).toBeUndefined();
+          expect(descending).toEqual(false);
+          expect(offset).toEqual(0);
+          expect(limit).toBeUndefined();
+          expect(sortedRowIds).toEqual(['0', '1', '2', '10']);
+          expect(
+            store.getSortedRowIds({tableId, sorter: numericSorter}),
+          ).toEqual(['0', '1', '2', '10']);
+        },
+      );
+      store.setRow('t1', '2', {c1: true});
+    });
+
     test('Cell sort listener, add row without relevant cell', () => {
       expect.assertions(1);
       store.addSortedRowIdsListener(
@@ -444,21 +527,21 @@ describe.each([
     });
 
     test('Cell sort listener, alter relevant cell, no change', () => {
-      const listener = jest.fn();
+      const listener = vi.fn();
       store.addSortedRowIdsListener('t1', 'c2', false, 0, undefined, listener);
       store.setCell('t1', 'r5', 'c2', 'cinq');
       expect(listener).toHaveBeenCalledTimes(0);
     });
 
     test('Cell sort listener, alter relevant cell, after page', () => {
-      const listener = jest.fn();
+      const listener = vi.fn();
       store.addSortedRowIdsListener('t1', 'c2', false, 0, 3, listener);
       store.setRow('t1', 'r7', {c1: 7, c2: 'seven'});
       expect(listener).toHaveBeenCalledTimes(0);
     });
 
     test('Cell sort listener, alter non-relevant cell', () => {
-      const listener = jest.fn();
+      const listener = vi.fn();
       store.addSortedRowIdsListener('t1', 'c2', false, 0, undefined, listener);
       store.setCell('t1', 'r1', 'c1', '1.0');
       expect(listener).toHaveBeenCalledTimes(0);
@@ -466,6 +549,43 @@ describe.each([
   });
 
   describe('Miscellaneous', () => {
+    test('Reserved identifiers', () => {
+      const reservedIds = [
+        ...Object.getOwnPropertyNames(Object.prototype),
+        'prototype',
+      ];
+      reservedIds.forEach((reservedId, index) =>
+        store
+          .setCell(reservedId, reservedId, reservedId, index)
+          .setValue(reservedId, index),
+      );
+
+      const tables = store.getTables();
+      const values = store.getValues();
+      const [jsonTables, jsonValues] = JSON.parse(store.getJson());
+      expect(Object.getPrototypeOf(tables)).toBeNull();
+      expect(Object.getPrototypeOf(values)).toBeNull();
+      reservedIds.forEach((reservedId, index) => {
+        expect(Object.hasOwn(tables, reservedId)).toEqual(true);
+        expect(Object.hasOwn(tables[reservedId], reservedId)).toEqual(true);
+        expect(
+          Object.hasOwn(tables[reservedId][reservedId], reservedId),
+        ).toEqual(true);
+        expect(tables[reservedId][reservedId][reservedId]).toEqual(index);
+        expect(values[reservedId]).toEqual(index);
+        expect(jsonTables[reservedId][reservedId][reservedId]).toEqual(index);
+        expect(jsonValues[reservedId]).toEqual(index);
+      });
+
+      const objectPrototype = Object.prototype as {[id: string]: unknown};
+      try {
+        store.setCell('constructor', 'prototype', 'polluted', 1);
+        expect(Object.hasOwn(objectPrototype, 'polluted')).toEqual(false);
+      } finally {
+        delete objectPrototype.polluted;
+      }
+    });
+
     test('Null prototype objects', () => {
       const tables = Object.create(null);
       const table = Object.create(null);
@@ -724,7 +844,7 @@ describe.each([
     test('cell listener with new and old value', () => {
       expect.assertions(11);
       store = createStore().setTables({t1: {r1: {c1: 1}}});
-      const listener = jest.fn(
+      const listener = vi.fn(
         (store2, tableId, rowId, cellId, newCell, oldCell) => {
           expect(store2).toEqual(store);
           expect(tableId).toEqual('t1');
@@ -741,14 +861,12 @@ describe.each([
     test('row listener with cell changes function', () => {
       expect.assertions(5);
       store = createStore().setTables({t1: {r1: {c1: 1, c2: 2, c3: 3}}});
-      const listener = jest.fn(
-        (_store, _tableId, _rowId, getCellChange: any) => {
-          expect(getCellChange('t1', 'r1', 'c1')).toEqual([false, 1, 1]);
-          expect(getCellChange('t1', 'r1', 'c2')).toEqual([true, 2, 3]);
-          expect(getCellChange('t1', 'r1', 'c3')).toEqual([true, 3, undefined]);
-          expect(getCellChange('t1', 'r1', 'c4')).toEqual([true, undefined, 4]);
-        },
-      );
+      const listener = vi.fn((_store, _tableId, _rowId, getCellChange: any) => {
+        expect(getCellChange('t1', 'r1', 'c1')).toEqual([false, 1, 1]);
+        expect(getCellChange('t1', 'r1', 'c2')).toEqual([true, 2, 3]);
+        expect(getCellChange('t1', 'r1', 'c3')).toEqual([true, 3, undefined]);
+        expect(getCellChange('t1', 'r1', 'c4')).toEqual([true, undefined, 4]);
+      });
       store.addRowListener('t1', 'r1', listener);
       store.setTables({t1: {r1: {c1: 1, c2: 3, c4: 4}}});
       expect(listener).toHaveBeenCalled();
@@ -757,7 +875,7 @@ describe.each([
     test('value listener with new and old value', () => {
       expect.assertions(7);
       store = createStore().setValues({v1: 1});
-      const listener = jest.fn((store2, valueId, newValue, oldValue) => {
+      const listener = vi.fn((store2, valueId, newValue, oldValue) => {
         expect(store2).toEqual(store);
         expect(newValue).toEqual(2);
         expect(oldValue).toEqual(valueId == 'v1' ? 1 : undefined);
@@ -770,7 +888,7 @@ describe.each([
     test('values listener with value changes function', () => {
       expect.assertions(5);
       store = createStore().setValues({v1: 1, v2: 2, v3: 3});
-      const listener = jest.fn((_store, getValueChange: any) => {
+      const listener = vi.fn((_store, getValueChange: any) => {
         expect(getValueChange('v1')).toEqual([false, 1, 1]);
         expect(getValueChange('v2')).toEqual([true, 2, 3]);
         expect(getValueChange('v3')).toEqual([true, 3, undefined]);
@@ -790,15 +908,208 @@ describe.each([
     });
 
     test('Empty', () => {
-      const actions = jest.fn(() => null);
+      const actions = vi.fn(() => null);
       store.transaction(actions);
       expect(actions).toHaveBeenCalledTimes(1);
     });
 
     test('Empty, nested', () => {
-      const actions = jest.fn(() => null);
+      const actions = vi.fn(() => null);
       store.transaction(() => store.transaction(actions));
       expect(actions).toHaveBeenCalledTimes(1);
+    });
+
+    test('Action error rolls back and leaves Store usable', () => {
+      const error = new Error('action error');
+      const listener = vi.fn();
+      const finishListener = vi.fn(() => store.setValue('v2', 2));
+      store.addCellListener('t1', 'r1', 'c1', listener);
+      store.addWillFinishTransactionListener(finishListener);
+      expect(() =>
+        store.transaction(() => {
+          store.setCell('t1', 'r1', 'c1', 2).setValue('v1', 2);
+          throw error;
+        }),
+      ).toThrow(error);
+      expect(store.getTables()).toEqual(originalTables);
+      expect(store.getValues()).toEqual(originalValues);
+      expect(listener).not.toHaveBeenCalled();
+      expect(finishListener).not.toHaveBeenCalled();
+      store.setCell('t1', 'r1', 'c1', 2);
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    test('Rollback restores schemas and schema-filtered content', () => {
+      const tablesSchema = {t1: {c1: {type: 'number' as const}}};
+      const valuesSchema = {v1: {type: 'number' as const}};
+      const error = new Error('schema error');
+      store.setSchema(tablesSchema, valuesSchema);
+
+      expect(() =>
+        store.transaction(() => {
+          store.setSchema({t1: {c1: {type: 'string'}}}, {v1: {type: 'string'}});
+          throw error;
+        }),
+      ).toThrow(error);
+      expect(JSON.parse(store.getSchemaJson())).toEqual([
+        tablesSchema,
+        valuesSchema,
+      ]);
+      expect(store.getTables()).toEqual(originalTables);
+      expect(store.getValues()).toEqual(originalValues);
+
+      store.transaction(
+        () => store.delSchema(),
+        () => true,
+      );
+      expect(JSON.parse(store.getSchemaJson())).toEqual([
+        tablesSchema,
+        valuesSchema,
+      ]);
+    });
+
+    test('Nested action error rolls back outer transaction', () => {
+      store.transaction(() => {
+        store.setCell('t1', 'r1', 'c1', 2);
+        try {
+          store.transaction(() => {
+            store.setValue('v1', 2);
+            throw new Error('nested action error');
+          });
+        } catch {
+          store.setCell('t1', 'r1', 'c2', 2);
+        }
+      });
+      expect(store.getTables()).toEqual(originalTables);
+      expect(store.getValues()).toEqual(originalValues);
+    });
+
+    test('Rollback error rolls back and leaves Store usable', () => {
+      const error = new Error('rollback error');
+      const listener = vi.fn();
+      store.addCellListener('t1', 'r1', 'c1', listener);
+      expect(() =>
+        store.transaction(
+          () => store.setCell('t1', 'r1', 'c1', 2).setValue('v1', 2),
+          () => {
+            throw error;
+          },
+        ),
+      ).toThrow(error);
+      expect(store.getTables()).toEqual(originalTables);
+      expect(store.getValues()).toEqual(originalValues);
+      expect(listener).not.toHaveBeenCalled();
+      store.setCell('t1', 'r1', 'c1', 2);
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    test('Mutating listener error rolls back and restores state', () => {
+      const error = new Error('mutating listener error');
+      const listenerId = store.addCellListener(
+        't1',
+        'r1',
+        'c1',
+        () => {
+          throw error;
+        },
+        true,
+      );
+      expect(() => store.setCell('t1', 'r1', 'c1', 2)).toThrow(error);
+      expect(store.getTables()).toEqual(originalTables);
+      store.delListener(listenerId);
+      store.setCell('t1', 'r1', 'c1', 2);
+      expect(store.getCell('t1', 'r1', 'c1')).toEqual(2);
+    });
+
+    test('Non-mutating listener error commits and restores state', () => {
+      const error = new Error('non-mutating listener error');
+      const listenerId = store.addCellListener('t1', 'r1', 'c1', () => {
+        throw error;
+      });
+      expect(() => store.setCell('t1', 'r1', 'c1', 2)).toThrow(error);
+      expect(store.getCell('t1', 'r1', 'c1')).toEqual(2);
+      store.delListener(listenerId);
+      store.setCell('t1', 'r1', 'c1', 3);
+      expect(store.getCell('t1', 'r1', 'c1')).toEqual(3);
+    });
+
+    test('Listener errors do not strand transaction finalizers', () => {
+      const error = new Error('listener error');
+      const targetListener = vi.fn();
+      const target = createStore();
+      store.addWillFinishTransactionListener(target.startTransaction);
+      store.addCellListener('t1', 'r1', 'c1', () => {
+        throw error;
+      });
+      store.addDidFinishTransactionListener(() => {
+        throw new Error('finalizer error');
+      });
+      store.addDidFinishTransactionListener(() => target.finishTransaction());
+      target.addValueListener('v1', targetListener);
+
+      expect(() => store.setCell('t1', 'r1', 'c1', 2)).toThrow(error);
+      target.setValue('v1', 1);
+      expect(targetListener).toHaveBeenCalledOnce();
+    });
+
+    test('Will-finish errors still run later finalizers', () => {
+      const error = new Error('will-finish error');
+      const targetListener = vi.fn();
+      const target = createStore();
+      const getMergeableState = () =>
+        (store as any).getMergeableContent
+          ? [
+              (store as any).getMergeableContent(),
+              (store as any).getTransactionMergeableChanges(),
+            ]
+          : undefined;
+      const originalMergeableState = getMergeableState();
+      let didMergeableState: any;
+      store.addWillFinishTransactionListener(() => {
+        throw error;
+      });
+      store.addWillFinishTransactionListener(target.startTransaction);
+      store.addDidFinishTransactionListener(
+        () => (didMergeableState = getMergeableState()),
+      );
+      store.addDidFinishTransactionListener(() => target.finishTransaction());
+      target.addValueListener('v1', targetListener);
+
+      expect(() => store.setCell('t1', 'r1', 'c1', 2)).toThrow(error);
+      expect(store.getTables()).toEqual(originalTables);
+      expect(didMergeableState).toEqual(originalMergeableState);
+      target.setValue('v1', 1);
+      expect(targetListener).toHaveBeenCalledOnce();
+    });
+
+    test('First will-finish error wins when multiple listeners throw', () => {
+      const firstError = new Error('first error');
+      const finalizer = vi.fn();
+      store.addWillFinishTransactionListener(() => {
+        throw firstError;
+      });
+      store.addWillFinishTransactionListener(() => {
+        throw new Error('second error');
+      });
+      store.addWillFinishTransactionListener(finalizer);
+
+      expect(() => store.setCell('t1', 'r1', 'c1', 2)).toThrow(firstError);
+      expect(finalizer).toHaveBeenCalledOnce();
+      expect(store.getTables()).toEqual(originalTables);
+    });
+
+    test('Start listener error rolls back and restores state', () => {
+      const error = new Error('start listener error');
+      const listenerId = store.addStartTransactionListener(() => {
+        store.setValue('v1', 2);
+        throw error;
+      });
+      expect(() => store.setCell('t1', 'r1', 'c1', 2)).toThrow(error);
+      expect(store.getTables()).toEqual(originalTables);
+      expect(store.getValues()).toEqual(originalValues);
+      store.delListener(listenerId);
+      store.setCell('t1', 'r1', 'c1', 2);
+      expect(store.getCell('t1', 'r1', 'c1')).toEqual(2);
     });
 
     test('Debouncing to different', () => {
@@ -880,7 +1191,7 @@ describe.each([
 
     test('Transaction in a listener ignored 1', () => {
       listener.listenToCell('/t1/r1/c1', 't1', 'r1', 'c1');
-      const listenerTransaction = jest.fn(() => {
+      const listenerTransaction = vi.fn(() => {
         store.setTables({t1: {r1: {c1: 3}}});
       });
       store.addCellListener('t1', 'r1', 'c1', () => {
@@ -894,7 +1205,7 @@ describe.each([
 
     test('Transaction in a listener ignored 2', () => {
       listener.listenToCell('/t1/r1/c1', 't1', 'r1', 'c1');
-      const listenerTransaction = jest.fn(() => {
+      const listenerTransaction = vi.fn(() => {
         store.setTables({t1: {r1: {c1: 3}}});
       });
       store.addCellListener('t1', 'r1', 'c1', () => {
@@ -909,7 +1220,7 @@ describe.each([
     });
 
     test('Adding a peer listener in a listener', () => {
-      const listener = jest.fn(() => null);
+      const listener = vi.fn(() => null);
       store.addCellListener('t1', 'r1', 'c1', () => {
         store.addCellListener('t1', 'r1', 'c1', listener);
       });
@@ -918,7 +1229,7 @@ describe.each([
     });
 
     test('Adding a higher listener in a listener', () => {
-      const listener = jest.fn(() => null);
+      const listener = vi.fn(() => null);
       store.addCellListener('t1', 'r1', 'c1', () => {
         store.addRowListener('t1', 'r1', listener);
       });
@@ -927,7 +1238,7 @@ describe.each([
     });
 
     test('Adding a lower listener in a listener', () => {
-      const listener = jest.fn(() => null);
+      const listener = vi.fn(() => null);
       store.addRowListener('t1', 'r1', () => {
         store.addCellListener('t1', 'r1', 'c1', listener);
       });
@@ -936,7 +1247,7 @@ describe.each([
     });
 
     test('Removing an earlier peer listener in a listener', () => {
-      const listener = jest.fn(() => null);
+      const listener = vi.fn(() => null);
       const listenerId = store.addCellListener('t1', 'r1', 'c1', listener);
       store.addCellListener('t1', 'r1', 'c1', () => {
         store.delListener(listenerId);
@@ -946,7 +1257,7 @@ describe.each([
     });
 
     test('Removing a later peer listener in a listener', () => {
-      const listener = jest.fn(() => null);
+      const listener = vi.fn(() => null);
       store.addCellListener('t1', 'r1', 'c1', () => {
         store.delListener(listenerId);
       });
@@ -956,7 +1267,7 @@ describe.each([
     });
 
     test('Removing a lower listener in a listener', () => {
-      const listener = jest.fn(() => null);
+      const listener = vi.fn(() => null);
       const listenerId = store.addCellListener('t1', 'r1', 'c1', listener);
       store.addRowListener('t1', 'r1', () => {
         store.delListener(listenerId);
@@ -966,7 +1277,7 @@ describe.each([
     });
 
     test('Removing a higher listener in a listener', () => {
-      const listener = jest.fn(() => null);
+      const listener = vi.fn(() => null);
       const listenerId = store.addRowListener('t1', 'r1', listener);
       store.addCellListener('t1', 'r1', 'c1', () => {
         store.delListener(listenerId);
@@ -981,7 +1292,7 @@ describe.each([
           expect.assertions(10);
           store.transaction(
             // @ts-ignore
-            () => store.setTables({t2: {r2: {c2: 2, c3: [3]}}}),
+            () => store.setTables({t2: {r2: {c2: 2, c3: new Date(3)}}}),
             () => {
               const [
                 ,
@@ -1000,7 +1311,7 @@ describe.each([
                 t1: {r1: {c1: [1, undefined]}},
                 t2: {r2: {c2: [undefined, 2]}},
               });
-              expect(invalidCells).toEqual({t2: {r2: {c3: [[3]]}}});
+              expect(invalidCells).toEqual({t2: {r2: {c3: [new Date(3)]}}});
               expect(changedValues).toEqual({});
               expect(invalidValues).toEqual({});
               expect(changedTableIds).toEqual({t1: -1, t2: 1});
@@ -1020,7 +1331,7 @@ describe.each([
           expect.assertions(10);
           store.transaction(
             // @ts-ignore
-            () => store.setTable('t2', {r2: {c2: 2, c3: [3]}}),
+            () => store.setTable('t2', {r2: {c2: 2, c3: new Date(3)}}),
             () => {
               const [
                 ,
@@ -1039,7 +1350,7 @@ describe.each([
                 t2: {r2: {c2: 2}},
               });
               expect(changedCells).toEqual({t2: {r2: {c2: [undefined, 2]}}});
-              expect(invalidCells).toEqual({t2: {r2: {c3: [[3]]}}});
+              expect(invalidCells).toEqual({t2: {r2: {c3: [new Date(3)]}}});
               expect(changedValues).toEqual({});
               expect(invalidValues).toEqual({});
               expect(changedTableIds).toEqual({t2: 1});
@@ -1056,7 +1367,7 @@ describe.each([
           expect.assertions(10);
           store.transaction(
             // @ts-ignore
-            () => store.setRow('t2', 'r2', {c2: 2, c3: [3]}),
+            () => store.setRow('t2', 'r2', {c2: 2, c3: new Date(3)}),
             () => {
               const [
                 ,
@@ -1075,7 +1386,7 @@ describe.each([
                 t2: {r2: {c2: 2}},
               });
               expect(changedCells).toEqual({t2: {r2: {c2: [undefined, 2]}}});
-              expect(invalidCells).toEqual({t2: {r2: {c3: [[3]]}}});
+              expect(invalidCells).toEqual({t2: {r2: {c3: [new Date(3)]}}});
               expect(changedValues).toEqual({});
               expect(invalidValues).toEqual({});
               expect(changedTableIds).toEqual({t2: 1});
@@ -1133,7 +1444,7 @@ describe.each([
           expect.assertions(10);
           store.transaction(
             // @ts-ignore
-            () => store.setCell('t2', 'r2', 'c3', [3]),
+            () => store.setCell('t2', 'r2', 'c3', new Date(3)),
             () => {
               const [
                 ,
@@ -1149,7 +1460,7 @@ describe.each([
               ] = store.getTransactionLog();
               expect(store.getTables()).toEqual(originalTables);
               expect(changedCells).toEqual({});
-              expect(invalidCells).toEqual({t2: {r2: {c3: [[3]]}}});
+              expect(invalidCells).toEqual({t2: {r2: {c3: [new Date(3)]}}});
               expect(changedValues).toEqual({});
               expect(invalidValues).toEqual({});
               expect(changedTableIds).toEqual({});
@@ -1166,7 +1477,7 @@ describe.each([
           expect.assertions(10);
           store.transaction(
             // @ts-ignore
-            () => store.setValues({v2: 2, v3: [3]}),
+            () => store.setValues({v2: 2, v3: new Date(3)}),
             () => {
               const [
                 ,
@@ -1187,7 +1498,7 @@ describe.each([
                 v1: [1, undefined],
                 v2: [undefined, 2],
               });
-              expect(invalidValues).toEqual({v3: [[3]]});
+              expect(invalidValues).toEqual({v3: [new Date(3)]});
               expect(changedTableIds).toEqual({});
               expect(changedRowIds).toEqual({});
               expect(changedCellIds).toEqual({});
@@ -1237,7 +1548,7 @@ describe.each([
           expect.assertions(10);
           store.transaction(
             // @ts-ignore
-            () => store.setValue('v3', [3]),
+            () => store.setValue('v3', new Date(3)),
             () => {
               const [
                 ,
@@ -1255,7 +1566,7 @@ describe.each([
               expect(changedCells).toEqual({});
               expect(invalidCells).toEqual({});
               expect(changedValues).toEqual({});
-              expect(invalidValues).toEqual({v3: [[3]]});
+              expect(invalidValues).toEqual({v3: [new Date(3)]});
               expect(changedTableIds).toEqual({});
               expect(changedRowIds).toEqual({});
               expect(changedCellIds).toEqual({});
@@ -1295,7 +1606,7 @@ describe.each([
 
     describe('Transactions with explicit start & finish', () => {
       test('Finishing without starting does nothing', () => {
-        const doRollback = jest.fn(() => true);
+        const doRollback = vi.fn(() => true);
         store.finishTransaction(doRollback);
         expect(doRollback).toHaveBeenCalledTimes(0);
       });
@@ -1362,7 +1673,7 @@ describe.each([
       test('with setTables', () => {
         store.transaction(
           // @ts-ignore
-          () => store.setTables({t2: {r2: {c2: 2, c3: [3]}}}),
+          () => store.setTables({t2: {r2: {c2: 2, c3: new Date(3)}}}),
           () => false,
         );
         expect(store.getTables()).toEqual({t2: {r2: {c2: 2}}});
@@ -1371,7 +1682,7 @@ describe.each([
       test('with setTable', () => {
         store.transaction(
           // @ts-ignore
-          () => store.setTable('t2', {r2: {c2: 2, c3: [3]}}),
+          () => store.setTable('t2', {r2: {c2: 2, c3: new Date(3)}}),
           () => false,
         );
         expect(store.getTables()).toEqual({
@@ -1383,7 +1694,7 @@ describe.each([
       test('with setRow', () => {
         store.transaction(
           // @ts-ignore
-          () => store.setRow('t2', 'r2', {c2: 2, c3: [3]}),
+          () => store.setRow('t2', 'r2', {c2: 2, c3: new Date(3)}),
           () => false,
         );
         expect(store.getTables()).toEqual({
@@ -1409,7 +1720,7 @@ describe.each([
       test('with invalid setCell', () => {
         store.transaction(
           // @ts-ignore
-          () => store.setCell('t2', 'r2', 'c3', [3]),
+          () => store.setCell('t2', 'r2', 'c3', new Date(3)),
           () => false,
         );
         expect(store.getTables()).toEqual(originalTables);
@@ -1428,6 +1739,200 @@ describe.each([
         );
         expect(store.getTables()).toEqual({t3: {r3: {c3: 3}}});
       });
+    });
+  });
+
+  describe('Reserved strings', () => {
+    const jsonPrefix = '\uFFFD';
+    const undefinedMarker = '\uFFFC';
+
+    test('leading JSON prefix is invalid string data', () => {
+      const invalidCell = vi.fn();
+      const invalidValue = vi.fn();
+      const cell = jsonPrefix + '{"a":1}';
+      const value = jsonPrefix + '[1]';
+      store.addInvalidCellListener(null, null, null, invalidCell);
+      store.addInvalidValueListener(null, invalidValue);
+
+      store.setCell('t1', 'r1', 'c1', cell).setValue('v1', value);
+
+      expect(store.getContent()).toEqual([{}, {}]);
+      expect(invalidCell).toHaveBeenCalledWith(store, 't1', 'r1', 'c1', [cell]);
+      expect(invalidValue).toHaveBeenCalledWith(store, 'v1', [value]);
+
+      const schemaStore = createStore()
+        .setTablesSchema({t1: {c1: {type: 'string'}}})
+        .setValuesSchema({v1: {type: 'string'}})
+        .setCell('t1', 'r1', 'c1', cell)
+        .setValue('v1', value);
+      expect(schemaStore.getContent()).toEqual([{}, {}]);
+
+      const jsonSchemaStore = createStore()
+        .setTablesSchema({t1: {c1: {type: 'object'}}})
+        .setValuesSchema({v1: {type: 'array'}})
+        .setCell('t1', 'r1', 'c1', cell)
+        .setValue('v1', value);
+      expect(jsonSchemaStore.getContent()).toEqual([{}, {}]);
+
+      const defaultStore = createStore()
+        .setTablesSchema({t1: {c1: {type: 'string', default: cell}}})
+        .setValuesSchema({v1: {type: 'string', default: value}});
+      expect(JSON.parse(defaultStore.getSchemaJson())).toEqual([
+        {t1: {c1: {type: 'string'}}},
+        {v1: {type: 'string'}},
+      ]);
+    });
+
+    test('exact undefined marker is invalid string data', () => {
+      const invalidCell = vi.fn();
+      const invalidValue = vi.fn();
+      store.addInvalidCellListener(null, null, null, invalidCell);
+      store.addInvalidValueListener(null, invalidValue);
+
+      store
+        .setCell('t1', 'r1', 'c1', undefinedMarker)
+        .setValue('v1', undefinedMarker);
+
+      expect(store.getContent()).toEqual([{}, {}]);
+      expect(invalidCell).toHaveBeenCalledWith(store, 't1', 'r1', 'c1', [
+        undefinedMarker,
+      ]);
+      expect(invalidValue).toHaveBeenCalledWith(store, 'v1', [undefinedMarker]);
+
+      const schemaStore = createStore()
+        .setTablesSchema({t1: {c1: {type: 'string'}}})
+        .setValuesSchema({v1: {type: 'string'}})
+        .setCell('t1', 'r1', 'c1', undefinedMarker)
+        .setValue('v1', undefinedMarker);
+      expect(schemaStore.getContent()).toEqual([{}, {}]);
+
+      const defaultStore = createStore()
+        .setTablesSchema({
+          t1: {c1: {type: 'string', default: undefinedMarker}},
+        })
+        .setValuesSchema({
+          v1: {type: 'string', default: undefinedMarker},
+        });
+      expect(JSON.parse(defaultStore.getSchemaJson())).toEqual([
+        {t1: {c1: {type: 'string'}}},
+        {v1: {type: 'string'}},
+      ]);
+    });
+
+    test('JSON prefix is valid elsewhere', () => {
+      const cell = 'a' + jsonPrefix + 'b';
+      const value = 'a' + jsonPrefix;
+      const nested = jsonPrefix;
+
+      store
+        .setCell('t1', 'r1', 'c1', cell)
+        .setCell('t1', 'r1', 'c2', {nested})
+        .setValue('v1', value)
+        .setValue('v2', [nested]);
+
+      expect(store.getContent()).toEqual([
+        {t1: {r1: {c1: cell, c2: {nested}}}},
+        {v1: value, v2: [nested]},
+      ]);
+    });
+
+    test('encoded object and array data round-trips through JSON', () => {
+      store.setCell('t1', 'r1', 'c1', {a: 1}).setValue('v1', [1, 2]);
+      const restoredStore = createStore().setJson(store.getJson());
+
+      expect(restoredStore.getContent()).toEqual(store.getContent());
+    });
+
+    test('encoded JSON must contain a valid object or array', () => {
+      store.setContent([{t1: {r1: {c1: 1}}}, {v1: 1}]);
+
+      store.setJson(
+        JSON.stringify([
+          {t1: {r1: {c1: jsonPrefix + '{'}}},
+          {v1: jsonPrefix + '1'},
+        ]),
+      );
+
+      expect(store.getContent()).toEqual([{t1: {r1: {c1: 1}}}, {v1: 1}]);
+    });
+
+    test('encoded JSON must match its schema container type', () => {
+      store
+        .setTablesSchema({t1: {c1: {type: 'object'}}})
+        .setValuesSchema({v1: {type: 'array'}, v2: {type: 'string'}})
+        .setContent([{t1: {r1: {c1: {a: 1}}}}, {v1: [1], v2: 'a'}]);
+
+      store.setJson(
+        JSON.stringify([
+          {t1: {r1: {c1: jsonPrefix + '[2]'}}},
+          {v1: jsonPrefix + '{"b":2}', v2: jsonPrefix + '{"c":3}'},
+        ]),
+      );
+
+      expect(store.getContent()).toEqual([
+        {t1: {r1: {c1: {a: 1}}}},
+        {v1: [1], v2: 'a'},
+      ]);
+    });
+
+    test('bulk setters do not mutate caller input', () => {
+      const cell = {a: 1};
+      const row = {c1: cell, invalid: undefined as any};
+      const frozenRow = Object.freeze({c1: cell});
+      const table = Object.freeze({r1: frozenRow});
+      const tables = Object.freeze({t1: table});
+      const values = Object.freeze({v1: [1, 2]});
+
+      createStore().setTables(tables).setValues(values);
+      createStore().setTable('t1', table);
+      createStore().setRow('t1', 'r1', row);
+      createStore().addRow('t1', row);
+      createStore().setPartialRow('t1', 'r1', row);
+      createStore().setPartialValues(values);
+
+      expect(tables.t1.r1.c1).toBe(cell);
+      expect(values.v1).toEqual([1, 2]);
+      expect(row).toEqual({c1: cell, invalid: undefined});
+      expect(Object.hasOwn(row, 'invalid')).toEqual(true);
+    });
+
+    test('unserializable object and array data is invalid', () => {
+      const invalidCell = vi.fn();
+      const invalidValue = vi.fn();
+      const cyclic: any = {};
+      const bigint = [1n] as any;
+      const bigintObject = {value: 1n} as any;
+      cyclic.self = cyclic;
+      store.addInvalidCellListener(null, null, null, invalidCell);
+      store.addInvalidValueListener(null, invalidValue);
+
+      expect(() =>
+        store.setCell('t1', 'r1', 'c1', cyclic).setValue('v1', bigint),
+      ).not.toThrow();
+
+      expect(store.getContent()).toEqual([{}, {}]);
+      expect(invalidCell.mock.calls[0][4][0]).toBe(cyclic);
+      expect(invalidValue.mock.calls[0][2][0]).toBe(bigint);
+
+      const schemaStore = createStore()
+        .setTablesSchema({t1: {c1: {type: 'object'}}})
+        .setValuesSchema({v1: {type: 'array'}});
+      expect(() =>
+        schemaStore.setCell('t1', 'r1', 'c1', cyclic).setValue('v1', bigint),
+      ).not.toThrow();
+      expect(schemaStore.getContent()).toEqual([{}, {}]);
+
+      const defaultStore = createStore()
+        .setTablesSchema({
+          t1: {c1: {type: 'object', default: bigintObject}},
+        })
+        .setValuesSchema({
+          v1: {type: 'array', default: bigint},
+        });
+      expect(JSON.parse(defaultStore.getSchemaJson())).toEqual([
+        {t1: {c1: {type: 'object'}}},
+        {v1: {type: 'array'}},
+      ]);
     });
   });
 
@@ -1526,5 +2031,73 @@ describe.each([
         expect(store.getListenerStats()).toEqual(expectedListenerStats);
       });
     });
+  });
+});
+
+describe('Encoded persistence paths', () => {
+  test('Store changes are encoded during auto-save', async () => {
+    const store = createStore().setCell('t1', 'r1', 'c1', {a: 1});
+    const persisted: any[] = [];
+    const persister = createCustomPersister(
+      store,
+      async () => undefined,
+      async (getContent, changes) => {
+        persisted.push([getContent(), changes]);
+      },
+      async () => undefined,
+      async () => undefined,
+    );
+
+    await persister.startAutoSave();
+    store.setValue('v1', {b: 2});
+    await pause(1);
+    await persister.destroy();
+
+    const changes = persisted.find(([, changes]) => changes != undefined)?.[1];
+    expect(changes).toEqual([{}, {v1: expect.any(String)}, 1]);
+    expect(changes[1].v1).toContain('"b":2');
+  });
+
+  test('Mergeable content is encoded during save', async () => {
+    const store = createMergeableStore('s1')
+      .setCell('t1', 'r1', 'c1', {a: 1})
+      .setValue('v1', {b: 2});
+    let persisted: any;
+    const persister = createCustomPersister(
+      store,
+      async () => undefined,
+      async (getContent) => {
+        persisted = getContent();
+      },
+      async () => undefined,
+      async () => undefined,
+      undefined,
+      Persists.StoreOrMergeableStore,
+    );
+
+    await persister.save();
+    await persister.destroy();
+
+    expect(typeof store.getMergeableContent()[0][0].t1[0].r1[0].c1[0]).toEqual(
+      'object',
+    );
+    expect(typeof persisted[0][0].t1[0].r1[0].c1[0]).toEqual('string');
+    expect(persisted[0][0].t1[0].r1[0].c1[0]).toContain('"a":1');
+    expect(typeof persisted[1][0].v1[0]).toEqual('string');
+    expect(persisted[1][0].v1[0]).toContain('"b":2');
+
+    const restoredStore = createMergeableStore('s2');
+    const loadingPersister = createCustomPersister(
+      restoredStore,
+      async () => persisted,
+      async () => undefined,
+      async () => undefined,
+      async () => undefined,
+      undefined,
+      Persists.StoreOrMergeableStore,
+    );
+    await loadingPersister.load();
+    await loadingPersister.destroy();
+    expect(restoredStore.getContent()).toEqual(store.getContent());
   });
 });

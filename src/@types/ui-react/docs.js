@@ -9,13 +9,14 @@
  *
  * The components in this module provide a further abstraction over those hooks
  * to ease the composition of user interfaces that use TinyBase.
- * @see Building UIs guides
- * @see Building UIs With Metrics guide
- * @see Building UIs With Indexes guide
- * @see Building UIs With Relationships guide
- * @see Building UIs With Queries guide
- * @see Building UIs With Checkpoints guide
- * @see Countries demo
+ * @see Building UIs With React guide
+ * @see Building A UI With Metrics guide
+ * @see Building A UI With Indexes guide
+ * @see Building A UI With Relationships guide
+ * @see Building A UI With Queries guide
+ * @see Building A UI With Checkpoints guide
+ * @see Hello World (React) demo
+ * @see Countries (React) demo
  * @see Todo App demos
  * @see Drawing demo
  * @packageDocumentation
@@ -191,6 +192,7 @@
  * useSetTableCallback hook or useSetRowCallback hook - so that the Id arguments
  * of the object to set can also be dependent on the event or parameter provided
  * (as well as the object itself being set).
+ * @returns The Id, determined from the parameter and Store.
  * @category Identity
  * @since v1.0.0
  */
@@ -290,6 +292,7 @@
 /// useCreateStore
 /**
  * The useCreateMergeableStore hook.
+ * @returns A reference to the MergeableStore.
  * @category Store hooks
  * @since v1.0.0
  */
@@ -736,6 +739,69 @@
  */
 /// useTables
 /**
+ * The useTablesState hook returns a Tables object and a function to set it,
+ * following the same pattern as React's useState hook.
+ *
+ * This is a convenience hook that combines the useTables and
+ * useSetTablesCallback hooks. It's useful when you need both read and write
+ * access to all Tables in a single component.
+ *
+ * A Provider component is used to wrap part of an application in a context,
+ * and it can contain a default Store or a set of Store objects named by Id.
+ * The useTablesState hook lets you indicate which Store to use: omit the
+ * parameter for the default context Store, provide an Id for a named context
+ * Store, or provide a Store explicitly by reference.
+ * @param storeOrStoreId The Store to be accessed: omit for the default
+ * context Store, provide an Id for a named context Store, or provide an
+ * explicit reference.
+ * @returns An array containing the Tables object and a function to set it.
+ * @example
+ * This example creates a Store outside the application, which is used in the
+ * useTablesState hook by reference. A button updates the Tables when clicked.
+ *
+ * ```jsx
+ * import {createStore} from 'tinybase';
+ * import React from 'react';
+ * import {createRoot} from 'react-dom/client';
+ * import {useTablesState} from 'tinybase/ui-react';
+ *
+ * const store = createStore().setTables({pets: {fido: {species: 'dog'}}});
+ * const App = () => {
+ *   const [tables, setTables] = useTablesState(store);
+ *   return (
+ *     <div>
+ *       {JSON.stringify(tables)}
+ *       <button
+ *         onClick={() => setTables({...tables, species: {dog: {price: 5}}})}
+ *       >
+ *         Add
+ *       </button>
+ *     </div>
+ *   );
+ * };
+ *
+ * const app = document.createElement('div');
+ * const root = createRoot(app);
+ * root.render(<App />); // !act
+ * console.log(app.innerHTML);
+ * // -> '<div>{"pets":{"fido":{"species":"dog"}}}<button>Add</button></div>'
+ *
+ * const _button = app.querySelector('button');
+ * // -> _button MouseEvent('click', {bubbles: true})
+ * console.log(app.innerHTML);
+ * // ->
+ * `
+ * <div>
+ *   {"pets":{"fido":{"species":"dog"}},"species":{"dog":{"price":5}}}
+ *   <button>Add</button>
+ * </div>
+ * `;
+ * ```
+ * @category State hooks
+ * @since v7.3.0
+ */
+/// useTablesState
+/**
  * The useTableIds hook returns the Ids of every Table in a Store, and registers
  * a listener so that any changes to that result will cause a re-render.
  *
@@ -1016,6 +1082,70 @@
  * @since v1.0.0
  */
 /// useTable
+/**
+ * The useTableState hook returns a Table and a function to set it, following
+ * the same pattern as React's useState hook.
+ *
+ * This is a convenience hook that combines the useTable and useSetTableCallback
+ * hooks. It's useful when you need both read and write access to a Table in a
+ * single component.
+ *
+ * A Provider component is used to wrap part of an application in a context,
+ * and it can contain a default Store or a set of Store objects named by Id.
+ * The useTableState hook lets you indicate which Store to use: omit the final
+ * parameter for the default context Store, provide an Id for a named context
+ * Store, or provide a Store explicitly by reference.
+ * @param tableId The Id of the Table in the Store.
+ * @param storeOrStoreId The Store to be accessed: omit for the default
+ * context Store, provide an Id for a named context Store, or provide an
+ * explicit reference.
+ * @returns An array containing the Table and a function to set it.
+ * @example
+ * This example creates a Store outside the application, which is used in the
+ * useTableState hook by reference. A button updates the Table when clicked.
+ *
+ * ```jsx
+ * import {createStore} from 'tinybase';
+ * import React from 'react';
+ * import {createRoot} from 'react-dom/client';
+ * import {useTableState} from 'tinybase/ui-react';
+ *
+ * const store = createStore().setTable('pets', {fido: {species: 'dog'}});
+ * const App = () => {
+ *   const [table, setTable] = useTableState('pets', store);
+ *   return (
+ *     <div>
+ *       {JSON.stringify(table)}
+ *       <button
+ *         onClick={() => setTable({...table, felix: {species: 'cat'}})}
+ *       >
+ *         Add
+ *       </button>
+ *     </div>
+ *   );
+ * };
+ *
+ * const app = document.createElement('div');
+ * const root = createRoot(app);
+ * root.render(<App />); // !act
+ * console.log(app.innerHTML);
+ * // -> '<div>{"fido":{"species":"dog"}}<button>Add</button></div>'
+ *
+ * const _button = app.querySelector('button');
+ * // -> _button MouseEvent('click', {bubbles: true})
+ * console.log(app.innerHTML);
+ * // ->
+ * `
+ * <div>
+ *   {"fido":{"species":"dog"},"felix":{"species":"cat"}}
+ *   <button>Add</button>
+ * </div>
+ * `;
+ * ```
+ * @category State hooks
+ * @since v7.3.0
+ */
+/// useTableState
 /**
  * The useTableCellIds hook returns the Ids of every Cell used across the whole
  * Table, and registers a listener so that any changes to that result will cause
@@ -1528,7 +1658,8 @@
  * When called with an object as the first argument, the useSortedRowIds method
  * destructures it to make it easier to skip optional parameters.
  * @param args A SortedRowIdsArgs object containing the Id of the Table in the
- * Store, and optional `cellId`, `descending`, `offset`, and `limit` parameters.
+ * Store, and optional `cellId`, `descending`, `offset`, `limit`, and `sorter`
+ * parameters.
  * @param storeOrStoreId The Store to be accessed: omit for the default context
  * Store, provide an Id for a named context Store, or provide an explicit
  * reference.
@@ -1769,6 +1900,63 @@
  * @since v1.0.0
  */
 /// useRow
+/**
+ * The useRowState hook returns a Row and a function to set it, following the
+ * same pattern as React's useState hook.
+ *
+ * This is a convenience hook that combines the useRow and useSetRowCallback
+ * hooks. It's useful when you need both read and write access to a Row in a
+ * single component.
+ *
+ * A Provider component is used to wrap part of an application in a context,
+ * and it can contain a default Store or a set of Store objects named by Id.
+ * The useRowState hook lets you indicate which Store to use: omit the final
+ * parameter for the default context Store, provide an Id for a named context
+ * Store, or provide a Store explicitly by reference.
+ * @param tableId The Id of the Table in the Store.
+ * @param rowId The Id of the Row in the Table.
+ * @param storeOrStoreId The Store to be accessed: omit for the default
+ * context Store, provide an Id for a named context Store, or provide an
+ * explicit reference.
+ * @returns An array containing the Row and a function to set it.
+ * @example
+ * This example creates a Store outside the application, which is used in the
+ * useRowState hook by reference. A button updates the Row when clicked.
+ *
+ * ```jsx
+ * import {createStore} from 'tinybase';
+ * import React from 'react';
+ * import {createRoot} from 'react-dom/client';
+ * import {useRowState} from 'tinybase/ui-react';
+ *
+ * const store = createStore().setTable('t1', {r1: {c1: 'Alice', c2: 30}});
+ * const App = () => {
+ *   const [row, setRow] = useRowState('t1', 'r1', store);
+ *   return (
+ *     <div>
+ *       {JSON.stringify(row)}
+ *       <button onClick={() => setRow({...row, c2: (row.c2 || 0) + 1})}>
+ *         Birthday
+ *       </button>
+ *     </div>
+ *   );
+ * };
+ *
+ * const app = document.createElement('div');
+ * const root = createRoot(app);
+ * root.render(<App />); // !act
+ * console.log(app.innerHTML);
+ * // -> '<div>{\"c1\":\"Alice\",\"c2\":30}<button>Birthday</button></div>'
+ *
+ * const _button = app.querySelector('button');
+ * // -> _button MouseEvent('click', {bubbles: true})
+ * console.log(app.innerHTML);
+ * // -> '<div>{\"c1\":\"Alice\",\"c2\":31}<button>Birthday</button></div>'
+ * ```
+ * @category State hooks
+ * @since v7.3.0
+ */
+/// useRowState
 /**
  * The useCellIds hook returns the Ids of every Cell in a given Row, in a given
  * Table, and registers a listener so that any changes to that result will cause
@@ -2069,6 +2257,65 @@
  */
 /// useCell
 /**
+ * The useCellState hook returns a Cell from a Store and a callback to set it,
+ * following the common React `useState` convention.
+ *
+ * This hook is useful for creating components that read and write a Cell in a
+ * single line, similar to how you would use React's `useState` hook.
+ *
+ * The component this is used in will re-render when the Cell changes.
+ * @param tableId The Id of the Table in the Store.
+ * @param rowId The Id of the Row in the Table.
+ * @param cellId The Id of the Cell in the Row.
+ * @param storeOrStoreId The Store to get data from: omit for the default
+ * context Store, provide an Id for a named context Store, or provide an
+ * explicit reference.
+ * @returns A tuple containing the current Cell and a setter callback that can
+ * be called with a new Cell value.
+ * @example
+ * This example creates a Store outside the application, which is used in the
+ * useCellState hook by reference.
+ *
+ * ```jsx
+ * import {createRoot} from 'react-dom/client';
+ * import {createStore} from 'tinybase';
+ * import React from 'react';
+ * import {useCellState} from 'tinybase/ui-react';
+ *
+ * const store = createStore().setCell('pets', 'fido', 'visits', 0);
+ * const App = () => {
+ *   const [visits, setVisits] = useCellState(
+ *     'pets',
+ *     'fido',
+ *     'visits',
+ *     store,
+ *   );
+ *   return (
+ *     <span>
+ *       Visits: {visits}
+ *       <button onClick={() => setVisits(visits + 1)}>Visit</button>
+ *     </span>
+ *   );
+ * };
+ *
+ * const app = document.createElement('div');
+ * const root = createRoot(app);
+ * root.render(<App />); // !act
+ * console.log(app.innerHTML);
+ * // -> '<span>Visits: 0<button>Visit</button></span>'
+ *
+ * const _button = app.querySelector('button');
+ * // -> _button MouseEvent('click', {bubbles: true})
+ * console.log(app.innerHTML);
+ * // -> '<span>Visits: 1<button>Visit</button></span>'
+ *
+ * root.unmount(); // !act
+ * ```
+ * @category State hooks
+ * @since v7.3.0
+ */
+/// useCellState
+/**
  * The useHasValues hook returns a boolean indicating whether any Values exist
  * in the Store, and registers a listener so that any changes to that result
  * will cause a re-render.
@@ -2251,6 +2498,61 @@
  * @since v3.0.0
  */
 /// useValues
+/**
+ * The useValuesState hook returns a Values object and a function to set it,
+ * following the same pattern as React's useState hook.
+ *
+ * This is a convenience hook that combines the useValues and
+ * useSetValuesCallback hooks. It's useful when you need both read and write
+ * access to all Values in a single component.
+ *
+ * A Provider component is used to wrap part of an application in a context,
+ * and it can contain a default Store or a set of Store objects named by Id.
+ * The useValuesState hook lets you indicate which Store to use: omit the
+ * parameter for the default context Store, provide an Id for a named context
+ * Store, or provide a Store explicitly by reference.
+ * @param storeOrStoreId The Store to be accessed: omit for the default
+ * context Store, provide an Id for a named context Store, or provide an
+ * explicit reference.
+ * @returns An array containing the Values object and a function to set it.
+ * @example
+ * This example creates a Store outside the application, which is used in the
+ * useValuesState hook by reference. A button updates the Values when clicked.
+ *
+ * ```jsx
+ * import {createStore} from 'tinybase';
+ * import React from 'react';
+ * import {createRoot} from 'react-dom/client';
+ * import {useValuesState} from 'tinybase/ui-react';
+ *
+ * const store = createStore().setValues({open: true});
+ * const App = () => {
+ *   const [values, setValues] = useValuesState(store);
+ *   return (
+ *     <div>
+ *       {JSON.stringify(values)}
+ *       <button onClick={() => setValues({...values, employees: 3})}>
+ *         Add
+ *       </button>
+ *     </div>
+ *   );
+ * };
+ *
+ * const app = document.createElement('div');
+ * const root = createRoot(app);
+ * root.render(<App />); // !act
+ * console.log(app.innerHTML);
+ * // -> '<div>{"open":true}<button>Add</button></div>'
+ *
+ * const _button = app.querySelector('button');
+ * // -> _button MouseEvent('click', {bubbles: true})
+ * console.log(app.innerHTML);
+ * // -> '<div>{"open":true,"employees":3}<button>Add</button></div>'
+ * ```
+ * @category State hooks
+ * @since v7.3.0
+ */
+/// useValuesState
 /**
  * The useValueIds hook returns the Ids of every Value in a Store, and registers
  * a listener so that any changes to that result will cause a re-render.
@@ -3357,6 +3659,59 @@
  */
 /// useSetValueCallback
 /**
+ * The useValueState hook returns a Value from a Store and a callback to set it,
+ * following the common React `useState` convention.
+ *
+ * This hook is useful for creating components that read and write a Value in a
+ * single line, similar to how you would use React's `useState` hook.
+ *
+ * The component this is used in will re-render when the Value changes.
+ * @param valueId The Id of the Value.
+ * @param storeOrStoreId The Store to get data from: omit for the default
+ * context Store, provide an Id for a named context Store, or provide an
+ * explicit reference.
+ * @returns A tuple containing the current Value and a setter callback that can
+ * be called with a new Value.
+ * @example
+ * This example creates a Store outside the application, which is used in the
+ * useValueState hook by reference.
+ *
+ * ```jsx
+ * import {createRoot} from 'react-dom/client';
+ * import {createStore} from 'tinybase';
+ * import React from 'react';
+ * import {useValueState} from 'tinybase/ui-react';
+ *
+ * const store = createStore().setValues({employees: 3});
+ * const App = () => {
+ *   const [employees, setEmployees] = useValueState('employees', store);
+ *   return (
+ *     <span>
+ *       Employees: {employees}
+ *       <button onClick={() => setEmployees(employees + 1)}>Hire</button>
+ *     </span>
+ *   );
+ * };
+ *
+ * const app = document.createElement('div');
+ * const root = createRoot(app);
+ * root.render(<App />); // !act
+ * console.log(app.innerHTML);
+ * // -> '<span>Employees: 3<button>Hire</button></span>'
+ *
+ * const _button = app.querySelector('button');
+ * // -> _button MouseEvent('click', {bubbles: true})
+ *
+ * console.log(app.innerHTML);
+ * // -> '<span>Employees: 4<button>Hire</button></span>'
+ *
+ * root.unmount(); // !act
+ * ```
+ * @category State hooks
+ * @since v7.3.0
+ */
+/// useValueState
+/**
  * The useDelTablesCallback hook returns a callback that can be used to remove
  * all of the tabular data in a Store.
  *
@@ -4434,7 +4789,8 @@
  * When called with an object as the first argument, the useSortedRowIds method
  * destructures it to make it easier to skip optional parameters.
  * @param args A SortedRowIdsArgs object containing the Id of the Table in the
- * Store, and optional `cellId`, `descending`, `offset`, and `limit` parameters.
+ * Store, and optional `cellId`, `descending`, `offset`, `limit`, and `sorter`
+ * parameters.
  * @param listener The function that will be called whenever the sorted Row Ids
  * in the Table change.
  * @param listenerDeps An optional array of dependencies for the `listener`
@@ -6378,6 +6734,22 @@
  */
 /// useIndexIds
 /**
+ * The useHasIndex hook returns a boolean indicating whether a given Index
+ * exists in the Indexes object, and registers a listener so that any changes to
+ * that result will cause a re-render.
+ *
+ * This hook follows the same Indexes object resolution rules as the useIndexIds
+ * hook.
+ * @param indexId The Id of a possible Index in the Indexes object.
+ * @param indexesOrIndexesId The Indexes object to be accessed: omit for the
+ * default context Indexes object, provide an Id for a named context Indexes
+ * object, or provide an explicit reference.
+ * @returns Whether an Index with that Id exists.
+ * @category Indexes hooks
+ * @since v9.1.0
+ */
+/// useHasIndex
+/**
  * The useSliceIds hook gets the list of Slice Ids in an Index, and registers a
  * listener so that any changes to that result will cause a re-render.
  *
@@ -6493,6 +6865,23 @@
  * @since v1.0.0
  */
 /// useSliceIds
+/**
+ * The useHasSlice hook returns a boolean indicating whether a given Slice
+ * exists in an Index, and registers a listener so that any changes to that
+ * result will cause a re-render.
+ *
+ * This hook follows the same Indexes object resolution rules as the useSliceIds
+ * hook.
+ * @param indexId The Id of a possible Index in the Indexes object.
+ * @param sliceId The Id of a possible Slice in the Index.
+ * @param indexesOrIndexesId The Indexes object to be accessed: omit for the
+ * default context Indexes object, provide an Id for a named context Indexes
+ * object, or provide an explicit reference.
+ * @returns Whether a Slice with that Id exists.
+ * @category Indexes hooks
+ * @since v9.1.0
+ */
+/// useHasSlice
 /**
  * The useSliceRowIds hook gets the list of Row Ids in a given Slice, and
  * registers a listener so that any changes to that result will cause a
@@ -10054,6 +10443,864 @@
  */
 /// useResultCellListener
 /**
+ * The useParamValues hook returns an object containing all the parameter values
+ * currently set for a query.
+ *
+ * A Provider component is used to wrap part of an application in a context, and
+ * it can contain a default Queries object or a set of Queries objects named by
+ * Id. The useParamValues hook lets you indicate which Queries object to get
+ * data for: omit the optional final parameter for the default context Queries
+ * object, provide an Id for a named context Queries object, or provide a
+ * Queries object explicitly by reference.
+ *
+ * When first rendered, this hook will create a listener so that changes to the
+ * parameter values will cause a re-render. When the component containing this
+ * hook is unmounted, the listener will be automatically removed.
+ * @param queryId The Id of the query to get parameter values for.
+ * @param queriesOrQueriesId The Queries object to be accessed: omit for the
+ * default context Queries object, provide an Id for a named context Queries
+ * object, or provide an explicit reference.
+ * @returns An object containing all parameter values for the query, or
+ * undefined if the query doesn't exist.
+ * @example
+ * This example creates a Queries object outside the application, which is used
+ * in the useParamValues hook by reference. A change to the parameter values
+ * re-renders the component.
+ *
+ * ```jsx
+ * import React from 'react';
+ * import {createQueries, createStore} from 'tinybase';
+ * import {createRoot} from 'react-dom/client';
+ * import {useParamValues} from 'tinybase/ui-react';
+ *
+ * const store = createStore().setTable('pets', {
+ *   fido: {species: 'dog', color: 'brown'},
+ *   felix: {species: 'cat', color: 'black'},
+ * });
+ * const queries = createQueries(store);
+ * queries.setQueryDefinition(
+ *   'petsBySpecies',
+ *   'pets',
+ *   ({select, where, param}) => {
+ *     select('species');
+ *     where('species', param('species'));
+ *   },
+ *   {species: 'dog'},
+ * );
+ *
+ * const App = () => (
+ *   <span>{JSON.stringify(useParamValues('petsBySpecies', queries))}</span>
+ * );
+ *
+ * const app = document.createElement('div');
+ * createRoot(app).render(<App />); // !act
+ * console.log(app.innerHTML);
+ * // -> '<span>{"species":"dog"}</span>'
+ *
+ * queries.setParamValue('petsBySpecies', 'species', 'cat'); // !act
+ * console.log(app.innerHTML);
+ * // -> '<span>{"species":"cat"}</span>'
+ * ```
+ * @example
+ * This example creates a Provider context into which a default Queries object
+ * is provided. A component within it then uses the useParamValues hook.
+ *
+ * ```jsx
+ * import {Provider, useParamValues} from 'tinybase/ui-react';
+ * import React from 'react';
+ * import {createQueries, createStore} from 'tinybase';
+ * import {createRoot} from 'react-dom/client';
+ *
+ * const App = ({queries}) => (
+ *   <Provider queries={queries}>
+ *     <Pane />
+ *   </Provider>
+ * );
+ * const Pane = () => (
+ *   <span>{JSON.stringify(useParamValues('petsBySpecies'))}</span>
+ * );
+ *
+ * const store = createStore().setTable('pets', {
+ *   fido: {species: 'dog'},
+ *   felix: {species: 'cat'},
+ * });
+ * const queries = createQueries(store);
+ * queries.setQueryDefinition(
+ *   'petsBySpecies',
+ *   'pets',
+ *   ({select, where, param}) => {
+ *     select('species');
+ *     where('species', param('species'));
+ *   },
+ *   {species: 'dog'},
+ * );
+ *
+ * const app = document.createElement('div');
+ * createRoot(app).render(<App queries={queries} />); // !act
+ * console.log(app.innerHTML);
+ * // -> '<span>{"species":"dog"}</span>'
+ * ```
+ * @example
+ * This example creates a Provider context into which a Queries object is
+ * provided, named by Id. A component within it then uses the useParamValues
+ * hook.
+ *
+ * ```jsx
+ * import {Provider, useParamValues} from 'tinybase/ui-react';
+ * import React from 'react';
+ * import {createQueries, createStore} from 'tinybase';
+ * import {createRoot} from 'react-dom/client';
+ *
+ * const App = ({queries}) => (
+ *   <Provider queriesById={{petQueries: queries}}>
+ *     <Pane />
+ *   </Provider>
+ * );
+ * const Pane = () => (
+ *   <span>
+ *     {JSON.stringify(useParamValues('petsBySpecies', 'petQueries'))}
+ *   </span>
+ * );
+ *
+ * const store = createStore().setTable('pets', {
+ *   fido: {species: 'dog'},
+ *   felix: {species: 'cat'},
+ * });
+ * const queries = createQueries(store);
+ * queries.setQueryDefinition(
+ *   'petsBySpecies',
+ *   'pets',
+ *   ({select, where, param}) => {
+ *     select('species');
+ *     where('species', param('species'));
+ *   },
+ *   {species: 'dog'},
+ * );
+ *
+ * const app = document.createElement('div');
+ * createRoot(app).render(<App queries={queries} />); // !act
+ * console.log(app.innerHTML);
+ * // -> '<span>{"species":"dog"}</span>'
+ * ```
+ * @category Queries hooks
+ * @since v7.2.0
+ */
+/// useParamValues
+/**
+ * The useParamValuesState hook returns an array containing all the parameter
+ * values for a query, and a callback for changing them, providing an easy way
+ * to bind a query's parameters to a user-controlled component.
+ *
+ * This is a convenience hook that combines the useParamValues and
+ * useSetParamValuesCallback hooks. It's useful when you need both read and
+ * write access to query parameters in a single component.
+ *
+ * A Provider component is used to wrap part of an application in a context,
+ * and it can contain a default Queries object or a set of Queries objects
+ * named by Id. The useParamValuesState hook lets you indicate which Queries
+ * object to use: omit the final parameter for the default context Queries
+ * object, provide an Id for a named context Queries object, or provide an
+ * explicit reference.
+ * @param queryId The Id of the query.
+ * @param queriesOrQueriesId The Queries object to be accessed: omit for the
+ * default context Queries object, provide an Id for a named context Queries
+ * object, or provide an explicit reference.
+ * @returns An array containing the parameter values and a function to set them.
+ * @example
+ * This example creates a Queries object outside the application, which is used
+ * in the useParamValuesState hook by reference. A button updates the parameters
+ * when clicked.
+ *
+ * ```jsx
+ * import {createQueries, createStore} from 'tinybase';
+ * import React from 'react';
+ * import {createRoot} from 'react-dom/client';
+ * import {useParamValuesState} from 'tinybase/ui-react';
+ *
+ * const store = createStore().setTable('pets', {
+ *   fido: {species: 'dog'},
+ *   felix: {species: 'cat'},
+ *   cujo: {species: 'dog'},
+ * });
+ * const queries = createQueries(store);
+ * queries.setQueryDefinition(
+ *   'petsBySpecies',
+ *   'pets',
+ *   ({select, where, param}) => {
+ *     select('species');
+ *     where('species', param('species'));
+ *   },
+ *   {species: 'dog'},
+ * );
+ *
+ * const App = () => {
+ *   const [paramValues, setParamValues] = useParamValuesState(
+ *     'petsBySpecies',
+ *     queries,
+ *   );
+ *   return (
+ *     <button onClick={() => setParamValues({species: 'cat'})}>
+ *       {JSON.stringify(paramValues)}
+ *     </button>
+ *   );
+ * };
+ *
+ * const app = document.createElement('div');
+ * createRoot(app).render(<App />); // !act
+ * console.log(app.innerHTML);
+ * // -> '<button>{"species":"dog"}</button>'
+ *
+ * const _button = app.querySelector('button');
+ * // -> _button MouseEvent('click', {bubbles: true})
+ * console.log(app.innerHTML);
+ * // -> '<button>{"species":"cat"}</button>'
+ * ```
+ * @category State hooks
+ * @since v7.3.0
+ */
+/// useParamValuesState
+/**
+ * The useParamValue hook returns the current value of a single parameter in a
+ * query.
+ *
+ * A Provider component is used to wrap part of an application in a context, and
+ * it can contain a default Queries object or a set of Queries objects named by
+ * Id. The useParamValue hook lets you indicate which Queries object to get data
+ * for: omit the optional final parameter for the default context Queries
+ * object, provide an Id for a named context Queries object, or provide a
+ * Queries object explicitly by reference.
+ *
+ * When first rendered, this hook will create a listener so that changes to the
+ * parameter value will cause a re-render. When the component containing this
+ * hook is unmounted, the listener will be automatically removed.
+ * @param queryId The Id of the query to get the parameter value from.
+ * @param paramId The Id of the parameter to get the value of.
+ * @param queriesOrQueriesId The Queries object to be accessed: omit for the
+ * default context Queries object, provide an Id for a named context Queries
+ * object, or provide an explicit reference.
+ * @returns The value of the parameter, or undefined if it doesn't exist.
+ * @example
+ * This example creates a Queries object outside the application, which is used
+ * in the useParamValue hook by reference. A change to the parameter value
+ * re-renders the component.
+ *
+ * ```jsx
+ * import React from 'react';
+ * import {createQueries, createStore} from 'tinybase';
+ * import {createRoot} from 'react-dom/client';
+ * import {useParamValue} from 'tinybase/ui-react';
+ *
+ * const store = createStore().setTable('pets', {
+ *   fido: {species: 'dog', color: 'brown'},
+ *   felix: {species: 'cat', color: 'black'},
+ * });
+ * const queries = createQueries(store);
+ * queries.setQueryDefinition(
+ *   'petsBySpecies',
+ *   'pets',
+ *   ({select, where, param}) => {
+ *     select('species');
+ *     where('species', param('species'));
+ *   },
+ *   {species: 'dog'},
+ * );
+ *
+ * const App = () => (
+ *   <span>{useParamValue('petsBySpecies', 'species', queries)}</span>
+ * );
+ *
+ * const app = document.createElement('div');
+ * createRoot(app).render(<App />); // !act
+ * console.log(app.innerHTML);
+ * // -> '<span>dog</span>'
+ *
+ * queries.setParamValue('petsBySpecies', 'species', 'cat'); // !act
+ * console.log(app.innerHTML);
+ * // -> '<span>cat</span>'
+ * ```
+ * @example
+ * This example creates a Provider context into which a default Queries object
+ * is provided. A component within it then uses the useParamValue hook.
+ *
+ * ```jsx
+ * import {Provider, useParamValue} from 'tinybase/ui-react';
+ * import React from 'react';
+ * import {createQueries, createStore} from 'tinybase';
+ * import {createRoot} from 'react-dom/client';
+ *
+ * const App = ({queries}) => (
+ *   <Provider queries={queries}>
+ *     <Pane />
+ *   </Provider>
+ * );
+ * const Pane = () => (
+ *   <span>{useParamValue('petsBySpecies', 'species')}</span>
+ * );
+ *
+ * const store = createStore().setTable('pets', {
+ *   fido: {species: 'dog'},
+ *   felix: {species: 'cat'},
+ * });
+ * const queries = createQueries(store);
+ * queries.setQueryDefinition(
+ *   'petsBySpecies',
+ *   'pets',
+ *   ({select, where, param}) => {
+ *     select('species');
+ *     where('species', param('species'));
+ *   },
+ *   {species: 'dog'},
+ * );
+ *
+ * const app = document.createElement('div');
+ * createRoot(app).render(<App queries={queries} />); // !act
+ * console.log(app.innerHTML);
+ * // -> '<span>dog</span>'
+ * ```
+ * @example
+ * This example creates a Provider context into which a Queries object is
+ * provided, named by Id. A component within it then uses the useParamValue
+ * hook.
+ *
+ * ```jsx
+ * import {Provider, useParamValue} from 'tinybase/ui-react';
+ * import React from 'react';
+ * import {createQueries, createStore} from 'tinybase';
+ * import {createRoot} from 'react-dom/client';
+ *
+ * const App = ({queries}) => (
+ *   <Provider queriesById={{petQueries: queries}}>
+ *     <Pane />
+ *   </Provider>
+ * );
+ * const Pane = () => (
+ *   <span>{useParamValue('petsBySpecies', 'species', 'petQueries')}</span>
+ * );
+ *
+ * const store = createStore().setTable('pets', {
+ *   fido: {species: 'dog'},
+ *   felix: {species: 'cat'},
+ * });
+ * const queries = createQueries(store);
+ * queries.setQueryDefinition(
+ *   'petsBySpecies',
+ *   'pets',
+ *   ({select, where, param}) => {
+ *     select('species');
+ *     where('species', param('species'));
+ *   },
+ *   {species: 'dog'},
+ * );
+ *
+ * const app = document.createElement('div');
+ * createRoot(app).render(<App queries={queries} />); // !act
+ * console.log(app.innerHTML);
+ * // -> '<span>dog</span>'
+ * ```
+ * @category Queries hooks
+ * @since v7.2.0
+ */
+/// useParamValue
+/**
+ * The useParamValueState hook returns a parameter value and a function to set
+ * it, following the same pattern as React's useState hook.
+ *
+ * This is a convenience hook that combines the useParamValue and
+ * useSetParamValueCallback hooks. It's useful when you need both read and write
+ * access to a query parameter in a single component.
+ *
+ * A Provider component is used to wrap part of an application in a context,
+ * and it can contain a default Queries object or a set of Queries objects
+ * named by Id. The useParamValueState hook lets you indicate which Queries
+ * object to use: omit the final parameter for the default context Queries
+ * object, provide an Id for a named context Queries object, or provide an
+ * explicit reference.
+ * @param queryId The Id of the query.
+ * @param paramId The Id of the parameter.
+ * @param queriesOrQueriesId The Queries object to be accessed: omit for the
+ * default context Queries object, provide an Id for a named context Queries
+ * object, or provide an explicit reference.
+ * @returns An array containing the parameter value and a function to set it.
+ * @example
+ * This example creates a Queries object outside the application, which is used
+ * in the useParamValueState hook by reference. A button updates the parameter
+ * when clicked.
+ *
+ * ```jsx
+ * import {createQueries, createStore} from 'tinybase';
+ * import React from 'react';
+ * import {createRoot} from 'react-dom/client';
+ * import {useParamValueState} from 'tinybase/ui-react';
+ *
+ * const store = createStore().setTable('pets', {
+ *   fido: {species: 'dog'},
+ *   felix: {species: 'cat'},
+ * });
+ * const queries = createQueries(store);
+ * queries.setQueryDefinition(
+ *   'petsBySpecies',
+ *   'pets',
+ *   ({select, where, param}) => {
+ *     select('species');
+ *     where('species', param('species'));
+ *   },
+ *   {species: 'dog'},
+ * );
+ * const App = () => {
+ *   const [species, setSpecies] = useParamValueState(
+ *     'petsBySpecies',
+ *     'species',
+ *     queries,
+ *   );
+ *   return (
+ *     <div>
+ *       Species: {species}
+ *       <button onClick={() => setSpecies('cat')}>Change</button>
+ *     </div>
+ *   );
+ * };
+ *
+ * const app = document.createElement('div');
+ * const root = createRoot(app);
+ * root.render(<App />); // !act
+ * console.log(app.innerHTML);
+ * // -> '<div>Species: dog<button>Change</button></div>'
+ *
+ * const _button = app.querySelector('button');
+ * // -> _button MouseEvent('click', {bubbles: true})
+ * console.log(app.innerHTML);
+ * // -> '<div>Species: cat<button>Change</button></div>'
+ * ```
+ * @category State hooks
+ * @since v7.3.0
+ */
+/// useParamValueState
+/**
+ * The useParamValuesListener hook registers a listener function with a Queries
+ * object that will be called whenever the parameter values for a query change.
+ *
+ * This hook is useful for situations where a component needs to register its
+ * own specific listener to do more than simply tracking the values (which is
+ * more easily done with the useParamValues hook).
+ *
+ * Unlike the addParamValuesListener method, which returns a listener Id and
+ * requires you to remove it manually, the useParamValuesListener hook manages
+ * this lifecycle for you: when the listener changes (per its `listenerDeps`
+ * dependencies) or the component unmounts, the listener on the underlying
+ * Queries object will be deleted.
+ * @param queryId The Id of the query to listen to, or `null` as a wildcard.
+ * @param listener The function that will be called whenever the parameter
+ * values for the query change.
+ * @param listenerDeps An optional array of dependencies for the `listener`
+ * function, which, if any change, result in the re-registration of the
+ * listener. This parameter defaults to an empty array.
+ * @param queriesOrQueriesId The Queries object to register the listener with:
+ * omit for the default context Queries object, provide an Id for a named
+ * context Queries object, or provide an explicit reference.
+ * @example
+ * This example uses the useParamValuesListener hook to create a listener that
+ * is scoped to a single component. When the component is unmounted, the
+ * listener is removed from the Queries object.
+ *
+ * ```jsx
+ * import React from 'react';
+ * import {createRoot} from 'react-dom/client';
+ * import {createQueries, createStore} from 'tinybase';
+ * import {Provider, useParamValuesListener} from 'tinybase/ui-react';
+ *
+ * const App = ({queries}) => (
+ *   <Provider queries={queries}>
+ *     <Pane />
+ *   </Provider>
+ * );
+ * const Pane = () => {
+ *   useParamValuesListener('petsBySpecies', () =>
+ *     console.log('Param values changed'),
+ *   );
+ *   return <span>App</span>;
+ * };
+ *
+ * const store = createStore().setTable('pets', {
+ *   fido: {species: 'dog'},
+ *   felix: {species: 'cat'},
+ * });
+ * const queries = createQueries(store);
+ * queries.setQueryDefinition(
+ *   'petsBySpecies',
+ *   'pets',
+ *   ({select, where, param}) => {
+ *     select('species');
+ *     where('species', param('species'));
+ *   },
+ *   {species: 'dog'},
+ * );
+ * const app = document.createElement('div');
+ * const root = createRoot(app);
+ * root.render(<App queries={queries} />); // !act
+ * console.log(queries.getListenerStats().paramValues);
+ * // -> 1
+ *
+ * queries.setParamValue('petsBySpecies', 'species', 'cat'); // !act
+ * // -> 'Param values changed'
+ *
+ * root.unmount(); // !act
+ * console.log(queries.getListenerStats().paramValues);
+ * // -> 0
+ * ```
+ * @category Queries hooks
+ * @since v7.2.0
+ */
+/// useParamValuesListener
+/**
+ * The useParamValueListener hook registers a listener function with a Queries
+ * object that will be called whenever a single parameter value for a query
+ * changes.
+ *
+ * This hook is useful for situations where a component needs to register its
+ * own specific listener to do more than simply tracking the value (which is
+ * more easily done with the useParamValue hook).
+ *
+ * You can either listen to a single parameter (by specifying the query Id and
+ * parameter Id as the method's first two parameters) or changes to any
+ * parameter (by providing `null` wildcards).
+ *
+ * Both the `queryId` and `paramId` parameters can be wildcarded with `null`.
+ * You can listen to a specific parameter in a specific query, any parameter in
+ * any query, for example - or every other combination of wildcards.
+ *
+ * Unlike the addParamValueListener method, which returns a listener Id and
+ * requires you to remove it manually, the useParamValueListener hook manages
+ * this lifecycle for you: when the listener changes (per its `listenerDeps`
+ * dependencies) or the component unmounts, the listener on the underlying
+ * Queries object will be deleted.
+ * @param queryId The Id of the query to listen to, or `null` as a wildcard.
+ * @param paramId The Id of the parameter to listen to, or `null` as a wildcard.
+ * @param listener The function that will be called whenever the parameter value
+ * changes.
+ * @param listenerDeps An optional array of dependencies for the `listener`
+ * function, which, if any change, result in the re-registration of the
+ * listener. This parameter defaults to an empty array.
+ * @param queriesOrQueriesId The Queries object to register the listener with:
+ * omit for the default context Queries object, provide an Id for a named
+ * context Queries object, or provide an explicit reference.
+ * @example
+ * This example uses the useParamValueListener hook to create a listener that
+ * is scoped to a single component. When the component is unmounted, the
+ * listener is removed from the Queries object.
+ *
+ * ```jsx
+ * import React from 'react';
+ * import {createRoot} from 'react-dom/client';
+ * import {createQueries, createStore} from 'tinybase';
+ * import {Provider, useParamValueListener} from 'tinybase/ui-react';
+ *
+ * const App = ({queries}) => (
+ *   <Provider queries={queries}>
+ *     <Pane />
+ *   </Provider>
+ * );
+ * const Pane = () => {
+ *   useParamValueListener('petsBySpecies', 'species', () =>
+ *     console.log('Param value changed'),
+ *   );
+ *   return <span>App</span>;
+ * };
+ *
+ * const store = createStore().setTable('pets', {
+ *   fido: {species: 'dog'},
+ *   felix: {species: 'cat'},
+ * });
+ * const queries = createQueries(store);
+ * queries.setQueryDefinition(
+ *   'petsBySpecies',
+ *   'pets',
+ *   ({select, where, param}) => {
+ *     select('species');
+ *     where('species', param('species'));
+ *   },
+ *   {species: 'dog'},
+ * );
+ * const app = document.createElement('div');
+ * const root = createRoot(app);
+ * root.render(<App queries={queries} />); // !act
+ * console.log(queries.getListenerStats().paramValue);
+ * // -> 1
+ *
+ * queries.setParamValue('petsBySpecies', 'species', 'cat'); // !act
+ * // -> 'Param value changed'
+ *
+ * root.unmount(); // !act
+ * console.log(queries.getListenerStats().paramValue);
+ * // -> 0
+ * ```
+ * @category Queries hooks
+ * @since v7.2.0
+ */
+/// useParamValueListener
+/**
+ * The useSetParamValueCallback hook returns a parameterized callback that can
+ * be used to set a single parameter value for a query.
+ *
+ * This hook is useful, for example, when creating an event handler that will
+ * update query parameters based on user interaction. In this case, the
+ * parameter will likely be the event, so that you can use data from it to
+ * update the query parameter.
+ *
+ * The third parameter is a function which will produce the parameter value that
+ * will then be used to update the query in the callback.
+ *
+ * If that function has any other dependencies, the changing of which should
+ * also cause the callback to be recreated, you can provide them in an array in
+ * the optional fourth parameter, just as you would for any React hook with
+ * dependencies.
+ *
+ * For convenience, you can optionally provide a `then` function (with its own
+ * set of dependencies) which will be called just after the query parameter has
+ * been updated.
+ *
+ * The Queries object to which the callback will make the mutation (indicated by
+ * the hook's `queriesOrQueriesId` parameter) is always automatically used as a
+ * hook dependency for the callback.
+ * @param queryId The Id of the query to update, or a GetId function that will
+ * return it.
+ * @param paramId The Id of the parameter to update, or a GetId function that
+ * will return it.
+ * @param getParamValue A function which returns the parameter value that will
+ * be used to update the query, based on the parameter the callback will receive
+ * (and which is most likely a DOM event).
+ * @param getParamValueDeps An optional array of dependencies for the
+ * `getParamValue` function, which, if any change, result in the regeneration of
+ * the callback. This parameter defaults to an empty array. Also use this to
+ * indicate the dependencies of any GetId functions if used as the queryId or
+ * paramId arguments.
+ * @param queriesOrQueriesId The Queries object to be updated: omit for the
+ * default context Queries object, provide an Id for a named context Queries
+ * object, or provide an explicit reference.
+ * @param then A function which is called after the mutation, with a reference
+ * to the Queries object and the parameter value used in the update.
+ * @param thenDeps An optional array of dependencies for the `then` function,
+ * which, if any change, result in the regeneration of the callback. This
+ * parameter defaults to an empty array.
+ * @returns A parameterized callback for subsequent use.
+ * @example
+ * This example uses the useSetParamValueCallback hook to create an event
+ * handler which updates a query parameter when an input element changes.
+ *
+ * ```jsx
+ * import React from 'react';
+ * import {createRoot} from 'react-dom/client';
+ * import {createQueries, createStore} from 'tinybase';
+ * import {useResultTable, useSetParamValueCallback} from 'tinybase/ui-react';
+ *
+ * const store = createStore().setTable('pets', {
+ *   fido: {species: 'dog', color: 'brown'},
+ *   felix: {species: 'cat', color: 'black'},
+ *   cujo: {species: 'dog', color: 'black'},
+ * });
+ * const queries = createQueries(store);
+ * queries.setQueryDefinition(
+ *   'dogOrCat',
+ *   'pets',
+ *   ({select, where, param}) => {
+ *     select('species');
+ *     where('species', param('species'));
+ *   },
+ *   {species: 'dog'},
+ * );
+ *
+ * const App = () => {
+ *   const handleInput = useSetParamValueCallback(
+ *     'dogOrCat',
+ *     'species',
+ *     (e) => e.target.value,
+ *     [],
+ *     queries,
+ *     (_queries, paramValue) => console.log(`Updated: ${paramValue}`),
+ *   );
+ *   return (
+ *     <div>
+ *       <input id="input" onInput={handleInput} />
+ *       {JSON.stringify(useResultTable('dogOrCat', queries))}
+ *     </div>
+ *   );
+ * };
+ *
+ * const app = document.createElement('div');
+ * createRoot(app).render(<App />); // !act
+ * const input = app.querySelector('input');
+ * console.log(app.innerHTML);
+ * // ->
+ * `
+ * <div>
+ *   <input id="input">
+ *   {"fido":{"species":"dog"},"cujo":{"species":"dog"}}
+ * </div>
+ * `;
+ *
+ * // User types 'cat' in the input and event fires:
+ * input.value = 'cat';
+ * // -> input Event('input', {bubbles: true})
+ * // -> 'Updated: cat'
+ *
+ * console.log(app.innerHTML);
+ * // ->
+ * `
+ * <div>
+ *   <input id="input" value="cat">
+ *   {"felix":{"species":"cat"}}
+ * </div>
+ * `;
+ * ```
+ * @category Queries hooks
+ * @since v7.2.0
+ */
+/// useSetParamValueCallback
+/**
+ * The useSetParamValuesCallback hook returns a parameterized callback that can
+ * be used to set multiple parameter values for a query at once.
+ *
+ * This hook is useful, for example, when creating an event handler that will
+ * update multiple query parameters based on user interaction. In this case, the
+ * parameter will likely be the event, so that you can use data from it to
+ * update the query parameters.
+ *
+ * The second parameter is a function which will produce the parameter values
+ * object that will then be used to update the query in the callback.
+ *
+ * If that function has any other dependencies, the changing of which should
+ * also cause the callback to be recreated, you can provide them in an array in
+ * the optional third parameter, just as you would for any React hook with
+ * dependencies.
+ *
+ * For convenience, you can optionally provide a `then` function (with its own
+ * set of dependencies) which will be called just after the query parameters
+ * have been updated.
+ *
+ * The Queries object to which the callback will make the mutation (indicated by
+ * the hook's `queriesOrQueriesId` parameter) is always automatically used as a
+ * hook dependency for the callback.
+ * @param queryId The Id of the query to update, or a GetId function that will
+ * return it.
+ * @param getParamValues A function which returns the parameter values object
+ * that will be used to update the query, based on the parameter the callback
+ * will receive (and which is most likely a DOM event).
+ * @param getParamValuesDeps An optional array of dependencies for the
+ * `getParamValues` function, which, if any change, result in the regeneration
+ * of the callback. This parameter defaults to an empty array. Also use this to
+ * indicate the dependencies of any GetId functions if used as the queryId
+ * argument.
+ * @param queriesOrQueriesId The Queries object to be updated: omit for the
+ * default context Queries object, provide an Id for a named context Queries
+ * object, or provide an explicit reference.
+ * @param then A function which is called after the mutation, with a reference
+ * to the Queries object and the parameter values used in the update.
+ * @param thenDeps An optional array of dependencies for the `then` function,
+ * which, if any change, result in the regeneration of the callback. This
+ * parameter defaults to an empty array.
+ * @returns A parameterized callback for subsequent use.
+ * @example
+ * This example uses the useSetParamValuesCallback hook to create an event
+ * handler which updates multiple query parameters when a form is submitted.
+ *
+ * ```jsx
+ * import React from 'react';
+ * import {createRoot} from 'react-dom/client';
+ * import {createQueries, createStore} from 'tinybase';
+ * import {
+ *   useResultTable,
+ *   useSetParamValuesCallback,
+ * } from 'tinybase/ui-react';
+ *
+ * const store = createStore().setTable('pets', {
+ *   fido: {species: 'dog', color: 'brown'},
+ *   felix: {species: 'cat', color: 'black'},
+ *   cujo: {species: 'dog', color: 'black'},
+ * });
+ * const queries = createQueries(store);
+ * queries.setQueryDefinition(
+ *   'speciesAndColor',
+ *   'pets',
+ *   ({select, where, param}) => {
+ *     select('species');
+ *     select('color');
+ *     where('species', param('species'));
+ *     where('color', param('color'));
+ *   },
+ *   {species: 'dog', color: 'brown'},
+ * );
+ *
+ * const App = () => {
+ *   const handleSubmit = useSetParamValuesCallback(
+ *     'speciesAndColor',
+ *     (e) => {
+ *       e.preventDefault();
+ *       return {
+ *         species: e.target.querySelector('#species').value,
+ *         color: e.target.querySelector('#color').value,
+ *       };
+ *     },
+ *     [],
+ *     queries,
+ *     (_, paramValues) =>
+ *       console.log(`Updated: ${JSON.stringify(paramValues)}`),
+ *   );
+ *   return (
+ *     <div>
+ *       <form onSubmit={handleSubmit}>
+ *         <input id="species" />
+ *         <input id="color" />
+ *         <button type="submit">Filter</button>
+ *       </form>
+ *       {JSON.stringify(useResultTable('speciesAndColor', queries))}
+ *     </div>
+ *   );
+ * };
+ *
+ * const app = document.createElement('div');
+ * createRoot(app).render(<App />); // !act
+ * const form = app.querySelector('form');
+ * console.log(app.innerHTML);
+ * // ->
+ * `
+ * <div>
+ *   <form>
+ *     <input id="species">
+ *     <input id="color">
+ *     <button type="submit">Filter</button>
+ *   </form>
+ *   {"fido":{"species":"dog","color":"brown"}}
+ * </div>
+ * `;
+ *
+ * // User fills form with new values:
+ * const species = form.querySelector('#species');
+ * const color = form.querySelector('#color');
+ *
+ * species.value = 'cat'; // !act
+ * color.value = 'black'; // !act
+ *
+ * // And submits the form:
+ * // -> form SubmitEvent('submit', {bubbles: true})
+ * // -> 'Updated: {"species":"cat","color":"black"}'
+ *
+ * console.log(app.innerHTML);
+ * // ->
+ * `
+ * <div>
+ *   <form>
+ *     <input id="species" value="cat">
+ *     <input id="color" value="black">
+ *     <button type="submit">Filter</button>
+ *   </form>
+ *   {"felix":{"species":"cat","color":"black"}}
+ * </div>
+ * `;
+ * ```
+ * @category Queries hooks
+ * @since v7.2.0
+ */
+/// useSetParamValuesCallback
+/**
  * The useCreateCheckpoints hook is used to create a Checkpoints object within a
  * React application with convenient memoization.
  *
@@ -11151,15 +12398,16 @@
  * Since v4.3.0, the `create` function can return undefined, meaning that you
  * can enable or disable persistence conditionally within this hook. This is
  * useful for applications which might turn on or off their cloud persistence or
- * collaboration features. This hook can return `undefined` if the Store is not
- * yet defined, which you should defend against.
+ * collaboration features. This hook returns `undefined` until the current
+ * Persister has been created, while a replacement is being created, or if the
+ * Store is not yet defined, which you should defend against.
  *
  * Since v4.3.19, a `destroy` function can be provided which will be called
- * after an old Persister is destroyed due to a change in the `createDeps`
- * dependencies that causes a new one to be created. Use this to clean up any
- * underlying storage objects that you set up during the `then` function, for
- * example. If this callback itself contains additional dependencies, you can
- * provide them in an array in the seventh parameter.
+ * after an old Persister's asynchronous destruction has completed due to a
+ * change in the `createDeps` dependencies that causes a new one to be created.
+ * Use this to clean up any underlying storage objects that you set up during
+ * the `then` function, for example. If this callback itself contains additional
+ * dependencies, you can provide them in an array in the seventh parameter.
  *
  * Since v5.2, the `create` function can be asynchronous, which now makes it a
  * suitable place to call the Persister's startAutoLoad and startAutoSave
@@ -11184,9 +12432,10 @@
  * @param destroy An optional callback whenever the Persister is destroyed due
  * to a change in the `createDeps` dependencies.
  * @param destroyDeps An optional array of dependencies for the `destroy`
- * callback, which, if any change, result in `destroy` and `then` being rerun.
- * This parameter defaults to an empty array.
- * @returns A reference to the Persister.
+ * callback, which, if any change, updates the callback used for future cleanup
+ * without recreating the Persister. This parameter defaults to an empty array.
+ * @returns A reference to the Persister, or `undefined` while it is being
+ * created.
  * @example
  * This example creates a Persister at the top level of a React application.
  * Even though the App component is rendered twice, the Persister creation only
@@ -11297,14 +12546,15 @@
  * // -> '<span>{\"pets\":{\"fido\":{\"species\":\"dog\"}}}</span>'
  *
  * root.render(<App sessionKey="cujoStore" />); // !act
- * // -> 'Persister created for session key cujoStore'
  * // -> 'Persister destroyed for session key fidoStore'
+ * // -> 'Persister created for session key cujoStore'
  *
  * // ... // !act
  * console.log(app.innerHTML);
  * // -> '<span>{\"pets\":{\"cujo\":{\"species\":\"dog\"}}}</span>'
  *
  * root.unmount(); // !act
+ * // ... // !act
  * // -> 'Persister destroyed for session key cujoStore'
  * ```
  * @category Persister hooks
@@ -11735,10 +12985,13 @@
  * The `create` function can return undefined, meaning that you can enable or
  * disable synchronization conditionally within this hook. This is useful for
  * applications which might turn on or off their cloud synchronization or
- * collaboration features.
+ * collaboration features. This hook returns `undefined` until the current
+ * Synchronizer has been created, while a replacement is being created, or if
+ * the MergeableStore is not yet defined.
  *
  * This hook ensures the Synchronizer object is destroyed whenever a new one is
- * created or the component is unmounted.
+ * created or the component is unmounted. The optional `destroy` callback is
+ * called after the Synchronizer's asynchronous destruction has completed.
  * @param store A reference to the MergeableStore for which to create a new
  * Synchronizer object.
  * @param create An asynchronous function for performing the creation steps of
@@ -11749,9 +13002,11 @@
  * @param destroy An optional callback whenever the Synchronizer is destroyed
  * due to a change in the `createDeps` dependencies.
  * @param destroyDeps An optional array of dependencies for the `destroy`
- * callback, which, if any change, result in `destroy` and `then` being rerun.
- * This parameter defaults to an empty array.
- * @returns A reference to the Synchronizer.
+ * callback, which, if any change, updates the callback used for future cleanup
+ * without recreating the Synchronizer. This parameter defaults to an empty
+ * array.
+ * @returns A reference to the Synchronizer, or `undefined` while it is being
+ * created.
  * @example
  * This example creates a Synchronizer at the top level of a React application.
  * Even though the App component is rendered twice, the Synchronizer creation
@@ -11798,6 +13053,7 @@
  *
  * ```jsx
  * import React from 'react';
+ * import {WebSocket, WebSocketServer} from 'ws';
  * import {createRoot} from 'react-dom/client';
  * import {createMergeableStore} from 'tinybase';
  * import {createWsSynchronizer} from 'tinybase/synchronizers/synchronizer-ws-client';
@@ -11807,7 +13063,6 @@
  *   useCreateSynchronizer,
  *   useTables,
  * } from 'tinybase/ui-react';
- * import {WebSocketServer} from 'ws';
  *
  * const server1 = createWsServer(new WebSocketServer({port: 8044}));
  * const server2 = createWsServer(new WebSocketServer({port: 8045}));
@@ -11838,8 +13093,8 @@
  *
  * root.render(<App url="ws://localhost:8045/" />); // !act
  * // ... // !act
- * // -> 'Synchronizer created for ws://localhost:8045/'
  * // -> 'Synchronizer destroyed for ws://localhost:8044/'
+ * // -> 'Synchronizer created for ws://localhost:8045/'
  *
  * root.unmount(); // !act
  * // -> 'Synchronizer destroyed for ws://localhost:8045/'
@@ -12288,34 +13543,34 @@
    * @category Prop
    * @since v1.0.0
    */
-  /// TablesProps.store
+  /// ui-react.TablesProps.store
   /**
    * A component for rendering each Table in the Store (to override the default
    * TableView component).
    * @category Prop
    * @since v1.0.0
    */
-  /// TablesProps.tableComponent
+  /// ui-react.TablesProps.tableComponent
   /**
    * A custom function for generating extra props for each Table component based
    * on its Id.
    * @category Prop
    * @since v1.0.0
    */
-  /// TablesProps.getTableComponentProps
+  /// ui-react.TablesProps.getTableComponentProps
   /**
    * A component or string to separate each Table component.
    * @category Prop
    * @since v1.0.0
    */
-  /// TablesProps.separator
+  /// ui-react.TablesProps.separator
   /**
    * Whether the component should also render the Ids of each Table, and its
    * descendent objects, to assist with debugging.
    * @category Prop
    * @since v1.0.0
    */
-  /// TablesProps.debugIds
+  /// ui-react.TablesProps.debugIds
 }
 /**
  * TableProps props are used for components that refer to a single Table in a
@@ -12330,48 +13585,48 @@
    * @category Prop
    * @since v1.0.0
    */
-  /// TableProps.tableId
+  /// ui-react.TableProps.tableId
   /**
    * The Store to be accessed: omit for the default context Store, provide an Id
    * for a named context Store, or provide an explicit reference.
    * @category Prop
    * @since v1.0.0
    */
-  /// TableProps.store
+  /// ui-react.TableProps.store
   /**
    * A custom component for rendering each Row in the Table (to override the
    * default RowView component).
    * @category Prop
    * @since v1.0.0
    */
-  /// TableProps.rowComponent
+  /// ui-react.TableProps.rowComponent
   /**
    * A function for generating extra props for each custom Row component based
    * on its Id.
    * @category Prop
    * @since v1.0.0
    */
-  /// TableProps.getRowComponentProps
+  /// ui-react.TableProps.getRowComponentProps
   /**
    * An optional list of Cell Ids to use for rendering a prescribed set of the
    * Table's Cells in a given order.
    * @category Prop
    * @since v1.0.0
    */
-  /// TableProps.customCellIds
+  /// ui-react.TableProps.customCellIds
   /**
    * A component or string to separate each Row component.
    * @category Prop
    * @since v1.0.0
    */
-  /// TableProps.separator
+  /// ui-react.TableProps.separator
   /**
    * Whether the component should also render the Id of the Table, and its
    * descendent objects, to assist with debugging.
    * @category Prop
    * @since v1.0.0
    */
-  /// TableProps.debugIds
+  /// ui-react.TableProps.debugIds
 }
 /**
  * SortedTableProps props are used for components that refer to a single sorted
@@ -12386,73 +13641,73 @@
    * @category Prop
    * @since v1.0.0
    */
-  /// SortedTableProps.tableId
+  /// ui-react.SortedTableProps.tableId
   /**
    * The Id of the Cell whose values are used for the sorting. If omitted, the
    * view will sort the Row Id itself.
    * @category Prop
    * @since v1.0.0
    */
-  /// SortedTableProps.cellId
+  /// ui-react.SortedTableProps.cellId
   /**
    * Whether the sorting should be in descending order.
    * @category Prop
    * @since v1.0.0
    */
-  /// SortedTableProps.descending
+  /// ui-react.SortedTableProps.descending
   /**
    * The number of Row Ids to skip for pagination purposes.
    * @category Prop
    * @since v1.0.0
    */
-  /// SortedTableProps.offset
+  /// ui-react.SortedTableProps.offset
   /**
    * The maximum number of Row Ids to return.
    * @category Prop
    * @since v1.0.0
    */
-  /// SortedTableProps.limit
+  /// ui-react.SortedTableProps.limit
   /**
    * The Store to be accessed: omit for the default context Store, provide an Id
    * for a named context Store, or provide an explicit reference.
    * @category Prop
    * @since v1.0.0
    */
-  /// SortedTableProps.store
+  /// ui-react.SortedTableProps.store
   /**
    * A custom component for rendering each Row in the Table (to override the
    * default RowView component).
    * @category Prop
    * @since v1.0.0
    */
-  /// SortedTableProps.rowComponent
+  /// ui-react.SortedTableProps.rowComponent
   /**
    * A function for generating extra props for each custom Row component based
    * on its Id.
    * @category Prop
    * @since v1.0.0
    */
-  /// SortedTableProps.getRowComponentProps
+  /// ui-react.SortedTableProps.getRowComponentProps
   /**
    * An optional list of Cell Ids to use for rendering a prescribed set of the
    * sorted Table's Cells in a given order.
    * @category Prop
    * @since v1.0.0
    */
-  /// SortedTableProps.customCellIds
+  /// ui-react.SortedTableProps.customCellIds
   /**
    * A component or string to separate each Row component.
    * @category Prop
    * @since v1.0.0
    */
-  /// SortedTableProps.separator
+  /// ui-react.SortedTableProps.separator
   /**
    * Whether the component should also render the Id of the Table, and its
    * descendent objects, to assist with debugging.
    * @category Prop
    * @since v1.0.0
    */
-  /// SortedTableProps.debugIds
+  /// ui-react.SortedTableProps.debugIds
 }
 /**
  * RowProps props are used for components that refer to a single Row in a Table,
@@ -12467,54 +13722,54 @@
    * @category Prop
    * @since v1.0.0
    */
-  /// RowProps.tableId
+  /// ui-react.RowProps.tableId
   /**
    * The Id of the Row in the Table to be rendered.
    * @category Prop
    * @since v1.0.0
    */
-  /// RowProps.rowId
+  /// ui-react.RowProps.rowId
   /**
    * The Store to be accessed: omit for the default context Store, provide an Id
    * for a named context Store, or provide an explicit reference.
    * @category Prop
    * @since v1.0.0
    */
-  /// RowProps.store
+  /// ui-react.RowProps.store
   /**
    * A custom component for rendering each Cell in the Row (to override the
    * default CellView component).
    * @category Prop
    * @since v1.0.0
    */
-  /// RowProps.cellComponent
+  /// ui-react.RowProps.cellComponent
   /**
    * A function for generating extra props for each custom Cell component based
    * on its Id.
    * @category Prop
    * @since v1.0.0
    */
-  /// RowProps.getCellComponentProps
+  /// ui-react.RowProps.getCellComponentProps
   /**
    * An optional list of Cell Ids to use for rendering a prescribed set of the
    * Row's Cells in a given order.
    * @category Prop
    * @since v1.0.0
    */
-  /// RowProps.customCellIds
+  /// ui-react.RowProps.customCellIds
   /**
    * A component or string to separate each Cell component.
    * @category Prop
    * @since v1.0.0
    */
-  /// RowProps.separator
+  /// ui-react.RowProps.separator
   /**
    * Whether the component should also render the Id of the Row, and its
    * descendent objects, to assist with debugging.
    * @category Prop
    * @since v1.0.0
    */
-  /// RowProps.debugIds
+  /// ui-react.RowProps.debugIds
 }
 /**
  * CellProps props are used for components that refer to a single Cell in a Row,
@@ -12529,33 +13784,33 @@
    * @category Prop
    * @since v1.0.0
    */
-  /// CellProps.tableId
+  /// ui-react.CellProps.tableId
   /**
    * The Id of the Row in the Table.
    * @category Prop
    * @since v1.0.0
    */
-  /// CellProps.rowId
+  /// ui-react.CellProps.rowId
   /**
    * The Id of the Cell in the Row to be rendered.
    * @category Prop
    * @since v1.0.0
    */
-  /// CellProps.cellId
+  /// ui-react.CellProps.cellId
   /**
    * The Store to be accessed: omit for the default context Store, provide an Id
    * for a named context Store, or provide an explicit reference.
    * @category Prop
    * @since v1.0.0
    */
-  /// CellProps.store
+  /// ui-react.CellProps.store
   /**
    * Whether the component should also render the Id of the Cell to assist with
    * debugging.
    * @category Prop
    * @since v1.0.0
    */
-  /// CellProps.debugIds
+  /// ui-react.CellProps.debugIds
 }
 /**
  * ValuesProps props are used for components that refer to all the Values in a
@@ -12571,34 +13826,34 @@
    * @category Prop
    * @since v1.0.0
    */
-  /// ValuesProps.store
+  /// ui-react.ValuesProps.store
   /**
    * A custom component for rendering each Value in the Store (to override the
    * default ValueView component).
    * @category Prop
    * @since v1.0.0
    */
-  /// ValuesProps.valueComponent
+  /// ui-react.ValuesProps.valueComponent
   /**
    * A function for generating extra props for each custom Value component based
    * on its Id.
    * @category Prop
    * @since v1.0.0
    */
-  /// ValuesProps.getValueComponentProps
+  /// ui-react.ValuesProps.getValueComponentProps
   /**
    * A component or string to separate each Value component.
    * @category Prop
    * @since v1.0.0
    */
-  /// ValuesProps.separator
+  /// ui-react.ValuesProps.separator
   /**
    * Whether the component should also render the Ids of each Value to assist
    * with debugging.
    * @category Prop
    * @since v1.0.0
    */
-  /// ValuesProps.debugIds
+  /// ui-react.ValuesProps.debugIds
 }
 /**
  * ValueProps props are used for components that refer to a single Value in a
@@ -12613,21 +13868,21 @@
    * @category Prop
    * @since v1.0.0
    */
-  /// ValueProps.valueId
+  /// ui-react.ValueProps.valueId
   /**
    * The Store to be accessed: omit for the default context Store, provide an Id
    * for a named context Store, or provide an explicit reference.
    * @category Prop
    * @since v1.0.0
    */
-  /// ValueProps.store
+  /// ui-react.ValueProps.store
   /**
    * Whether the component should also render the Id of the Value to assist with
    * debugging.
    * @category Prop
    * @since v1.0.0
    */
-  /// ValueProps.debugIds
+  /// ui-react.ValueProps.debugIds
 }
 /**
  * MetricProps props are used for components that refer to a single Metric in a
@@ -12642,7 +13897,7 @@
    * @category Prop
    * @since v1.0.0
    */
-  /// MetricProps.metricId
+  /// ui-react.MetricProps.metricId
   /**
    * The Metrics object to be accessed: omit for the default context Metrics
    * object, provide an Id for a named context Metrics object, or provide an
@@ -12650,14 +13905,14 @@
    * @category Prop
    * @since v1.0.0
    */
-  /// MetricProps.metrics
+  /// ui-react.MetricProps.metrics
   /**
    * Whether the component should also render the Id of the Metric to assist
    * with debugging.
    * @category Prop
    * @since v1.0.0
    */
-  /// MetricProps.debugIds
+  /// ui-react.MetricProps.debugIds
 }
 /**
  * IndexProps props are used for components that refer to a single Index in an
@@ -12672,7 +13927,7 @@
    * @category Prop
    * @since v1.0.0
    */
-  /// IndexProps.indexId
+  /// ui-react.IndexProps.indexId
   /**
    * The Indexes object to be accessed: omit for the default context Indexes
    * object, provide an Id for a named context Indexes object, or provide an
@@ -12680,33 +13935,33 @@
    * @category Prop
    * @since v1.0.0
    */
-  /// IndexProps.indexes
+  /// ui-react.IndexProps.indexes
   /**
    * A component for rendering each Slice in the Index.
    * @category Prop
    * @since v1.0.0
    */
-  /// IndexProps.sliceComponent
+  /// ui-react.IndexProps.sliceComponent
   /**
    * A function for generating extra props for each Slice component based on its
    * Id.
    * @category Prop
    * @since v1.0.0
    */
-  /// IndexProps.getSliceComponentProps
+  /// ui-react.IndexProps.getSliceComponentProps
   /**
    * A component or string to separate each Slice component.
    * @category Prop
    * @since v1.0.0
    */
-  /// IndexProps.separator
+  /// ui-react.IndexProps.separator
   /**
    * Whether the component should also render the Id of the Index, and its
    * descendent objects, to assist with debugging.
    * @category Prop
    * @since v1.0.0
    */
-  /// IndexProps.debugIds
+  /// ui-react.IndexProps.debugIds
 }
 /**
  * SliceProps props are used for components that refer to a single Slice in an
@@ -12721,13 +13976,13 @@
    * @category Prop
    * @since v1.0.0
    */
-  /// SliceProps.indexId
+  /// ui-react.SliceProps.indexId
   /**
    * The Id of the Slice in the Index to be rendered.
    * @category Prop
    * @since v1.0.0
    */
-  /// SliceProps.sliceId
+  /// ui-react.SliceProps.sliceId
   /**
    * The Indexes object to be accessed: omit for the default context Indexes
    * object, provide an Id for a named context Indexes object, or provide an
@@ -12735,33 +13990,33 @@
    * @category Prop
    * @since v1.0.0
    */
-  /// SliceProps.indexes
+  /// ui-react.SliceProps.indexes
   /**
    * A component for rendering each Row in the Index.
    * @category Prop
    * @since v1.0.0
    */
-  /// SliceProps.rowComponent
+  /// ui-react.SliceProps.rowComponent
   /**
    * A function for generating extra props for each Row component based on its
    * Id.
    * @category Prop
    * @since v1.0.0
    */
-  /// SliceProps.getRowComponentProps
+  /// ui-react.SliceProps.getRowComponentProps
   /**
    * A component or string to separate each Row component.
    * @category Prop
    * @since v1.0.0
    */
-  /// SliceProps.separator
+  /// ui-react.SliceProps.separator
   /**
    * Whether the component should also render the Id of the Slice, and its
    * descendent objects, to assist with debugging.
    * @category Prop
    * @since v1.0.0
    */
-  /// SliceProps.debugIds
+  /// ui-react.SliceProps.debugIds
 }
 /**
  * RemoteRowProps props are used for components that refer to a single
@@ -12777,13 +14032,13 @@
    * @category Prop
    * @since v1.0.0
    */
-  /// RemoteRowProps.relationshipId
+  /// ui-react.RemoteRowProps.relationshipId
   /**
    * The Id of the local Row for which to render the remote Row.
    * @category Prop
    * @since v1.0.0
    */
-  /// RemoteRowProps.localRowId
+  /// ui-react.RemoteRowProps.localRowId
   /**
    * The Relationships object to be accessed: omit for the default context
    * Relationships object, provide an Id for a named context Relationships
@@ -12791,28 +14046,28 @@
    * @category Prop
    * @since v1.0.0
    */
-  /// RemoteRowProps.relationships
+  /// ui-react.RemoteRowProps.relationships
   /**
    * A component for rendering each (remote, local, or linked) Row in the
    * Relationship.
    * @category Prop
    * @since v1.0.0
    */
-  /// RemoteRowProps.rowComponent
+  /// ui-react.RemoteRowProps.rowComponent
   /**
    * A function for generating extra props for each Row component based on its
    * Id.
    * @category Prop
    * @since v1.0.0
    */
-  /// RemoteRowProps.getRowComponentProps
+  /// ui-react.RemoteRowProps.getRowComponentProps
   /**
    * Whether the component should also render the Id of the Row in the
    * Relationship, and its descendent objects, to assist with debugging.
    * @category Prop
    * @since v1.0.0
    */
-  /// RemoteRowProps.debugIds
+  /// ui-react.RemoteRowProps.debugIds
 }
 /**
  * LocalRowsProps props are used for components that refer to a single
@@ -12828,13 +14083,13 @@
    * @category Prop
    * @since v1.0.0
    */
-  /// LocalRowsProps.relationshipId
+  /// ui-react.LocalRowsProps.relationshipId
   /**
    * The Id of the remote Row for which to render the local Rows.
    * @category Prop
    * @since v1.0.0
    */
-  /// LocalRowsProps.remoteRowId
+  /// ui-react.LocalRowsProps.remoteRowId
   /**
    * The Relationships object to be accessed: omit for the default context
    * Relationships object, provide an Id for a named context Relationships
@@ -12842,34 +14097,34 @@
    * @category Prop
    * @since v1.0.0
    */
-  /// LocalRowsProps.relationships
+  /// ui-react.LocalRowsProps.relationships
   /**
    * A component for rendering each (remote, local, or linked) Row in the
    * Relationship.
    * @category Prop
    * @since v1.0.0
    */
-  /// LocalRowsProps.rowComponent
+  /// ui-react.LocalRowsProps.rowComponent
   /**
    * A function for generating extra props for each Row component based on its
    * Id.
    * @category Prop
    * @since v1.0.0
    */
-  /// LocalRowsProps.getRowComponentProps
+  /// ui-react.LocalRowsProps.getRowComponentProps
   /**
    * A component or string to separate each Row component.
    * @category Prop
    * @since v1.0.0
    */
-  /// LocalRowsProps.separator
+  /// ui-react.LocalRowsProps.separator
   /**
    * Whether the component should also render the Id of the Row in the
    * Relationship, and its descendent objects, to assist with debugging.
    * @category Prop
    * @since v1.0.0
    */
-  /// LocalRowsProps.debugIds
+  /// ui-react.LocalRowsProps.debugIds
 }
 /**
  * LinkedRowsProps props are used for components that refer to a single
@@ -12885,13 +14140,13 @@
    * @category Prop
    * @since v1.0.0
    */
-  /// LinkedRowsProps.relationshipId
+  /// ui-react.LinkedRowsProps.relationshipId
   /**
    * The Id of the first Row in the linked list Relationship.
    * @category Prop
    * @since v1.0.0
    */
-  /// LinkedRowsProps.firstRowId
+  /// ui-react.LinkedRowsProps.firstRowId
   /**
    * The Relationships object to be accessed: omit for the default context
    * Relationships object, provide an Id for a named context Relationships
@@ -12899,34 +14154,34 @@
    * @category Prop
    * @since v1.0.0
    */
-  /// LinkedRowsProps.relationships
+  /// ui-react.LinkedRowsProps.relationships
   /**
    * A component for rendering each (remote, local, or linked) Row in the
    * Relationship.
    * @category Prop
    * @since v1.0.0
    */
-  /// LinkedRowsProps.rowComponent
+  /// ui-react.LinkedRowsProps.rowComponent
   /**
    * A function for generating extra props for each Row component based on its
    * Id.
    * @category Prop
    * @since v1.0.0
    */
-  /// LinkedRowsProps.getRowComponentProps
+  /// ui-react.LinkedRowsProps.getRowComponentProps
   /**
    * A component or string to separate each Row component.
    * @category Prop
    * @since v1.0.0
    */
-  /// LinkedRowsProps.separator
+  /// ui-react.LinkedRowsProps.separator
   /**
    * Whether the component should also render the Id of the Row in the
    * Relationship, and its descendent objects, to assist with debugging.
    * @category Prop
    * @since v1.0.0
    */
-  /// LinkedRowsProps.debugIds
+  /// ui-react.LinkedRowsProps.debugIds
 }
 /**
  * ResultTableProps props are used for components that refer to a single query
@@ -12942,7 +14197,7 @@
    * @category Prop
    * @since v1.0.0
    */
-  /// ResultTableProps.queryId
+  /// ui-react.ResultTableProps.queryId
   /**
    * The Queries object to be accessed: omit for the default context Queries
    * object, provide an Id for a named context Queries object, or provide an
@@ -12950,34 +14205,34 @@
    * @category Prop
    * @since v1.0.0
    */
-  /// ResultTableProps.queries
+  /// ui-react.ResultTableProps.queries
   /**
    * A custom component for rendering each Row in the Table (to override the
    * default ResultRowView component).
    * @category Prop
    * @since v1.0.0
    */
-  /// ResultTableProps.resultRowComponent
+  /// ui-react.ResultTableProps.resultRowComponent
   /**
    * A function for generating extra props for each custom Row component based
    * on its Id.
    * @category Prop
    * @since v1.0.0
    */
-  /// ResultTableProps.getResultRowComponentProps
+  /// ui-react.ResultTableProps.getResultRowComponentProps
   /**
    * A component or string to separate each Row component.
    * @category Prop
    * @since v1.0.0
    */
-  /// ResultTableProps.separator
+  /// ui-react.ResultTableProps.separator
   /**
    * Whether the component should also render the Id of the query, and its
    * descendent objects, to assist with debugging.
    * @category Prop
    * @since v1.0.0
    */
-  /// ResultTableProps.debugIds
+  /// ui-react.ResultTableProps.debugIds
 }
 /**
  * ResultSortedTableProps props are used for components that refer to a single
@@ -12993,32 +14248,32 @@
    * @category Prop
    * @since v1.0.0
    */
-  /// ResultSortedTableProps.queryId
+  /// ui-react.ResultSortedTableProps.queryId
   /**
    * The Id of the Cell whose values are used for the sorting. If omitted, the
    * view will sort the Row Id itself.
    * @category Prop
    * @since v1.0.0
    */
-  /// ResultSortedTableProps.cellId
+  /// ui-react.ResultSortedTableProps.cellId
   /**
    * Whether the sorting should be in descending order.
    * @category Prop
    * @since v1.0.0
    */
-  /// ResultSortedTableProps.descending
+  /// ui-react.ResultSortedTableProps.descending
   /**
    * The number of Row Ids to skip for pagination purposes.
    * @category Prop
    * @since v1.0.0
    */
-  /// ResultSortedTableProps.offset
+  /// ui-react.ResultSortedTableProps.offset
   /**
    * The maximum number of Row Ids to return.
    * @category Prop
    * @since v1.0.0
    */
-  /// ResultSortedTableProps.limit
+  /// ui-react.ResultSortedTableProps.limit
   /**
    * The Queries object to be accessed: omit for the default context Queries
    * object, provide an Id for a named context Queries object, or provide an
@@ -13026,34 +14281,34 @@
    * @category Prop
    * @since v1.0.0
    */
-  /// ResultSortedTableProps.queries
+  /// ui-react.ResultSortedTableProps.queries
   /**
    * A custom component for rendering each Row in the Table (to override the
    * default ResultRowView component).
    * @category Prop
    * @since v1.0.0
    */
-  /// ResultSortedTableProps.resultRowComponent
+  /// ui-react.ResultSortedTableProps.resultRowComponent
   /**
    * A function for generating extra props for each custom Row component based
    * on its Id.
    * @category Prop
    * @since v1.0.0
    */
-  /// ResultSortedTableProps.getResultRowComponentProps
+  /// ui-react.ResultSortedTableProps.getResultRowComponentProps
   /**
    * A component or string to separate each Row component.
    * @category Prop
    * @since v1.0.0
    */
-  /// ResultSortedTableProps.separator
+  /// ui-react.ResultSortedTableProps.separator
   /**
    * Whether the component should also render the Id of the query, and its
    * descendent objects, to assist with debugging.
    * @category Prop
    * @since v1.0.0
    */
-  /// ResultSortedTableProps.debugIds
+  /// ui-react.ResultSortedTableProps.debugIds
 }
 /**
  * ResultRowProps props are used for components that refer to a single Row in a
@@ -13069,13 +14324,13 @@
    * @category Prop
    * @since v1.0.0
    */
-  /// ResultRowProps.queryId
+  /// ui-react.ResultRowProps.queryId
   /**
    * The Id of the Row in the ResultTable to be rendered.
    * @category Prop
    * @since v1.0.0
    */
-  /// ResultRowProps.rowId
+  /// ui-react.ResultRowProps.rowId
   /**
    * The Queries object to be accessed: omit for the default context Queries
    * object, provide an Id for a named context Queries object, or provide an
@@ -13083,34 +14338,34 @@
    * @category Prop
    * @since v1.0.0
    */
-  /// ResultRowProps.queries
+  /// ui-react.ResultRowProps.queries
   /**
    * A custom component for rendering each Cell in the Row (to override the
    * default CellView component).
    * @category Prop
    * @since v1.0.0
    */
-  /// ResultRowProps.resultCellComponent
+  /// ui-react.ResultRowProps.resultCellComponent
   /**
    * A function for generating extra props for each custom Cell component based
    * on its Id.
    * @category Prop
    * @since v1.0.0
    */
-  /// ResultRowProps.getResultCellComponentProps
+  /// ui-react.ResultRowProps.getResultCellComponentProps
   /**
    * A component or string to separate each Cell component.
    * @category Prop
    * @since v1.0.0
    */
-  /// ResultRowProps.separator
+  /// ui-react.ResultRowProps.separator
   /**
    * Whether the component should also render the Id of the Row, and its
    * descendent objects, to assist with debugging.
    * @category Prop
    * @since v1.0.0
    */
-  /// ResultRowProps.debugIds
+  /// ui-react.ResultRowProps.debugIds
 }
 /**
  * ResultRowProps props are used for components that refer to a single Cell in a
@@ -13126,19 +14381,19 @@
    * @category Prop
    * @since v1.0.0
    */
-  /// ResultCellProps.queryId
+  /// ui-react.ResultCellProps.queryId
   /**
    * The Id of the Row in the Table.
    * @category Prop
    * @since v1.0.0
    */
-  /// ResultCellProps.rowId
+  /// ui-react.ResultCellProps.rowId
   /**
    * The Id of the Cell in the Row to be rendered.
    * @category Prop
    * @since v1.0.0
    */
-  /// ResultCellProps.cellId
+  /// ui-react.ResultCellProps.cellId
   /**
    * The Queries object to be accessed: omit for the default context Queries
    * object, provide an Id for a named context Queries object, or provide an
@@ -13146,14 +14401,14 @@
    * @category Prop
    * @since v1.0.0
    */
-  /// ResultCellProps.queries
+  /// ui-react.ResultCellProps.queries
   /**
    * Whether the component should also render the Id of the Cell to assist with
    * debugging.
    * @category Prop
    * @since v1.0.0
    */
-  /// ResultCellProps.debugIds
+  /// ui-react.ResultCellProps.debugIds
 }
 /**
  * CheckpointProps props are used for components that refer to a single
@@ -13168,7 +14423,7 @@
    * @category Prop
    * @since v1.0.0
    */
-  /// CheckpointProps.checkpointId
+  /// ui-react.CheckpointProps.checkpointId
   /**
    * The Checkpoints object to be accessed: omit for the default context
    * Checkpoints object, provide an Id for a named context Checkpoints object,
@@ -13176,14 +14431,14 @@
    * @category Prop
    * @since v1.0.0
    */
-  /// CheckpointProps.checkpoints
+  /// ui-react.CheckpointProps.checkpoints
   /**
    * Whether the component should also render the Id of the checkpoint to assist
    * with debugging.
    * @category Prop
    * @since v1.0.0
    */
-  /// CheckpointProps.debugIds
+  /// ui-react.CheckpointProps.debugIds
 }
 /**
  * BackwardCheckpointsProps props are used for components that refer to a list
@@ -13201,33 +14456,33 @@
    * @category Prop
    * @since v1.0.0
    */
-  /// BackwardCheckpointsProps.checkpoints
+  /// ui-react.BackwardCheckpointsProps.checkpoints
   /**
    * A component for rendering each checkpoint in the Checkpoints object.
    * @category Prop
    * @since v1.0.0
    */
-  /// BackwardCheckpointsProps.checkpointComponent
+  /// ui-react.BackwardCheckpointsProps.checkpointComponent
   /**
    * A function for generating extra props for each checkpoint component based
    * on its Id.
    * @category Prop
    * @since v1.0.0
    */
-  /// BackwardCheckpointsProps.getCheckpointComponentProps
+  /// ui-react.BackwardCheckpointsProps.getCheckpointComponentProps
   /**
    * A component or string to separate each Checkpoint component.
    * @category Prop
    * @since v1.0.0
    */
-  /// BackwardCheckpointsProps.separator
+  /// ui-react.BackwardCheckpointsProps.separator
   /**
    * Whether the component should also render the Ids of the checkpoints to
    * assist with debugging.
    * @category Prop
    * @since v1.0.0
    */
-  /// BackwardCheckpointsProps.debugIds
+  /// ui-react.BackwardCheckpointsProps.debugIds
 }
 /**
  * CurrentCheckpointsProps props are used for components that refer to the
@@ -13245,27 +14500,27 @@
    * @category Prop
    * @since v1.0.0
    */
-  /// CurrentCheckpointProps.checkpoints
+  /// ui-react.CurrentCheckpointProps.checkpoints
   /**
    * A component for rendering each checkpoint in the Checkpoints object.
    * @category Prop
    * @since v1.0.0
    */
-  /// CurrentCheckpointProps.checkpointComponent
+  /// ui-react.CurrentCheckpointProps.checkpointComponent
   /**
    * A function for generating extra props for each checkpoint component based
    * on its Id.
    * @category Prop
    * @since v1.0.0
    */
-  /// CurrentCheckpointProps.getCheckpointComponentProps
+  /// ui-react.CurrentCheckpointProps.getCheckpointComponentProps
   /**
    * Whether the component should also render the Ids of the checkpoints to
    * assist with debugging.
    * @category Prop
    * @since v1.0.0
    */
-  /// CurrentCheckpointProps.debugIds
+  /// ui-react.CurrentCheckpointProps.debugIds
 }
 /**
  * ForwardCheckpointsProps props are used for components that refer to a list of
@@ -13283,33 +14538,33 @@
    * @category Prop
    * @since v1.0.0
    */
-  /// ForwardCheckpointsProps.checkpoints
+  /// ui-react.ForwardCheckpointsProps.checkpoints
   /**
    * A component for rendering each checkpoint in the Checkpoints object.
    * @category Prop
    * @since v1.0.0
    */
-  /// ForwardCheckpointsProps.checkpointComponent
+  /// ui-react.ForwardCheckpointsProps.checkpointComponent
   /**
    * A function for generating extra props for each checkpoint component based
    * on its Id.
    * @category Prop
    * @since v1.0.0
    */
-  /// ForwardCheckpointsProps.getCheckpointComponentProps
+  /// ui-react.ForwardCheckpointsProps.getCheckpointComponentProps
   /**
    * A component or string to separate each Checkpoint component.
    * @category Prop
    * @since v1.0.0
    */
-  /// ForwardCheckpointsProps.separator
+  /// ui-react.ForwardCheckpointsProps.separator
   /**
    * Whether the component should also render the Ids of the checkpoints to
    * assist with debugging.
    * @category Prop
    * @since v1.0.0
    */
-  /// ForwardCheckpointsProps.debugIds
+  /// ui-react.ForwardCheckpointsProps.debugIds
 }
 /**
  * ProviderProps props are used with the Provider component, so that Store
@@ -13330,112 +14585,112 @@
    * @category Prop
    * @since v1.0.0
    */
-  /// ProviderProps.store
+  /// ui-react.ProviderProps.store
   /**
    * An object containing multiple Store objects that will be available within
    * the Provider context by their Id.
    * @category Prop
    * @since v1.0.0
    */
-  /// ProviderProps.storesById
+  /// ui-react.ProviderProps.storesById
   /**
    * A default single Metrics object that will be available within the Provider
    * context.
    * @category Prop
    * @since v1.0.0
    */
-  /// ProviderProps.metrics
+  /// ui-react.ProviderProps.metrics
   /**
    * An object containing multiple Metrics objects that will be available within
    * the Provider context by their Id.
    * @category Prop
    * @since v1.0.0
    */
-  /// ProviderProps.metricsById
+  /// ui-react.ProviderProps.metricsById
   /**
    * A default single Indexes object that will be available within the Provider
    * context.
    * @category Prop
    * @since v1.0.0
    */
-  /// ProviderProps.indexes
+  /// ui-react.ProviderProps.indexes
   /**
    * An object containing multiple Indexes objects that will be available within
    * the Provider context by their Id.
    * @category Prop
    * @since v1.0.0
    */
-  /// ProviderProps.indexesById
+  /// ui-react.ProviderProps.indexesById
   /**
    * A default single Relationships object that will be available within the
    * Provider context.
    * @category Prop
    * @since v1.0.0
    */
-  /// ProviderProps.relationships
+  /// ui-react.ProviderProps.relationships
   /**
    * An object containing multiple Relationships objects that will be available
    * within the Provider context by their Id.
    * @category Prop
    * @since v1.0.0
    */
-  /// ProviderProps.relationshipsById
+  /// ui-react.ProviderProps.relationshipsById
   /**
    * A default single Queries object that will be available within the Provider
    * context, since v2.0.
    * @category Prop
    * @since v1.0.0
    */
-  /// ProviderProps.queries
+  /// ui-react.ProviderProps.queries
   /**
    * An object containing multiple Queries objects that will be available within
    * the Provider context by their Id, since v2.0.
    * @category Prop
    * @since v1.0.0
    */
-  /// ProviderProps.queriesById
+  /// ui-react.ProviderProps.queriesById
   /**
    * A default single Checkpoints object that will be available within the
    * Provider context.
    * @category Prop
    * @since v1.0.0
    */
-  /// ProviderProps.checkpoints
+  /// ui-react.ProviderProps.checkpoints
   /**
    * An object containing multiple Checkpoints objects that will be available
    * within the Provider context by their Id.
    * @category Prop
    * @since v1.0.0
    */
-  /// ProviderProps.checkpointsById
+  /// ui-react.ProviderProps.checkpointsById
   /**
    * A default single Persister object that will be available within the
    * Provider context.
    * @category Prop
    * @since v5.3.0
    */
-  /// ProviderProps.persister
+  /// ui-react.ProviderProps.persister
   /**
    * An object containing multiple Persister objects that will be available
    * within the Provider context by their Id.
    * @category Prop
    * @since v5.3.0
    */
-  /// ProviderProps.persistersById
+  /// ui-react.ProviderProps.persistersById
   /**
    * A default single Synchronizer object that will be available within the
    * Provider context.
    * @category Prop
    * @since v5.3.0
    */
-  /// ProviderProps.synchronizer
+  /// ui-react.ProviderProps.synchronizer
   /**
    * An object containing multiple Synchronizer objects that will be available
    * within the Provider context by their Id.
    * @category Prop
    * @since v5.3.0
    */
-  /// ProviderProps.synchronizersById
+  /// ui-react.ProviderProps.synchronizersById
 }
 /**
  * ComponentReturnType is a simple alias for what a React component can return:

@@ -1,10 +1,15 @@
 import {
-  addPen,
+  addCopyButtons,
+  addNavTitles,
+  addStackblitz,
   doc,
+  getArticle,
   go,
+  highlightToc,
   preventDefault,
   queryElement,
   toggleClass,
+  updateToc,
   versionLoad,
 } from './common/common.ts';
 import {darkLoad} from './common/dark.ts';
@@ -15,7 +20,13 @@ darkLoad();
 searchLoad();
 
 addEventListener('load', () => {
-  addPen();
+  addStackblitz();
+  addCopyButtons();
+  addNavTitles();
+  updateToc();
+  getArticle().addEventListener('scroll', () =>
+    requestAnimationFrame(highlightToc),
+  );
 
   doc.body.addEventListener('click', (event: MouseEvent) => {
     if (event.button != 0) {

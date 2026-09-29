@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-expressions */
 // NB: an exclamation mark after a line visually indicates an expected TS error
+import type {AnyArray, AnyObject} from 'tinybase';
 import {createStore} from 'tinybase/with-schemas';
 
 const tablesSchema = {
@@ -16,12 +17,56 @@ const oneValueSchema = {
   v1: {type: 'number'},
 } as const;
 
+const jsonTablesSchema = {
+  t1: {
+    co: {type: 'object'},
+    cod: {type: 'object', default: {}},
+    ca: {type: 'array'},
+    cad: {type: 'array', default: []},
+  },
+} as const;
+
+const jsonValuesSchema = {
+  vo: {type: 'object'},
+  vod: {type: 'object', default: {}},
+  va: {type: 'array'},
+  vad: {type: 'array', default: []},
+} as const;
+
+const requiredTablesSchema = {
+  t1: {
+    c1: {type: 'number', required: true},
+    c1d: {type: 'string', default: ''},
+    c1dr: {type: 'boolean', default: false, required: true},
+    c2: {type: 'string'},
+    c3: {type: 'string', required: true},
+  },
+} as const;
+
+const requiredValuesSchema = {
+  v1: {type: 'number', required: true},
+  v1d: {type: 'string', default: ''},
+  v1dr: {type: 'boolean', default: false, required: true},
+  v2: {type: 'string'},
+  v3: {type: 'string', required: true},
+} as const;
+
 const store = createStore();
 
 const storeWithSchemas = store.setSchema(tablesSchema, valuesSchema);
 storeWithSchemas.setTables({t1: {r1: {c1: 1}}});
 
 const storeWithSchemasOneValue = store.setSchema(tablesSchema, oneValueSchema);
+
+const storeWithJsonSchemas = store.setSchema(
+  jsonTablesSchema,
+  jsonValuesSchema,
+);
+
+const storeWithRequiredSchemas = store.setSchema(
+  requiredTablesSchema,
+  requiredValuesSchema,
+);
 
 // Getters
 (() => {
@@ -120,6 +165,57 @@ const storeWithSchemasOneValue = store.setSchema(tablesSchema, oneValueSchema);
   storeWithSchemas.getValue('v2'); // !
 })();
 
+// Required schema fields
+(() => {
+  storeWithRequiredSchemas.getRow('t1', 'r1').c1 as number;
+  storeWithRequiredSchemas.getRow('t1', 'r1').c1 as undefined; // !
+  storeWithRequiredSchemas.getRow('t1', 'r1').c1d as string;
+  storeWithRequiredSchemas.getRow('t1', 'r1').c1d as undefined; // !
+  storeWithRequiredSchemas.getRow('t1', 'r1').c1dr as boolean;
+  storeWithRequiredSchemas.getRow('t1', 'r1').c1dr as undefined; // !
+  storeWithRequiredSchemas.getRow('t1', 'r1').c2 as string;
+  storeWithRequiredSchemas.getRow('t1', 'r1').c2 as undefined;
+  storeWithRequiredSchemas.getCell('t1', 'r1', 'c1') as number;
+  storeWithRequiredSchemas.getCell('t1', 'r1', 'c1') as undefined; // !
+  storeWithRequiredSchemas.getCell('t1', 'r1', 'c1d') as string;
+  storeWithRequiredSchemas.getCell('t1', 'r1', 'c1d') as undefined; // !
+  storeWithRequiredSchemas.getCell('t1', 'r1', 'c1dr') as boolean;
+  storeWithRequiredSchemas.getCell('t1', 'r1', 'c1dr') as undefined; // !
+  storeWithRequiredSchemas.getCell('t1', 'r1', 'c2') as string;
+  storeWithRequiredSchemas.getCell('t1', 'r1', 'c2') as undefined;
+  storeWithRequiredSchemas.getCell('t1', 'r1', 'c3') as string;
+  storeWithRequiredSchemas.getCell('t1', 'r1', 'c3') as undefined; // !
+
+  storeWithRequiredSchemas.getValue('v1') as number;
+  storeWithRequiredSchemas.getValue('v1') as undefined; // !
+  storeWithRequiredSchemas.getValue('v1d') as string;
+  storeWithRequiredSchemas.getValue('v1d') as undefined; // !
+  storeWithRequiredSchemas.getValue('v1dr') as boolean;
+  storeWithRequiredSchemas.getValue('v1dr') as undefined; // !
+  storeWithRequiredSchemas.getValue('v2') as string;
+  storeWithRequiredSchemas.getValue('v2') as undefined;
+  storeWithRequiredSchemas.getValue('v3') as string;
+  storeWithRequiredSchemas.getValue('v3') as undefined; // !
+
+  storeWithRequiredSchemas.setRow('t1', 'r1', {c1: 1, c3: 'a'});
+  storeWithRequiredSchemas.setRow('t1', 'r1', {c1: 1}); // !
+  storeWithRequiredSchemas.setRow('t1', 'r1', {c2: 'a'}); // !
+  storeWithRequiredSchemas.addRow('t1', {c1: 1, c3: 'a'});
+  storeWithRequiredSchemas.addRow('t1', {c1: 1}); // !
+  storeWithRequiredSchemas.addRow('t1', {}); // !
+  storeWithRequiredSchemas.setTables({t1: {r1: {c1: 1, c3: 'a'}}});
+  storeWithRequiredSchemas.setTables({t1: {r1: {c1: 1}}}); // !
+  storeWithRequiredSchemas.setTables({t1: {r1: {c2: 'a'}}}); // !
+  storeWithRequiredSchemas.setPartialRow('t1', 'r1', {c2: 'a'});
+  storeWithRequiredSchemas.setPartialRow('t1', 'r1', {});
+
+  storeWithRequiredSchemas.setValues({v1: 1, v3: 'a'});
+  storeWithRequiredSchemas.setValues({v1: 1}); // !
+  storeWithRequiredSchemas.setValues({v2: 'a'}); // !
+  storeWithRequiredSchemas.setPartialValues({v2: 'a'});
+  storeWithRequiredSchemas.setPartialValues({});
+})();
+
 // Setters & deleters
 (() => {
   storeWithSchemas.setTables({t1: {r1: {c1: 1}}});
@@ -180,6 +276,84 @@ const storeWithSchemasOneValue = store.setSchema(tablesSchema, oneValueSchema);
 
   storeWithSchemas.delValue('v1');
   storeWithSchemas.delValue('v2'); // !
+})();
+
+// Object and array schema types
+(() => {
+  // Cell getters - object
+  storeWithJsonSchemas.getCell('t1', 'r1', 'co') as AnyObject;
+  storeWithJsonSchemas.getCell('t1', 'r1', 'co') as undefined;
+  storeWithJsonSchemas.getCell('t1', 'r1', 'cod') as AnyObject;
+  storeWithJsonSchemas.getCell('t1', 'r1', 'co') as string; // !
+  storeWithJsonSchemas.getCell('t1', 'r1', 'co') as number; // !
+  storeWithJsonSchemas.getCell('t1', 'r1', 'co') as boolean; // !
+  storeWithJsonSchemas.getCell('t1', 'r1', 'cod') as undefined; // !
+
+  // Cell getters - array
+  storeWithJsonSchemas.getCell('t1', 'r1', 'ca') as AnyArray;
+  storeWithJsonSchemas.getCell('t1', 'r1', 'ca') as undefined;
+  storeWithJsonSchemas.getCell('t1', 'r1', 'cad') as AnyArray;
+  storeWithJsonSchemas.getCell('t1', 'r1', 'ca') as string; // !
+  storeWithJsonSchemas.getCell('t1', 'r1', 'ca') as number; // !
+  storeWithJsonSchemas.getCell('t1', 'r1', 'ca') as boolean; // !
+  storeWithJsonSchemas.getCell('t1', 'r1', 'cad') as undefined; // !
+
+  // Cell getters - invalid ids
+  storeWithJsonSchemas.getCell('t1', 'r1', 'cx'); // !
+  storeWithJsonSchemas.getCell('t2', 'r1', 'co'); // !
+
+  // Value getters - object
+  storeWithJsonSchemas.getValue('vo') as AnyObject;
+  storeWithJsonSchemas.getValue('vo') as undefined;
+  storeWithJsonSchemas.getValue('vod') as AnyObject;
+  storeWithJsonSchemas.getValue('vo') as string; // !
+  storeWithJsonSchemas.getValue('vo') as number; // !
+  storeWithJsonSchemas.getValue('vo') as boolean; // !
+  storeWithJsonSchemas.getValue('vod') as undefined; // !
+
+  // Value getters - array
+  storeWithJsonSchemas.getValue('va') as AnyArray;
+  storeWithJsonSchemas.getValue('va') as undefined;
+  storeWithJsonSchemas.getValue('vad') as AnyArray;
+  storeWithJsonSchemas.getValue('va') as string; // !
+  storeWithJsonSchemas.getValue('va') as number; // !
+  storeWithJsonSchemas.getValue('va') as boolean; // !
+  storeWithJsonSchemas.getValue('vad') as undefined; // !
+
+  // Value getters - invalid id
+  storeWithJsonSchemas.getValue('vx'); // !
+
+  // Cell setters - object
+  storeWithJsonSchemas.setCell('t1', 'r1', 'co', {species: 'dog'});
+  storeWithJsonSchemas.setCell('t1', 'r1', 'co', (v) => v ?? {});
+  storeWithJsonSchemas.setCell('t1', 'r1', 'co', 'dog'); // !
+  storeWithJsonSchemas.setCell('t1', 'r1', 'co', 1); // !
+  storeWithJsonSchemas.setCell('t1', 'r1', 'co', true); // !
+  storeWithJsonSchemas.setCell('t1', 'r1', 'co', () => 'dog'); // !
+
+  // Cell setters - array
+  storeWithJsonSchemas.setCell('t1', 'r1', 'ca', ['dog', 'cat']);
+  storeWithJsonSchemas.setCell('t1', 'r1', 'ca', (v) => v ?? []);
+  storeWithJsonSchemas.setCell('t1', 'r1', 'ca', 'dog'); // !
+  storeWithJsonSchemas.setCell('t1', 'r1', 'ca', 1); // !
+  storeWithJsonSchemas.setCell('t1', 'r1', 'ca', true); // !
+  storeWithJsonSchemas.setCell('t1', 'r1', 'ca', () => 'dog'); // !
+
+  // Value setters - object
+  storeWithJsonSchemas.setValue('vo', {species: 'dog'});
+  storeWithJsonSchemas.setValue('vo', (v) => v ?? {});
+  storeWithJsonSchemas.setValue('vo', 'dog'); // !
+  storeWithJsonSchemas.setValue('vo', 1); // !
+  storeWithJsonSchemas.setValue('vo', true); // !
+  storeWithJsonSchemas.setValue('vo', () => 'dog'); // !
+
+  // Value setters - array
+  storeWithJsonSchemas.setValue('va', ['dog', 'cat']);
+  storeWithJsonSchemas.setValue('va', (v) => v ?? []);
+  storeWithJsonSchemas.setValue('va', 'dog'); // !
+  storeWithJsonSchemas.setValue('va', 1); // !
+  storeWithJsonSchemas.setValue('va', true); // !
+  storeWithJsonSchemas.setValue('va', () => 'dog'); // !
 })();
 
 // Iterators
@@ -1553,4 +1727,238 @@ const storeWithSchemasOneValue = store.setSchema(tablesSchema, oneValueSchema);
   storeWithNoSchemas.getValues().v2;
   storeWithNoSchemas.getTables().t1;
   storeWithNoSchemas.getTables().t2;
+})();
+
+// Sorters
+(() => {
+  const stringOnlySorter = (sortKey1: string, sortKey2: string) =>
+    sortKey1.localeCompare(sortKey2);
+  const stringReturningSorter = () => 'sort';
+  const extraArgSorter = (
+    _sortKey1: unknown,
+    _sortKey2: unknown,
+    _extra: string,
+  ) => 0;
+
+  storeWithSchemas.getSortedRowIds(
+    't1',
+    undefined,
+    false,
+    0,
+    undefined,
+    stringOnlySorter, // !
+  );
+  // prettier-ignore
+  storeWithSchemas.getSortedRowIds({ // !
+    tableId: 't1',
+    sorter: stringOnlySorter,
+  });
+  storeWithSchemas.getSortedRowIds(
+    't1',
+    undefined,
+    false,
+    0,
+    undefined,
+    stringReturningSorter, // !
+  );
+  // prettier-ignore
+  storeWithSchemas.getSortedRowIds({ // !
+    tableId: 't1',
+    sorter: extraArgSorter,
+  });
+})();
+
+// Enum schema types
+(() => {
+  const enumTablesSchema = {
+    pets: {
+      status: {enum: ['draft', 'live']},
+      featured: {enum: [true], default: true},
+      rating: {enum: [1, 2], required: true},
+      name: {enum: ['fido'], allowNull: true},
+    },
+  } as const;
+  const enumValuesSchema = {
+    status: {enum: ['draft', 'live']},
+    featured: {enum: [true], default: true},
+    rating: {enum: [1, 2], required: true},
+    name: {enum: ['fido'], allowNull: true},
+  } as const;
+  const storeWithEnumSchemas = store.setSchema(
+    enumTablesSchema,
+    enumValuesSchema,
+  );
+  const enumStore = storeWithEnumSchemas;
+  storeWithEnumSchemas.getCell('pets', 'pet1', 'status') satisfies
+    'draft' | 'live' | undefined;
+  enumStore.getCell('pets', 'pet1', 'status') satisfies 'archived'; // !
+  storeWithEnumSchemas.getCell('pets', 'pet1', 'featured') satisfies true;
+  enumStore.getCell('pets', 'pet1', 'featured') satisfies undefined; // !
+  storeWithEnumSchemas.getCell('pets', 'pet1', 'rating') satisfies 1 | 2;
+  storeWithEnumSchemas.getCell('pets', 'pet1', 'rating') satisfies 3; // !
+  storeWithEnumSchemas.getCell('pets', 'pet1', 'name') satisfies
+    'fido' | null | undefined;
+  storeWithEnumSchemas.getCell('pets', 'pet1', 'name') satisfies 'felix'; // !
+
+  storeWithEnumSchemas.setRow('pets', 'pet1', {rating: 1});
+  storeWithEnumSchemas.setRow('pets', 'pet1', {rating: 3}); // !
+  storeWithEnumSchemas.setCell('pets', 'pet1', 'status', 'draft');
+  storeWithEnumSchemas.setCell('pets', 'pet1', 'status', 'archived'); // !
+  storeWithEnumSchemas.setCell('pets', 'pet1', 'featured', true);
+  storeWithEnumSchemas.setCell('pets', 'pet1', 'featured', false); // !
+  storeWithEnumSchemas.setCell('pets', 'pet1', 'name', null);
+  storeWithEnumSchemas.setCell('pets', 'pet1', 'name', 'felix'); // !
+
+  storeWithEnumSchemas.getValue('status') satisfies
+    'draft' | 'live' | undefined;
+  storeWithEnumSchemas.getValue('status') satisfies 'archived'; // !
+  storeWithEnumSchemas.getValue('featured') satisfies true;
+  storeWithEnumSchemas.getValue('featured') satisfies undefined; // !
+  storeWithEnumSchemas.getValue('rating') satisfies 1 | 2;
+  storeWithEnumSchemas.getValue('rating') satisfies 3; // !
+  storeWithEnumSchemas.getValue('name') satisfies 'fido' | null | undefined;
+  storeWithEnumSchemas.getValue('name') satisfies 'felix'; // !
+
+  storeWithEnumSchemas.setValues({rating: 2});
+  storeWithEnumSchemas.setValues({rating: 3}); // !
+  storeWithEnumSchemas.setValue('status', 'live');
+  storeWithEnumSchemas.setValue('status', 'archived'); // !
+  storeWithEnumSchemas.setValue('featured', true);
+  storeWithEnumSchemas.setValue('featured', false); // !
+  storeWithEnumSchemas.setValue('name', null);
+  storeWithEnumSchemas.setValue('name', 'felix'); // !
+
+  createStore().setValuesSchema({value: {enum: []}}); // !
+  createStore().setValuesSchema({value: {enum: [null]}}); // !
+  createStore().setValuesSchema({
+    value: {enum: [null], allowNull: true}, // !
+  });
+  createStore().setValuesSchema({
+    value: {type: 'string', enum: ['draft']}, // !
+  });
+})();
+
+// Union schema types
+(() => {
+  const unionSchemas = {
+    answer: {type: ['string', 'number']},
+    payload: {type: ['object', 'array'], default: []},
+    score: {type: ['number', 'boolean'], required: true},
+    response: {type: ['string', 'boolean'], allowNull: true},
+    single: {type: ['string']},
+    repeated: {type: ['string', 'string']},
+    status: {enum: ['draft', 'live']},
+  } as const satisfies {
+    [schemaId: string]: import('tinybase').CellSchema &
+      import('tinybase').ValueSchema &
+      import('tinybase/with-schemas').CellSchema &
+      import('tinybase/with-schemas').ValueSchema;
+  };
+  const unionStore = store.setSchema({pets: unionSchemas}, unionSchemas);
+
+  unionStore.getCell('pets', 'pet1', 'answer') satisfies
+    string | number | undefined;
+  unionStore.getCell('pets', 'pet1', 'payload') satisfies AnyObject | AnyArray;
+  unionStore.getCell('pets', 'pet1', 'score') satisfies number | boolean;
+  unionStore.getCell('pets', 'pet1', 'response') satisfies
+    string | boolean | null | undefined;
+  unionStore.getCell('pets', 'pet1', 'single') satisfies string | undefined;
+  unionStore.getCell('pets', 'pet1', 'repeated') satisfies string | undefined;
+  unionStore.getCell('pets', 'pet1', 'status') satisfies
+    'draft' | 'live' | undefined;
+  unionStore.setRow('pets', 'pet1', {score: true});
+  unionStore.setRow('pets', 'pet1', {score: 'high'}); // !
+  unionStore.setCell('pets', 'pet1', 'answer', 'unknown');
+  unionStore.setCell('pets', 'pet1', 'answer', 42);
+  unionStore.setCell('pets', 'pet1', 'answer', false); // !
+  unionStore.setCell('pets', 'pet1', 'payload', {});
+  unionStore.setCell('pets', 'pet1', 'payload', []);
+  unionStore.setCell('pets', 'pet1', 'payload', 'data'); // !
+  unionStore.setCell('pets', 'pet1', 'response', null);
+  unionStore.setCell('pets', 'pet1', 'response', 1); // !
+  unionStore.setCell('pets', 'pet1', 'single', 'one');
+  unionStore.setCell('pets', 'pet1', 'single', 1); // !
+  unionStore.setCell('pets', 'pet1', 'repeated', 'two');
+  unionStore.setCell('pets', 'pet1', 'repeated', false); // !
+  unionStore.addCellListener(
+    'pets',
+    null,
+    'answer',
+    (_store, _tableId, _rowId, _cellId, newCell) => {
+      newCell satisfies string | number;
+      newCell satisfies boolean; // !
+    },
+  );
+
+  unionStore.getValue('answer') satisfies string | number | undefined;
+  unionStore.getValue('payload') satisfies AnyObject | AnyArray;
+  unionStore.getValue('score') satisfies number | boolean;
+  unionStore.getValue('response') satisfies string | boolean | null | undefined;
+  unionStore.getValue('single') satisfies string | undefined;
+  unionStore.getValue('repeated') satisfies string | undefined;
+  unionStore.getValue('status') satisfies 'draft' | 'live' | undefined;
+  unionStore.setValues({score: 1});
+  unionStore.setValues({score: 'high'}); // !
+  unionStore.setValue('answer', 'unknown');
+  unionStore.setValue('answer', 42);
+  unionStore.setValue('answer', false); // !
+  unionStore.setValue('payload', {});
+  unionStore.setValue('payload', []);
+  unionStore.setValue('payload', 'data'); // !
+  unionStore.setValue('response', null);
+  unionStore.setValue('response', 1); // !
+  unionStore.setValue('single', 'one');
+  unionStore.setValue('single', 1); // !
+  unionStore.setValue('repeated', 'two');
+  unionStore.setValue('repeated', false); // !
+  unionStore.addValueListener('answer', (_store, _valueId, newValue) => {
+    newValue satisfies string | number;
+    newValue satisfies boolean; // !
+  });
+
+  createStore().setValuesSchema({value: {type: []}}); // !
+  createStore().setValuesSchema({value: {type: ['string']}});
+  createStore().setValuesSchema({
+    value: {type: ['string', 'null']}, // !
+  });
+  createStore().setValuesSchema({
+    value: {type: ['string', 'boolean'], enum: ['draft']}, // !
+  });
+})();
+
+// Nullable type schema types
+(() => {
+  const nullableSchemas = {
+    name: {type: 'string', allowNull: true},
+    profile: {type: 'object', default: null, allowNull: true},
+    tags: {type: 'array', default: null, allowNull: true},
+  } as const satisfies {
+    [schemaId: string]: import('tinybase').CellSchema &
+      import('tinybase').ValueSchema &
+      import('tinybase/with-schemas').CellSchema &
+      import('tinybase/with-schemas').ValueSchema;
+  };
+  const nullableStore = store.setSchema(
+    {pets: nullableSchemas},
+    nullableSchemas,
+  );
+
+  nullableStore.getCell('pets', 'pet1', 'name') satisfies
+    string | null | undefined;
+  nullableStore.getCell('pets', 'pet1', 'profile') satisfies AnyObject | null;
+  nullableStore.getCell('pets', 'pet1', 'tags') satisfies AnyArray | null;
+  nullableStore.setCell('pets', 'pet1', 'name', null);
+  nullableStore.setCell('pets', 'pet1', 'profile', null);
+  nullableStore.setCell('pets', 'pet1', 'tags', null);
+  nullableStore.setCell('pets', 'pet1', 'profile', false); // !
+  nullableStore.setCell('pets', 'pet1', 'tags', {}); // !
+
+  nullableStore.getValue('name') satisfies string | null | undefined;
+  nullableStore.getValue('profile') satisfies AnyObject | null;
+  nullableStore.getValue('tags') satisfies AnyArray | null;
+  nullableStore.setValue('name', null);
+  nullableStore.setValue('profile', null);
+  nullableStore.setValue('tags', null);
+  nullableStore.setValue('profile', false); // !
+  nullableStore.setValue('tags', {}); // !
 })();

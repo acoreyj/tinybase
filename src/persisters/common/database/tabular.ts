@@ -14,14 +14,16 @@ import type {
   ValueOrUndefined,
   Values,
 } from '../../../@types/store/index.d.ts';
-import {arrayFilter} from '../../../common/array.ts';
+import {arrayFilter, arrayHas, arrayMap} from '../../../common/array.ts';
 import {mapMap} from '../../../common/map.ts';
-import {objHas, objIsEmpty, objNew} from '../../../common/obj.ts';
+import {objHas, objIsEmpty, objNew, objToArray} from '../../../common/obj.ts';
 import {isUndefined, promiseAll} from '../../../common/other.ts';
 import {createCustomPersister} from '../create.ts';
-import {getCommandFunctions} from './commands.ts';
+import {DatabaseTransaction, getCommandFunctions} from './commands.ts';
 import {
   DEFAULT_ROW_ID_COLUMN_NAME,
+  type Dialect,
+  GetPlaceholder,
   QuerySchema,
   SINGLE_ROW_ID,
   Upsert,
@@ -46,27 +48,38 @@ export const createTabularPersister = <
   [
     tablesLoadConfig,
     tablesSaveConfig,
-    [valuesLoad, valuesSave, valuesTableName],
+    [
+      valuesLoad,
+      valuesSave,
+      valuesTableName,
+      valuesLoadValueIds,
+      valuesSaveValueIds,
+    ],
   ]: DefaultedTabularConfig,
   managedTableNames: string[],
   querySchema: QuerySchema,
   thing: any,
   getThing: string,
   columnType: string,
+  getPlaceholder: GetPlaceholder,
   upsert?: Upsert,
   encode?: (cellOrValue: any) => string | number,
   decode?: (field: string | number) => any,
+  executeTransaction?: DatabaseTransaction,
+  dialect?: Dialect,
 ): Persister<Persist> => {
   const [refreshSchema, loadTable, saveTable, transaction] =
     getCommandFunctions(
       executeCommand,
       managedTableNames,
       querySchema,
-      onIgnoredError,
       columnType,
+      getPlaceholder,
       upsert,
       encode,
       decode,
+      executeTransaction,
+      dialect,
     );
 
   const saveTables = (
@@ -107,6 +120,29 @@ export const createTabularPersister = <
       ),
     );
 
+  const getValuesSubset = (
+    values: Values | {[valueId: Id]: ValueOrUndefined},
+    valueIds: Id[],
+    partial?: boolean,
+  ) =>
+    objNew(
+      partial == true
+        ? arrayFilter(
+            objToArray(values, (value, valueId): [Id, ValueOrUndefined] => [
+              valueId,
+              value,
+            ]),
+            ([valueId]) => arrayHas(valueIds, valueId),
+          )
+        : arrayFilter(
+            arrayMap(valueIds, (valueId): [Id, ValueOrUndefined] => [
+              valueId,
+              values[valueId],
+            ]),
+            ([, value]) => !isUndefined(value),
+          ),
+    );
+
   const saveValues = async (
     values: Values | {[valueId: Id]: ValueOrUndefined},
     partial?: boolean,
@@ -115,10 +151,16 @@ export const createTabularPersister = <
       ? await saveTable(
           valuesTableName,
           DEFAULT_ROW_ID_COLUMN_NAME,
-          {[SINGLE_ROW_ID]: values},
+          {
+            [SINGLE_ROW_ID]: isUndefined(valuesSaveValueIds)
+              ? values
+              : getValuesSubset(values, valuesSaveValueIds, partial),
+          },
           true,
           true,
           partial,
+          undefined,
+          valuesSaveValueIds,
         )
       : null;
 
@@ -140,9 +182,14 @@ export const createTabularPersister = <
 
   const loadValues = async (): Promise<Values | null> =>
     valuesLoad
-      ? (await loadTable(valuesTableName, DEFAULT_ROW_ID_COLUMN_NAME))[
-          SINGLE_ROW_ID
-        ]
+      ? (
+          await loadTable(
+            valuesTableName,
+            DEFAULT_ROW_ID_COLUMN_NAME,
+            undefined,
+            valuesLoadValueIds,
+          )
+        )[SINGLE_ROW_ID]
       : {};
 
   const getPersisted = (): Promise<PersistedContent<Persist> | undefined> =>
@@ -171,13 +218,7 @@ export const createTabularPersister = <
       }
     });
 
-  const destroy = async () => {
-    await persister.stopAutoPersisting();
-    extraDestroy();
-    return persister;
-  };
-
-  const persister = createCustomPersister(
+  return createCustomPersister(
     store,
     getPersisted,
     setPersisted,
@@ -185,10 +226,8 @@ export const createTabularPersister = <
     delPersisterListener,
     onIgnoredError,
     persist,
-    {[getThing]: () => thing, destroy},
+    {[getThing]: () => thing, destroy: extraDestroy},
     0,
     thing,
   );
-
-  return persister;
 };

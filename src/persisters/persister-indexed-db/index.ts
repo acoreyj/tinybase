@@ -1,11 +1,28 @@
 import type {Id} from '../../@types/common/index.d.ts';
-import type {PersisterListener} from '../../@types/persisters/index.d.ts';
+import type {
+  MergeableContent,
+  MergeableStore,
+} from '../../@types/mergeable-store/index.d.ts';
+import type {
+  PersisterListener,
+  Persists,
+} from '../../@types/persisters/index.d.ts';
 import type {
   IndexedDbPersister,
   createIndexedDbPersister as createIndexedDbPersisterDecl,
 } from '../../@types/persisters/persister-indexed-db/index.d.ts';
 import type {Content, Store, Table} from '../../@types/store/index.d.ts';
-import {arrayMap, arrayPush} from '../../common/array.ts';
+import {arrayForEach, arrayMap, arrayPush} from '../../common/array.ts';
+import {
+  ERROR_INDEXED_DB_OPEN,
+  ERROR_INDEXED_DB_STORE,
+  errorNew,
+  tryCatch,
+  tryCatchIgnore,
+  tryCatchSync,
+  tryFinallyAsync,
+} from '../../common/error.ts';
+import {jsonStringWithUndefined} from '../../common/json.ts';
 import {IdObj, objHas, objNew, objToArray} from '../../common/obj.ts';
 import {
   WINDOW,
@@ -13,22 +30,24 @@ import {
   promiseNew,
   startInterval,
   stopInterval,
-  tryCatch,
 } from '../../common/other.ts';
-import {T, V} from '../../common/strings.ts';
+import {M, T, V} from '../../common/strings.ts';
 import {createCustomPersister} from '../common/create.ts';
 
-const OBJECT_STORE_NAMES = [T, V];
+const CONTENT_OBJECT_STORE_NAMES = [T, V];
+const MERGEABLE_OBJECT_STORE_NAMES = [M];
+const OBJECT_STORE_NAMES = [...CONTENT_OBJECT_STORE_NAMES, M];
+const VERSION = 3;
 const KEY_PATH = {keyPath: 'k'};
 
-export const objectStoreMatch = async (
+const objectStoreMatch = async (
   objectStore: IDBObjectStore,
   obj: IdObj<any>,
 ): Promise<void> => {
   const actions = objToArray(obj, (v, k) =>
     execObjectStore(objectStore, 'put', {k, v}),
   );
-  arrayMap(await execObjectStore(objectStore, 'getAllKeys'), (id: Id) =>
+  arrayForEach(await execObjectStore(objectStore, 'getAllKeys'), (id: Id) =>
     objHas(obj, id)
       ? 0
       : arrayPush(actions, execObjectStore(objectStore, 'delete', id)),
@@ -44,80 +63,168 @@ const execObjectStore = async (
   promiseNew((resolve, reject) => {
     const request = objectStore[func](arg);
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(`objectStore.${func} error`);
+    request.onerror = () => reject(errorNew(ERROR_INDEXED_DB_STORE, func));
   });
 
 export const createIndexedDbPersister = ((
-  store: Store,
+  store: Store | MergeableStore,
   dbName: string,
   autoLoadIntervalSeconds = 1,
   onIgnoredError?: (error: any) => void,
 ): IndexedDbPersister => {
   const forObjectStores = async (
+    objectStoreNames: string[],
     forObjectStore: (objectStore: IDBObjectStore, arg: any) => Promise<any>,
     params: any[] = [],
     create: 0 | 1 = 0,
-  ): Promise<[any, any]> =>
+    mode: IDBTransactionMode = 'readonly',
+  ): Promise<any[]> =>
     promiseNew((resolve, reject) => {
       const request = (WINDOW ? WINDOW.indexedDB : indexedDB).open(
         dbName,
-        create ? 2 : undefined,
+        create ? VERSION : undefined,
       );
+      let blocked = 0;
       request.onupgradeneeded = () =>
         create &&
-        arrayMap(OBJECT_STORE_NAMES, (objectStoreName) =>
-          tryCatch(() =>
+        arrayForEach(OBJECT_STORE_NAMES, (objectStoreName) =>
+          tryCatchSync(() =>
             request.result.createObjectStore(objectStoreName, KEY_PATH),
           ),
         );
+      request.onblocked = () => {
+        blocked = 1;
+        reject(errorNew(ERROR_INDEXED_DB_OPEN));
+      };
       request.onsuccess = () =>
-        tryCatch(
-          async () => {
-            const transaction = request.result.transaction(
-              OBJECT_STORE_NAMES,
-              'readwrite',
+        blocked
+          ? request.result.close()
+          : tryCatch(
+              async () => {
+                request.result.onversionchange = () => request.result.close();
+                const transaction = request.result.transaction(
+                  objectStoreNames,
+                  mode,
+                );
+                const transactionComplete = promiseNew<void>(
+                  (resolve, reject) => {
+                    transaction.oncomplete = () => resolve();
+                    transaction.onerror = transaction.onabort = () =>
+                      reject(errorNew(ERROR_INDEXED_DB_STORE));
+                  },
+                );
+                const [result] = await promiseAll([
+                  promiseAll(
+                    arrayMap(objectStoreNames, (objectStoreName, index) =>
+                      forObjectStore(
+                        transaction.objectStore(objectStoreName),
+                        params[index],
+                      ),
+                    ),
+                  ),
+                  transactionComplete,
+                ]);
+                request.result.close();
+                resolve(result as any[]);
+              },
+              (error) => {
+                request.result.close();
+                reject(error);
+              },
             );
-            const result = await promiseAll(
-              arrayMap(OBJECT_STORE_NAMES, (objectStoreName, index) =>
-                forObjectStore(
-                  transaction.objectStore(objectStoreName),
-                  params[index],
-                ),
-              ),
-            );
-            request.result.close();
-            resolve(result as [any, any]);
-          },
-          (error) => {
-            request.result.close();
-            reject(error);
-          },
-        );
-      request.onerror = () => reject('indexedDB.open error');
+      request.onerror = () => reject(errorNew(ERROR_INDEXED_DB_OPEN));
     });
 
-  const getPersisted = async (): Promise<Content> =>
-    await forObjectStores(async (objectStore) =>
-      objNew(
-        arrayMap(
-          await execObjectStore(objectStore, 'getAll'),
-          ({k, v}: {k: Id; v: Table}) => [k, v],
-        ),
+  const getObjectStoreEntries = async (
+    objectStore: IDBObjectStore,
+  ): Promise<IdObj<any>> =>
+    objNew(
+      arrayMap(
+        await execObjectStore(objectStore, 'getAll'),
+        ({k, v}: {k: Id; v: Table}) => [k, v],
       ),
     );
 
-  const setPersisted = (getContent: () => Content): Promise<void> =>
-    forObjectStores(
-      (objectStore, content) => objectStoreMatch(objectStore, content),
-      getContent(),
-      1,
-    ) as any;
+  const getPersisted = async (): Promise<
+    Content | MergeableContent | undefined
+  > => {
+    if (!store.isMergeable()) {
+      return (await forObjectStores(
+        CONTENT_OBJECT_STORE_NAMES,
+        getObjectStoreEntries,
+      )) as Content;
+    }
+    const [mergeable] = await forObjectStores(
+      MERGEABLE_OBJECT_STORE_NAMES,
+      getObjectStoreEntries,
+    );
+    return objHas(mergeable, T)
+      ? ([mergeable[T], mergeable[V]] as MergeableContent)
+      : undefined;
+  };
 
-  const addPersisterListener = (listener: PersisterListener): NodeJS.Timeout =>
-    startInterval(listener, autoLoadIntervalSeconds);
+  const setPersisted = async (
+    getContent: () => Content | MergeableContent,
+  ): Promise<void> => {
+    const content = getContent();
+    await (store.isMergeable()
+      ? forObjectStores(
+          MERGEABLE_OBJECT_STORE_NAMES,
+          (objectStore, mergeable) => objectStoreMatch(objectStore, mergeable),
+          [{[T]: content[0], [V]: content[1]}],
+          1,
+          'readwrite',
+        )
+      : forObjectStores(
+          CONTENT_OBJECT_STORE_NAMES,
+          (objectStore, tablesOrValues) =>
+            objectStoreMatch(objectStore, tablesOrValues),
+          content,
+          1,
+          'readwrite',
+        ));
+  };
 
-  const delPersisterListener = (interval: NodeJS.Timeout): void =>
-    stopInterval(interval);
+  const addPersisterListener = (
+    listener: PersisterListener<Persists.StoreOrMergeableStore>,
+  ): Promise<() => Promise<void>> =>
+    getPersisted().then((content) => {
+      let active = 1;
+      let lastContent = jsonStringWithUndefined(content);
+      let pollPromise: Promise<void> | undefined;
+      const interval = startInterval(() => {
+        if (active && !pollPromise) {
+          const newPollPromise = tryFinallyAsync(
+            () =>
+              tryCatchIgnore(async () => {
+                const content = await getPersisted();
+                if (active) {
+                  const nextContent = jsonStringWithUndefined(content);
+                  if (nextContent != lastContent) {
+                    lastContent = nextContent;
+                    await listener(content);
+                  }
+                }
+              }, onIgnoredError),
+            () => {
+              if (pollPromise == newPollPromise) {
+                pollPromise = undefined;
+              }
+            },
+          );
+          pollPromise = newPollPromise;
+        }
+      }, autoLoadIntervalSeconds);
+      return async () => {
+        active = 0;
+        stopInterval(interval);
+        await pollPromise;
+      };
+    });
+
+  const delPersisterListener = async (
+    stopListening: () => Promise<void>,
+  ): Promise<void> => await stopListening();
 
   return createCustomPersister(
     store,
@@ -126,7 +233,7 @@ export const createIndexedDbPersister = ((
     addPersisterListener,
     delPersisterListener,
     onIgnoredError,
-    1, // StoreOnly,
+    3, // StoreOrMergeableStore,
     {getDbName: () => dbName},
   ) as IndexedDbPersister;
 }) as typeof createIndexedDbPersisterDecl;

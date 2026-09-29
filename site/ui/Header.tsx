@@ -1,9 +1,9 @@
 import type {NoPropComponent} from 'tinydocs';
 import {NodeChildren, useRootNode} from 'tinydocs';
-import {useMetadata} from './BuildContext.tsx';
+import {usePackageData} from './BuildContext.tsx';
 
 export const Header: NoPropComponent = () => {
-  const {version} = useMetadata();
+  const {version} = usePackageData();
   const rootNode = useRootNode();
 
   return (
@@ -20,7 +20,9 @@ export const Header: NoPropComponent = () => {
           )}
         </span>
       </a>
-      <nav>
+      <input id="menustate" type="checkbox" aria-label="Menu" />
+      <label id="hamburger" htmlFor="menustate" aria-hidden="true" />
+      <nav aria-label="Primary">
         <ul>
           <NodeChildren node={rootNode} />
           <li>
@@ -28,7 +30,11 @@ export const Header: NoPropComponent = () => {
           </li>
         </ul>
       </nav>
-      <span id="dark" />
+      <button
+        id="dark"
+        type="button"
+        aria-label="Color theme: automatic; activate for dark"
+      />
     </header>
   );
 };

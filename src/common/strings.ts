@@ -11,10 +11,15 @@ export const STRING = getTypeOf(EMPTY_STRING);
 export const BOOLEAN = getTypeOf(true);
 export const NUMBER = getTypeOf(0);
 export const FUNCTION = getTypeOf(getTypeOf);
+export const OBJECT = 'object';
+export const ARRAY = 'array';
 
 export const TRUE = 'true';
 export const TYPE = 'type';
+export const ENUM = 'enum';
 export const DEFAULT = 'default';
+export const ALLOW_NULL = 'allowNull';
+export const NULL = 'null';
 
 export const UTF8 = 'utf8';
 
@@ -65,14 +70,42 @@ export const CURRENT_TARGET = 'currentTarget';
 export const _VALUE = 'value';
 
 export const OPEN = 'open';
+export const CLOSE = 'close';
 export const MESSAGE = 'message';
 export const ERROR = 'error';
+export const CHANGE = 'change';
+export const CONNECTION = 'connection';
+export const KEYDOWN = 'keydown';
+export const STORAGE = 'storage';
 export const EXTRA = 'extra';
 
+export const ANY_OF = 'anyOf';
+export const DOMAIN = 'domain';
+export const FALLBACK = 'fallback';
+export const KEY = 'key';
+export const NULLABLE = 'nullable';
+export const OPTIONAL = 'optional';
+export const REQUIRED = 'required';
+export const UNIT = 'unit';
+export const WRAPPED = 'wrapped';
+
+export const LITERAL = 'Literal';
+export const PROPERTY_SIGNATURES = 'propertySignatures';
+export const RECORD = 'record';
+export const SEQUENCE = 'sequence';
+export const STRING_KEYWORD = 'StringKeyword';
+export const NUMBER_KEYWORD = 'NumberKeyword';
+export const BOOLEAN_KEYWORD = 'BooleanKeyword';
+export const TUPLE_TYPE = 'TupleType';
+export const TYPE_LITERAL = 'TypeLiteral';
+export const UNION = 'Union';
+
+export const M = 'm';
 export const T = 't';
 export const V = 'v';
 
 export const UNDEFINED = '\uFFFC';
+export const JSON_PREFIX = '\uFFFD';
 
 export const id = (key: unknown): Id => EMPTY_STRING + key;
 

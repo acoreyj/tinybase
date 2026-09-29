@@ -1,24 +1,174 @@
 /// store
 import type {StoreAlias} from '../_internal/store/index.d.ts';
-import type {Id, IdOrNull, Ids, Json} from '../common/index.d.ts';
+import type {
+  AnyArray,
+  AnyObject,
+  Id,
+  IdOrNull,
+  Ids,
+  Json,
+  Sorter,
+} from '../common/index.d.ts';
+
+type SchemaType = 'string' | 'number' | 'boolean' | 'object' | 'array';
+
+type SchemaTypeArray = readonly [SchemaType, ...SchemaType[]];
+
+type CellOrValueFromSchemaType<Type> = Type extends readonly (infer Type)[]
+  ? CellOrValueFromSchemaType<Type>
+  : Type extends 'string'
+    ? string
+    : Type extends 'number'
+      ? number
+      : Type extends 'boolean'
+        ? boolean
+        : Type extends 'object'
+          ? AnyObject
+          : Type extends 'array'
+            ? AnyArray
+            : never;
+
+type CellOrValueFromSchema<Schema> = Schema extends {
+  enum: readonly (infer Enum)[];
+}
+  ? Enum
+  : Schema extends {type: infer Type}
+    ? CellOrValueFromSchemaType<Type>
+    : never;
+
+type NullFromSchema<Schema> = Schema extends {allowNull: true} ? null : never;
+
+type ValidDefault<Schema> = Schema extends {default: infer Default}
+  ? [Default] extends [CellOrValueFromSchema<Schema> | NullFromSchema<Schema>]
+    ? unknown
+    : never
+  : unknown;
+
+type ValidTablesSchema<Schema extends TablesSchema> = {
+  [TableId in keyof Schema]: {
+    [CellId in keyof Schema[TableId]]: ValidDefault<Schema[TableId][CellId]>;
+  };
+};
+
+type ValidValuesSchema<Schema extends ValuesSchema> = {
+  [ValueId in keyof Schema]: ValidDefault<Schema[ValueId]>;
+};
 
 /// TablesSchema
 export type TablesSchema = {[tableId: Id]: {[cellId: Id]: CellSchema}};
 
 /// CellSchema
 export type CellSchema =
-  | {type: 'string'; default?: string}
-  | {type: 'number'; default?: number}
-  | {type: 'boolean'; default?: boolean};
+  | {
+      type: 'string';
+      default?: string | null;
+      allowNull?: boolean;
+      required?: boolean;
+      enum?: never;
+    }
+  | {
+      type: 'number';
+      default?: number | null;
+      allowNull?: boolean;
+      required?: boolean;
+      enum?: never;
+    }
+  | {
+      type: 'boolean';
+      default?: boolean | null;
+      allowNull?: boolean;
+      required?: boolean;
+      enum?: never;
+    }
+  | {
+      type: 'object';
+      default?: AnyObject | null;
+      allowNull?: boolean;
+      required?: boolean;
+      enum?: never;
+    }
+  | {
+      type: 'array';
+      default?: AnyArray | null;
+      allowNull?: boolean;
+      required?: boolean;
+      enum?: never;
+    }
+  | {
+      type: SchemaTypeArray;
+      default?: string | number | boolean | AnyObject | AnyArray | null;
+      allowNull?: boolean;
+      required?: boolean;
+      enum?: never;
+    }
+  | {
+      enum: readonly [
+        string | number | boolean,
+        ...(string | number | boolean)[],
+      ];
+      type?: never;
+      default?: string | number | boolean | null;
+      allowNull?: boolean;
+      required?: boolean;
+    };
 
 /// ValuesSchema
 export type ValuesSchema = {[valueId: Id]: ValueSchema};
 
 /// ValueSchema
 export type ValueSchema =
-  | {type: 'string'; default?: string}
-  | {type: 'number'; default?: number}
-  | {type: 'boolean'; default?: boolean};
+  | {
+      type: 'string';
+      default?: string | null;
+      allowNull?: boolean;
+      required?: boolean;
+      enum?: never;
+    }
+  | {
+      type: 'number';
+      default?: number | null;
+      allowNull?: boolean;
+      required?: boolean;
+      enum?: never;
+    }
+  | {
+      type: 'boolean';
+      default?: boolean | null;
+      allowNull?: boolean;
+      required?: boolean;
+      enum?: never;
+    }
+  | {
+      type: 'object';
+      default?: AnyObject | null;
+      allowNull?: boolean;
+      required?: boolean;
+      enum?: never;
+    }
+  | {
+      type: 'array';
+      default?: AnyArray | null;
+      allowNull?: boolean;
+      required?: boolean;
+      enum?: never;
+    }
+  | {
+      type: SchemaTypeArray;
+      default?: string | number | boolean | AnyObject | AnyArray | null;
+      allowNull?: boolean;
+      required?: boolean;
+      enum?: never;
+    }
+  | {
+      enum: readonly [
+        string | number | boolean,
+        ...(string | number | boolean)[],
+      ];
+      type?: never;
+      default?: string | number | boolean | null;
+      allowNull?: boolean;
+      required?: boolean;
+    };
 
 /// NoTablesSchema
 export type NoTablesSchema = {[tableId: Id]: {[cellId: Id]: {type: 'any'}}};
@@ -51,7 +201,7 @@ export type Table = {[rowId: Id]: Row};
 export type Row = {[cellId: Id]: Cell};
 
 /// Cell
-export type Cell = string | number | boolean;
+export type Cell = string | number | boolean | null | AnyObject | AnyArray;
 
 /// CellOrUndefined
 export type CellOrUndefined = Cell | undefined;
@@ -60,7 +210,7 @@ export type CellOrUndefined = Cell | undefined;
 export type Values = {[valueId: Id]: Value};
 
 /// Value
-export type Value = string | number | boolean;
+export type Value = string | number | boolean | null | AnyObject | AnyArray;
 
 /// ValueOrUndefined
 export type ValueOrUndefined = Value | undefined;
@@ -127,6 +277,8 @@ export type SortedRowIdsArgs = {
   offset?: number;
   /// SortedRowIdsArgs.limit
   limit?: number;
+  /// SortedRowIdsArgs.sorter
+  sorter?: Sorter;
 };
 
 /// TransactionListener
@@ -354,8 +506,7 @@ export type InvalidValues = {[valueId: Id]: any[]};
 export type Changes = [
   changedTables: {
     [tableId: Id]:
-      | {[rowId: Id]: {[cellId: Id]: CellOrUndefined} | undefined}
-      | undefined;
+      {[rowId: Id]: {[cellId: Id]: CellOrUndefined} | undefined} | undefined;
   },
   changedValues: {[valueId: Id]: ValueOrUndefined},
   isChanges: 1,
@@ -456,6 +607,7 @@ export interface Store {
     descending?: boolean,
     offset?: number,
     limit?: number,
+    sorter?: Sorter,
   ): Ids;
 
   /// Store.getSortedRowIds.2
@@ -567,13 +719,20 @@ export interface Store {
   setJson(tablesAndValuesJson: Json): this;
 
   /// Store.setTablesSchema
-  setTablesSchema(tablesSchema: TablesSchema): this;
+  setTablesSchema<const TS extends TablesSchema>(
+    tablesSchema: TS & ValidTablesSchema<TS>,
+  ): this;
 
   /// Store.setValuesSchema
-  setValuesSchema(valuesSchema: ValuesSchema): this;
+  setValuesSchema<const VS extends ValuesSchema>(
+    valuesSchema: VS & ValidValuesSchema<VS>,
+  ): this;
 
   /// Store.setSchema
-  setSchema(tablesSchema: TablesSchema, valuesSchema?: ValuesSchema): this;
+  setSchema<const TS extends TablesSchema, const VS extends ValuesSchema>(
+    tablesSchema: TS & ValidTablesSchema<TS>,
+    valuesSchema?: VS & ValidValuesSchema<VS>,
+  ): this;
 
   /// Store.delTables
   delTables(): this;
@@ -809,7 +968,6 @@ export interface Store {
 
   /// Store.isMergeable
   isMergeable(): boolean;
-  //
 }
 
 /// createStore

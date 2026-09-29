@@ -33,7 +33,7 @@ indexesWithSchema.setIndexDefinition(
   'i1',
   't1',
   (getCell) => getCell('c1d'),
-  (getCell) => getCell('c1'), // !
+  (getCell) => getCell('c1'),
 );
 indexesWithSchema.setIndexDefinition(
   'i1',
@@ -112,3 +112,52 @@ indexesWithSchema.addSliceRowIdsListener('i1', 's1', (indexes) => {
 
 indexesWithSchema.delListener('i1').getStore().getTables().t1;
 indexesWithSchema.delListener('i1').getStore().getTables().t2; // !
+
+indexesWithSchema.setIndexDefinition(
+  'i1',
+  't1',
+  () => 's1',
+  () => ({rank: 1}),
+);
+indexesWithSchema.setIndexDefinition(
+  'i1',
+  't1',
+  () => 's1',
+  () => [1, 2],
+);
+
+(() => {
+  const stringOnlySorter = (sortKey1: string, sortKey2: string) =>
+    sortKey1.localeCompare(sortKey2);
+  const stringReturningSorter = () => 'sort';
+  const numericSliceSorter = (
+    _sortKey1: unknown,
+    _sortKey2: unknown,
+    _sliceId: number,
+  ) => 0;
+
+  indexesWithSchema.setIndexDefinition(
+    'i1',
+    't1',
+    () => 's1',
+    () => 1,
+    undefined,
+    stringOnlySorter, // !
+  );
+  indexesWithSchema.setIndexDefinition(
+    'i1',
+    't1',
+    () => 's1',
+    () => 1,
+    undefined,
+    stringReturningSorter, // !
+  );
+  indexesWithSchema.setIndexDefinition(
+    'i1',
+    't1',
+    () => 's1',
+    () => 1,
+    undefined,
+    numericSliceSorter, // !
+  );
+})();

@@ -62,7 +62,7 @@
    * This example enables Durable Object persistence by creating a Persister
    * object within the createPersister method of a WsServerDurableObject.
    *
-   * ```js yolo
+   * ```js ignore
    * import {createMergeableStore} from 'tinybase';
    * import {createDurableObjectStoragePersister} from 'tinybase/persisters/persister-durable-object-storage';
    * import {WsServerDurableObject} from 'tinybase/synchronizers/synchronizer-ws-server-durable-object';
@@ -96,7 +96,7 @@
    * This example logs the path being served by the Durable Object every time a
    * synchronization method is handled.
    *
-   * ```js yolo
+   * ```js ignore
    * import {WsServerDurableObject} from 'tinybase/synchronizers/synchronizer-ws-server-durable-object';
    *
    * export class MyDurableObject extends WsServerDurableObject {
@@ -121,7 +121,7 @@
    * This example logs the list of clients being served by the Durable Object
    * every time a synchronization method is handled.
    *
-   * ```js yolo
+   * ```js ignore
    * import {WsServerDurableObject} from 'tinybase/synchronizers/synchronizer-ws-server-durable-object';
    *
    * export class MyDurableObject extends WsServerDurableObject {
@@ -134,6 +134,80 @@
    * @since v5.4.0
    */
   /// WsServerDurableObject.getClientIds
+  /**
+   * The getFragmentSize method is used to specify a target maximum UTF-8 byte
+   * size for each WebSocket message fragment sent by the Durable Object.
+   * Unicode code points are never split and can exceed this size. TinyBase
+   * sends at most 1,000 fragments for one payload, increasing the target when
+   * needed.
+   *
+   * Return a number to split larger synchronization payloads into fragments
+   * that are reassembled by the receiving WsSynchronizer. Return `undefined`
+   * to send each payload as a single WebSocket message.
+   * @returns The target maximum fragment size, or `undefined` to disable
+   * fragmentation.
+   * @example
+   * This example limits outbound Durable Object synchronization message
+   * fragments to 32KB.
+   *
+   * ```js ignore
+   * import {WsServerDurableObject} from 'tinybase/synchronizers/synchronizer-ws-server-durable-object';
+   *
+   * export class MyDurableObject extends WsServerDurableObject {
+   *   getFragmentSize() {
+   *     return 32 * 1024;
+   *   }
+   * }
+   * ```
+   * @category Getter
+   * @since v9.0.0
+   */
+  /// WsServerDurableObject.getFragmentSize
+  /**
+   * The getRequestTimeoutSeconds method is used to specify how long the Durable
+   * Object will wait for synchronization responses and incomplete fragments.
+   *
+   * Return a number of seconds to use as the timeout. The default is `1`.
+   * @returns The number of seconds to wait before timing out.
+   * @example
+   * This example waits up to 10 seconds for synchronization responses and
+   * incomplete fragments.
+   *
+   * ```js ignore
+   * import {WsServerDurableObject} from 'tinybase/synchronizers/synchronizer-ws-server-durable-object';
+   *
+   * export class MyDurableObject extends WsServerDurableObject {
+   *   getRequestTimeoutSeconds() {
+   *     return 10;
+   *   }
+   * }
+   * ```
+   * @category Getter
+   * @since v9.0.0
+   */
+  /// WsServerDurableObject.getRequestTimeoutSeconds
+  /**
+   * The onIgnoredError method is called when the Durable Object receives an
+   * invalid synchronization protocol message. The sending client is
+   * disconnected after this method is called. The default implementation does
+   * nothing.
+   * @param error The error that was encountered.
+   * @example
+   * This example logs ignored Durable Object synchronization errors.
+   *
+   * ```js ignore
+   * import {WsServerDurableObject} from 'tinybase/synchronizers/synchronizer-ws-server-durable-object';
+   *
+   * export class MyDurableObject extends WsServerDurableObject {
+   *   onIgnoredError(error) {
+   *     console.error(error);
+   *   }
+   * }
+   * ```
+   * @category Event
+   * @since v9.3.0
+   */
+  /// WsServerDurableObject.onIgnoredError
   /**
    * The onPathId method is called when the first client connects to, or the
    * last client disconnects from, the server with a given path Id.
@@ -149,7 +223,7 @@
    * when the first client joins (the path Id is 'added'), and when the last
    * client leaves (the path Id is 'removed').
    *
-   * ```js yolo
+   * ```js ignore
    * import {WsServerDurableObject} from 'tinybase/synchronizers/synchronizer-ws-server-durable-object';
    *
    * export class MyDurableObject extends WsServerDurableObject {
@@ -183,7 +257,7 @@
    * leaves (the client Id is 'removed') on the path being served by the Durable
    * Object.
    *
-   * ```js yolo
+   * ```js ignore
    * import {WsServerDurableObject} from 'tinybase/synchronizers/synchronizer-ws-server-durable-object';
    *
    * export class MyDurableObject extends WsServerDurableObject {
@@ -252,7 +326,7 @@
    * This example logs every message routed by the Durable Object between
    * clients.
    *
-   * ```js yolo
+   * ```js ignore
    * import {WsServerDurableObject} from 'tinybase/synchronizers/synchronizer-ws-server-durable-object';
    *
    * export class MyDurableObject extends WsServerDurableObject {
@@ -313,7 +387,7 @@
  * Durable Object in the `MyDurableObjects` namespace. This would require the
  * `wrangler.toml` configuration shown above.
  *
- * ```js yolo
+ * ```js ignore
  * import {
  *   WsServerDurableObject,
  *   getWsServerDurableObjectFetch,

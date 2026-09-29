@@ -1,7 +1,7 @@
 import type {NoPropComponent, Node} from 'tinydocs';
 import {Markdown, usePageNode} from 'tinydocs';
 import type {ModulesSizes} from './BuildContext.tsx';
-import {useCoverage, useMetadata, useModulesSizes} from './BuildContext.tsx';
+import {useCoverage, useModulesSizes, usePackageData} from './BuildContext.tsx';
 import {MODULES} from './common.ts';
 
 export const Readme: NoPropComponent = (): any => {
@@ -15,7 +15,7 @@ const toKb = (bytes: number | undefined) =>
   bytes != null ? `${(bytes / 1000).toFixed(1)}kB` : '';
 
 export const useReadme = (node: Node): [string, string] => {
-  const metadata = useMetadata();
+  const metadata = usePackageData();
   const modulesSizes = useModulesSizes();
   const coverage = useCoverage();
 
@@ -28,10 +28,12 @@ export const useReadme = (node: Node): [string, string] => {
     getCoverageTable: () => getCoverageTable(coverage),
     getGitHubAvatar,
   }).forEach(([key, value]) => {
+    // eslint-disable-next-line react-hooks/immutability
     (globalThis as any)[key] = value;
   });
 
   const substituteEval = (markdown: string): string =>
+    // eslint-disable-next-line react-hooks/unsupported-syntax
     markdown.replace(/@@EVAL\("(.*?)"\)/gms, (_, script) => (0, eval)(script));
 
   return [substituteEval(node.summary ?? ''), substituteEval(node.body ?? '')];
@@ -69,10 +71,11 @@ const getCoverageTable = (coverage: any) =>
       <th>Coverage</th>
     </tr>
     ${['lines', 'statements', 'functions', 'branches', 'tests', 'assertions']
-      .map(
-        (type) =>
-          `<tr>
-            <th class='right'>${type[0].toUpperCase() + type.substring(1)}</th>
+      .map((type, t) => {
+        return `<tr>
+            <th class='right'>${
+              t < 4 ? 'Tested ' + type : type[0].toUpperCase() + type.slice(1)
+            }</th>
             ${
               typeof coverage[type] == 'object'
                 ? `<td>${coverage[type].total.toLocaleString()}</td>
@@ -80,8 +83,8 @@ const getCoverageTable = (coverage: any) =>
                     <td>${coverage[type].pct.toFixed(1)}%</td>`
                 : `<td colSpan='3'>${coverage[type].toLocaleString()}</td>`
             }
-          </tr>`,
-      )
+          </tr>`;
+      })
       .join('')}
  </table>`;
 

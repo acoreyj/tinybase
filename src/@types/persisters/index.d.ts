@@ -60,8 +60,8 @@ export type PersisterListener<Persist extends Persists = Persists.StoreOnly> = (
 ) => void;
 
 /// StatusListener
-export type StatusListener<Persist extends Persists = Persists.StoreOnly> = (
-  persister: Persister<Persist>,
+export type StatusListener<Persister extends AnyPersister = AnyPersister> = (
+  persister: Persister,
   status: Status,
 ) => void;
 
@@ -147,12 +147,15 @@ export type DpcTabularSave = {
 /// DpcTabularValues
 export type DpcTabularValues = {
   /// DpcTabularValues.load
-  load?: boolean;
+  load?: boolean | DpcTabularValuesIn;
   /// DpcTabularValues.save
-  save?: boolean;
+  save?: boolean | DpcTabularValuesIn;
   /// DpcTabularValues.tableName
   tableName?: string;
 };
+
+/// DpcTabularValuesIn
+export type DpcTabularValuesIn = Id[];
 
 /// Persister
 export interface Persister<Persist extends Persists = Persists.StoreOnly> {
@@ -194,7 +197,7 @@ export interface Persister<Persist extends Persists = Persists.StoreOnly> {
   getStatus(): Status;
 
   /// Persister.addStatusListener
-  addStatusListener(listener: StatusListener<Persist>): Id;
+  addStatusListener(listener: StatusListener<this>): Id;
 
   /// Persister.delListener
   delListener(listenerId: Id): this;
@@ -255,7 +258,22 @@ export function createCustomSqlitePersister<
   configOrStoreTableName: DatabasePersisterConfig | string | undefined,
   executeCommand: DatabaseExecuteCommand,
   addChangeListener: (listener: DatabaseChangeListener) => ListenerHandle,
-  delChangeListener: (listenerHandle: ListenerHandle) => void,
+  delChangeListener: (listenerHandle: ListenerHandle) => void | Promise<void>,
+  onSqlCommand: ((sql: string, params?: any[]) => void) | undefined,
+  onIgnoredError: ((error: any) => void) | undefined,
+  destroy: () => void,
+  persist: Persist,
+  thing: any,
+  getThing?: string,
+): Persister<Persist>;
+
+/// createCustomMsSqlPersister
+export function createCustomMsSqlPersister<
+  Persist extends Persists = Persists.StoreOnly,
+>(
+  store: PersistedStore<Persist>,
+  configOrStoreTableName: DatabasePersisterConfig | string | undefined,
+  executeCommand: DatabaseExecuteCommand,
   onSqlCommand: ((sql: string, params?: any[]) => void) | undefined,
   onIgnoredError: ((error: any) => void) | undefined,
   destroy: () => void,

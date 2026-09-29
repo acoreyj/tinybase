@@ -10,13 +10,28 @@ import type {
   Changes,
   Content,
   Store,
+  Table,
   Tables,
-  Values,
+  Value,
 } from '../../@types/store/index.d.ts';
-import {arrayForEach, arrayIsEmpty, arrayShift} from '../../common/array.ts';
+import {arrayForEach} from '../../common/array.ts';
+import {ERROR_CONTENT, errorThrow, tryCatchIgnore} from '../../common/error.ts';
 import {mapForEach} from '../../common/map.ts';
-import {IdObj, objEnsure, objHas, objMap, objNew} from '../../common/obj.ts';
-import {ifNotUndefined, isUndefined, size} from '../../common/other.ts';
+import {
+  IdObj,
+  objEnsure,
+  objEvery,
+  objForEach,
+  objHas,
+  objNew,
+  objSet,
+} from '../../common/obj.ts';
+import {
+  ifNotUndefined,
+  isEmpty,
+  isUndefined,
+  size,
+} from '../../common/other.ts';
 import {T, TINYBASE, V} from '../../common/strings.ts';
 import {createCustomPersister} from '../common/create.ts';
 
@@ -24,57 +39,97 @@ type Observer = (events: YEvent<any>[]) => void;
 
 const DELETE = 'delete';
 
-const getYContent = (yContent: YMap<any>) => [yContent.get(T), yContent.get(V)];
+const getYMap = <Value>(yMap: unknown): YMap<Value> =>
+  yMap instanceof YMap ? yMap : errorThrow(ERROR_CONTENT);
+
+const getYContent = (
+  yContent: YMap<any>,
+): [YMap<YMap<YMap<Cell>>>, YMap<Value>] => [
+  getYMap(yContent.get(T)),
+  getYMap(yContent.get(V)),
+];
+
+const yMapToObj = <From, To = From>(
+  yMap: YMap<From>,
+  mapper?: (value: From) => To,
+): IdObj<To> => {
+  const obj = objNew<To>();
+  getYMap<From>(yMap).forEach((value, id) =>
+    objSet(obj, id, mapper ? mapper(value) : (value as any as To)),
+  );
+  return obj;
+};
+
+const yTablesToObj = (yTables: YMap<YMap<YMap<Cell>>>): Tables =>
+  yMapToObj(yTables, (yTable) => yMapToObj(yTable, (yRow) => yMapToObj(yRow)));
+
+const getYContentAsContent = (yContent: YMap<any>): Content => {
+  const [yTables, yValues] = getYContent(yContent);
+  return [yTablesToObj(yTables), yMapToObj(yValues)];
+};
 
 const getChangesFromYDoc = (
   yContent: YMap<any>,
   events: YEvent<any>[],
 ): Changes => {
-  if (size(events) == 1 && arrayIsEmpty(events[0].path)) {
-    return [yContent.get(T).toJSON(), yContent.get(V).toJSON(), 1];
+  if (size(events) == 1 && isEmpty(events[0].path)) {
+    return [...getYContentAsContent(yContent), 1];
   }
   const [yTables, yValues] = getYContent(yContent);
-  const tables = {} as any;
-  const values = {} as any;
+  const tables = objNew<Table>();
+  const values = objNew<Value>();
   arrayForEach(events, ({path, changes: {keys}}) =>
-    arrayShift(path) == T
+    path[0] == T
       ? ifNotUndefined(
-          arrayShift(path) as string,
+          path[1] as string,
           (yTableId) => {
             const table = objEnsure(tables, yTableId, objNew) as any;
-            const yTable = yTables.get(yTableId) as YMap<YMap<Cell>>;
+            const yTable = getYMap<YMap<Cell>>(yTables.get(yTableId));
             ifNotUndefined(
-              arrayShift(path) as string,
+              path[2] as string,
               (yRowId) => {
                 const row = objEnsure(table, yRowId, objNew) as any;
-                const yRow = yTable.get(yRowId) as YMap<Cell>;
-                mapForEach(
-                  keys,
-                  (cellId, {action}) =>
-                    (row[cellId] = action == DELETE ? null : yRow.get(cellId)),
+                const yRow = getYMap<Cell>(yTable.get(yRowId));
+                mapForEach(keys, (cellId, {action}) =>
+                  objSet(
+                    row,
+                    cellId,
+                    action == DELETE ? undefined : yRow.get(cellId),
+                  ),
                 );
               },
               () =>
-                mapForEach(
-                  keys,
-                  (rowId, {action}) =>
-                    (table[rowId] =
-                      action == DELETE ? null : yTable.get(rowId)?.toJSON()),
+                mapForEach(keys, (rowId, {action}) =>
+                  objSet(
+                    table,
+                    rowId,
+                    action == DELETE
+                      ? undefined
+                      : yMapToObj(yTable.get(rowId) as YMap<Cell>),
+                  ),
                 ),
             );
           },
           () =>
-            mapForEach(
-              keys,
-              (tableId, {action}) =>
-                (tables[tableId] =
-                  action == DELETE ? null : yTables.get(tableId)?.toJSON()),
+            mapForEach(keys, (tableId, {action}) =>
+              objSet(
+                tables,
+                tableId,
+                action == DELETE
+                  ? undefined
+                  : yMapToObj(
+                      yTables.get(tableId) as YMap<YMap<Cell>>,
+                      (yRow) => yMapToObj(yRow),
+                    ),
+              ),
             ),
         )
-      : mapForEach(
-          keys,
-          (valueId, {action}) =>
-            (values[valueId] = action == DELETE ? null : yValues.get(valueId)),
+      : mapForEach(keys, (valueId, {action}) =>
+          objSet(
+            values,
+            valueId,
+            action == DELETE ? undefined : yValues.get(valueId),
+          ),
         ),
   );
   return [tables, values, 1];
@@ -90,48 +145,48 @@ const applyChangesToYDoc = (
     yContent.set(V, new YMap());
   }
   const [yTables, yValues] = getYContent(yContent);
-  const changesDidFail = () => {
-    changesFailed = 1;
-  };
-  let changesFailed = 1;
-  ifNotUndefined(changes, ([cellChanges, valueChanges]) => {
-    changesFailed = 0;
-    objMap(cellChanges, (table, tableId) =>
-      changesFailed
-        ? 0
-        : isUndefined(table)
-          ? yTables.delete(tableId)
-          : ifNotUndefined(
-              yTables.get(tableId),
-              (yTable) =>
-                objMap(table, (row, rowId) =>
-                  changesFailed
-                    ? 0
-                    : isUndefined(row)
-                      ? yTable.delete(rowId)
-                      : ifNotUndefined(
-                          yTable.get(rowId),
-                          (yRow) =>
-                            objMap(row, (cell, cellId) =>
-                              isUndefined(cell)
-                                ? yRow.delete(cellId)
-                                : yRow.set(cellId, cell),
-                            ),
-                          changesDidFail,
-                        ),
-                ),
-              changesDidFail,
-            ),
-    );
-    objMap(valueChanges, (value, valueId) =>
-      changesFailed
-        ? 0
-        : isUndefined(value)
-          ? yValues.delete(valueId)
-          : yValues.set(valueId, value),
-    );
-  });
-  if (changesFailed) {
+  const changesApplied = ifNotUndefined(
+    changes,
+    ([cellChanges, valueChanges]) =>
+      objEvery(cellChanges, (table, tableId) => {
+        if (isUndefined(table)) {
+          yTables.delete(tableId);
+          return true;
+        }
+        return ifNotUndefined(
+          yTables.get(tableId),
+          (yTable) =>
+            objEvery(table, (row, rowId) => {
+              if (isUndefined(row)) {
+                yTable.delete(rowId);
+                return true;
+              }
+              return ifNotUndefined(
+                yTable.get(rowId),
+                (yRow) => {
+                  objForEach(row, (cell, cellId) =>
+                    isUndefined(cell)
+                      ? yRow.delete(cellId)
+                      : yRow.set(cellId, cell),
+                  );
+                  return true;
+                },
+                () => false,
+              ) as boolean;
+            }),
+          () => false,
+        ) as boolean;
+      }) &&
+      objEvery(valueChanges, (value, valueId) => {
+        if (isUndefined(value)) {
+          yValues.delete(valueId);
+        } else {
+          yValues.set(valueId, value);
+        }
+        return true;
+      }),
+  );
+  if (!changesApplied) {
     const [tables, values] = getContent();
     yMapMatch(yTables, undefined, tables, (_, tableId, table) =>
       yMapMatch(yTables, tableId, table, (yTable, rowId, row) =>
@@ -162,7 +217,7 @@ const yMapMatch = (
     : (yMapOrParent.get(idInParent) ??
       yMapOrParent.set(idInParent, new YMap()));
   let changed: 1 | undefined;
-  objMap(obj, (value, id) => {
+  objForEach(obj, (value, id) => {
     if (set(yMap, id, value)) {
       changed = 1;
     }
@@ -188,12 +243,7 @@ export const createYjsPersister = ((
   const yContent: YMap<any> = yDoc.getMap(yMapName);
 
   const getPersisted = async (): Promise<Content | undefined> =>
-    yContent.size
-      ? ([yContent.get(T).toJSON(), yContent.get(V).toJSON()] as [
-          Tables,
-          Values,
-        ])
-      : undefined;
+    yContent.size ? getYContentAsContent(yContent) : undefined;
 
   const setPersisted = async (
     getContent: () => Content,
@@ -202,8 +252,12 @@ export const createYjsPersister = ((
     yDoc.transact(() => applyChangesToYDoc(yContent, getContent, changes));
 
   const addPersisterListener = (listener: PersisterListener): Observer => {
-    const observer: Observer = (events) =>
-      listener(undefined, getChangesFromYDoc(yContent, events));
+    const observer: Observer = (events) => {
+      void tryCatchIgnore(
+        () => listener(undefined, getChangesFromYDoc(yContent, events)),
+        onIgnoredError,
+      );
+    };
     yContent.observeDeep(observer);
     return observer;
   };

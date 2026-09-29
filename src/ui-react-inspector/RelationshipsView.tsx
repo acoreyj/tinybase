@@ -1,13 +1,14 @@
 import type {Id} from '../@types/common/index.d.ts';
 import type {Relationships} from '../@types/relationships/index.d.ts';
-import {arrayIsEmpty} from '../common/array.ts';
-import {isUndefined} from '../common/other.ts';
+
+import {getUniqueId, sortedIdsMap} from '../common/inspector/common.ts';
+import type {StoreProp} from '../common/inspector/types.ts';
+import {isEmpty, isUndefined} from '../common/other.ts';
 import {DEFAULT} from '../common/strings.ts';
 import {RelationshipInHtmlTable} from '../ui-react-dom/index.tsx';
 import {useRelationshipIds, useRelationships} from '../ui-react/index.ts';
 import {Details} from './Details.tsx';
-import {getUniqueId, sortedIdsMap, useEditable} from './common.ts';
-import type {StoreProp} from './types.ts';
+import {useEditable} from './editable.ts';
 
 const RelationshipView = ({
   relationships,
@@ -50,7 +51,7 @@ export const RelationshipsView = ({
       title={'Relationships: ' + (relationshipsId ?? DEFAULT)}
       s={s}
     >
-      {arrayIsEmpty(relationshipIds)
+      {isEmpty(relationshipIds)
         ? 'No relationships defined'
         : sortedIdsMap(relationshipIds, (relationshipId) => (
             <RelationshipView

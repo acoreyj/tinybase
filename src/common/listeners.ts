@@ -5,6 +5,8 @@ import type {
 } from '../@types/checkpoints/index.d.ts';
 import type {Id, IdOrNull, Ids} from '../@types/common/index.d.ts';
 import type {
+  HasIndexListener,
+  HasSliceListener,
   IndexIdsListener,
   Indexes,
   SliceIdsListener,
@@ -17,6 +19,8 @@ import type {
 } from '../@types/metrics/index.d.ts';
 import type {StatusListener} from '../@types/persisters/index.d.ts';
 import type {
+  ParamValueListener,
+  ParamValuesListener,
   QueryIdsListener,
   ResultCellIdsListener,
   ResultCellListener,
@@ -57,8 +61,9 @@ import type {
 } from '../@types/synchronizers/synchronizer-ws-server/index.d.ts';
 import {arrayForEach, arrayPush} from './array.ts';
 import {collDel, collForEach, collIsEmpty} from './coll.ts';
+import {tryCatchSync} from './error.ts';
 import {IdMap, Node, mapGet, mapNew, mapSet, visitTree} from './map.ts';
-import {ifNotUndefined, isUndefined, size} from './other.ts';
+import {ifNotUndefined, isNull, size} from './other.ts';
 import {getPoolFunctions} from './pool.ts';
 import {IdSet, setAdd, setNew} from './set.ts';
 import {EMPTY_STRING} from './strings.ts';
@@ -100,7 +105,9 @@ type Listener =
   | MetricIdsListener
   | MetricListener
   | IndexIdsListener
+  | HasIndexListener
   | SliceIdsListener
+  | HasSliceListener
   | SliceRowIdsListener
   | RelationshipIdsListener
   | RemoteRowIdListener
@@ -117,7 +124,9 @@ type Listener =
   | ResultCellListener
   | PathIdsListener
   | ClientIdsListener
-  | StatusListener;
+  | StatusListener
+  | ParamValuesListener
+  | ParamValueListener;
 type IdOrBoolean = Id | boolean;
 
 const getWildcardedLeaves = (
@@ -128,7 +137,7 @@ const getWildcardedLeaves = (
   const deep = (node: IdSetNode, p: number): number | void =>
     p == size(path)
       ? arrayPush(leaves, node)
-      : path[p] === null
+      : isNull(path[p])
         ? collForEach(node as Node<IdOrNull, IdSet>, (node) =>
             deep(node, p + 1),
           )
@@ -141,17 +150,13 @@ const getWildcardedLeaves = (
 
 export const getListenerFunctions = (
   getThing: () =>
-    | Store
-    | Metrics
-    | Indexes
-    | Relationships
-    | Checkpoints
-    | WsServer,
+    Store | Metrics | Indexes | Relationships | Checkpoints | WsServer,
 ): [
   addListener: AddListener,
   callListeners: CallListeners,
   delListener: DelListener,
   callListener: (id: Id) => void,
+  callListenersThenThrow: CallListeners,
 ] => {
   let thing: Store | Metrics | Indexes | Relationships | Checkpoints | WsServer;
 
@@ -187,20 +192,47 @@ export const getListenerFunctions = (
     return id;
   };
 
-  const callListeners = (
+  const callListenersImpl = (
+    continueAfterError: boolean,
     idSetNode: IdSetNode,
-    ids?: Ids,
-    ...extraArgs: any[]
-  ): void =>
+    ids: Ids | undefined,
+    extraArgs: any[],
+  ): void => {
+    let errorToThrow: any;
+    let failed = false;
     arrayForEach(getWildcardedLeaves(idSetNode, ids), (set) =>
-      collForEach(set, (id: Id) =>
-        (mapGet(allListeners, id) as any)[0](
-          thing,
-          ...(ids ?? []),
-          ...extraArgs,
-        ),
-      ),
+      collForEach(set, (id: Id) => {
+        const callListener = () =>
+          (mapGet(allListeners, id) as any)[0](
+            thing,
+            ...(ids ?? []),
+            ...extraArgs,
+          );
+        if (continueAfterError) {
+          tryCatchSync(callListener, (error) => {
+            if (!failed) {
+              errorToThrow = error;
+            }
+            failed = true;
+          });
+        } else {
+          callListener();
+        }
+      }),
     );
+    if (failed) {
+      throw errorToThrow;
+    }
+  };
+
+  const callListeners: CallListeners = (idSetNode, ids, ...extraArgs) =>
+    callListenersImpl(false, idSetNode, ids, extraArgs);
+
+  const callListenersThenThrow: CallListeners = (
+    idSetNode,
+    ids,
+    ...extraArgs
+  ) => callListenersImpl(true, idSetNode, ids, extraArgs);
 
   const delListener = (id: Id): Ids =>
     ifNotUndefined(mapGet(allListeners, id), ([, idSetNode, idOrNulls]) => {
@@ -226,7 +258,7 @@ export const getListenerFunctions = (
           const index = size(ids);
           if (index == size(path)) {
             (listener as any)(thing, ...ids, ...extraArgsGetter(ids));
-          } else if (isUndefined(path[index])) {
+          } else if (isNull(path[index])) {
             arrayForEach(pathGetters[index]?.(...ids) ?? [], (id) =>
               callWithIds(...ids, id),
             );
@@ -238,5 +270,11 @@ export const getListenerFunctions = (
       },
     );
 
-  return [addListener, callListeners, delListener, callListener];
+  return [
+    addListener,
+    callListeners,
+    delListener,
+    callListener,
+    callListenersThenThrow,
+  ];
 };

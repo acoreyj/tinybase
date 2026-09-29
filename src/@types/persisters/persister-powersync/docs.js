@@ -32,7 +32,7 @@
    * This example creates a Persister object against a newly-created Store and
    * then gets the PowerSync instance back out again.
    *
-   * ```js yolo
+   * ```js ignore
    * import {usePowerSync} from '@powersync/react';
    * import {createStore} from 'tinybase';
    * import {createPowerSyncPersister} from 'tinybase/persisters/persister-powersync';
@@ -73,6 +73,10 @@
  *
  * See the documentation for the DpcJson and DpcTabular types for more
  * information on how both of those modes can be configured.
+ *
+ * Note: When using tabular mode, SQL NULL values are loaded as TinyBase null
+ * values, making tables dense (every Row has every Cell). See the Database
+ * Persistence guide for details.
  * @param store The Store to persist.
  * @param powerSync The PowerSync instance.
  * @param configOrStoreTableName A DatabasePersisterConfig to configure the
@@ -91,7 +95,7 @@
  * It makes a change to the database directly and then reloads it back into the
  * Store.
  *
- * ```js yolo
+ * ```js ignore
  * import {usePowerSync} from '@powersync/react';
  * import {createStore} from 'tinybase';
  * import {createPowerSyncPersister} from 'tinybase/persisters/persister-powersync';
@@ -127,7 +131,7 @@
  * This example creates a PowerSyncPersister object and persists the Store to a
  * local PowerSync instance with tabular mapping.
  *
- * ```js yolo
+ * ```js ignore
  * import {usePowerSync} from '@powersync/react';
  * import {createStore} from 'tinybase';
  * import {createPowerSyncPersister} from 'tinybase/persisters/persister-powersync';

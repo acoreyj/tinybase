@@ -14,6 +14,36 @@
  */
 /// Json
 /**
+ * The AnyObject type is a simple alias for a plain object with string keys and
+ * unknown values.
+ *
+ * It is used to indicate that the value should be considered to be a plain
+ * JavaScript object, as can be stored in a Cell or Value with the `object`
+ * schema type.
+ *
+ * The object's values should recursively be strings, finite numbers, booleans,
+ * `null`, plain objects, or arrays. The permissive `unknown` type does not
+ * imply that other JavaScript values will survive TinyBase's JSON
+ * serialization.
+ * @category General
+ * @since v8.0.0
+ */
+/// AnyObject
+/**
+ * The AnyArray type is a simple alias for an array with unknown values.
+ *
+ * It is used to indicate that the value should be considered to be a JavaScript
+ * array, as can be stored in a Cell or Value with the `array` schema type.
+ *
+ * The array's values should recursively be strings, finite numbers, booleans,
+ * `null`, plain objects, or arrays. The permissive `unknown` type does not
+ * imply that other JavaScript values will survive TinyBase's JSON
+ * serialization.
+ * @category General
+ * @since v8.0.0
+ */
+/// AnyArray
+/**
  * The Ids type is a simple alias for an array of strings, but is used to
  * indicate that the strings should be considered to be the keys of objects
  * (such as the Row Id strings used in a Table).
@@ -53,11 +83,25 @@
  */
 /// Callback
 /**
- * The SortKey type represents a value that can be used by a sort function.
+ * The SortKey type represents a Cell value, or `undefined`, that can be used by
+ * a sort function.
  * @category Parameter
  * @since v1.0.0
  */
 /// SortKey
+/**
+ * The Sorter type represents a function that compares two SortKey values.
+ *
+ * A Sorter is provided to methods that sort Row Ids when the default
+ * alphanumeric ordering is not appropriate. Return a positive or negative
+ * number to indicate which of the two SortKey values should be ordered first.
+ * @param sortKey1 The first item of the pair to compare.
+ * @param sortKey2 The second item of the pair to compare.
+ * @returns A number indicating how to sort the pair.
+ * @category Parameter
+ * @since v9.1.0
+ */
+/// Sorter
 /**
  * The GetNow type is used to represent a function that returns the current time
  * in milliseconds.
@@ -65,6 +109,7 @@
  * This is used internally within the mergeable-store module, but is used for
  * the createMergeableStore function's second optional argument to allow
  * applications to override the clock used to generate timestamps.
+ * @returns The current time, in milliseconds.
  * @category Stamps
  * @since v6.2.0
  */
@@ -72,14 +117,13 @@
 /**
  * The Hlc type is a string that represents a Hybrid Logical Clock (HLC) value.
  *
- * HLCs are used to provide a globally unique timestamp that can be used to
- * order events across distributed systems. The Hlc type in TinyBase is a
- * sortable 16 character string that encodes a timestamp, a counter, and the
- * hash of a unique client identifier.
+ * HLCs are used to provide a timestamp that can be used to order events across
+ * distributed systems. The Hlc type in TinyBase is a sortable 16 character
+ * string that encodes a timestamp, a counter, and a client identifier.
  *
  * - 42 bits (7 chars) for the time in milliseconds (~139 years).
  * - 24 bits (4 chars) for the counter (~16 million).
- * - 30 bits (5 chars) for the hash of unique client id (~1 billion).
+ * - 30 bits (5 chars) for a client Id or its hash (~1 billion).
  * @category Stamps
  * @since v6.2.0
  */
@@ -248,13 +292,12 @@
  * console.log(getNextHlc());
  * // -> '03E3B-----0mmxrx'
  *
- * // Another client thinks it is 1973.
- * seenHlc('0WakTk-----jmx_3');
- * // Generate the next HLC.
+ * // Another client is 100 seconds ahead.
+ * seenHlc(encodeHlc(73267300000, 0, 'client2'));
  *
  * // What is the state for the current client?
  * console.log(getLastLogicalTime());
- * // -> 104803200000
+ * // -> 73267300000
  * console.log(getLastCounter());
  * // -> 0
  * console.log(getClientId());

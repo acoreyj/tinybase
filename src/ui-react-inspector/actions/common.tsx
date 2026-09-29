@@ -7,7 +7,10 @@ import type {
   ValueProps,
   ValuesProps,
 } from '../../@types/ui-react/index.d.ts';
+import {arrayMap} from '../../common/array.ts';
+import {addEventListener, isUndefined} from '../../common/other.ts';
 import {useCallback, useEffect, useState} from '../../common/react.ts';
+import {KEYDOWN} from '../../common/strings.ts';
 
 export type OnDoneProp = {readonly onDone: () => void};
 
@@ -41,23 +44,21 @@ export const ConfirmableActions = <
     component: ComponentType<OnDoneProp & Props>,
   ][];
 } & Props) => {
-  const [confirming, setConfirming] = useState<number | null>();
-  const handleDone = useCallback(() => setConfirming(null), []);
+  const [confirming, setConfirming] = useState<number | undefined>();
+  const handleDone = useCallback(() => setConfirming(undefined), []);
 
   useEffect(() => {
-    if (confirming != null) {
-      const handleKeyDown = (e: KeyboardEvent) => {
-        if (confirming != null && e.key === 'Escape') {
-          e.preventDefault();
+    if (!isUndefined(confirming)) {
+      return addEventListener(document, KEYDOWN, (event: KeyboardEvent) => {
+        if (!isUndefined(confirming) && event.key === 'Escape') {
+          event.preventDefault();
           handleDone();
         }
-      };
-      document.addEventListener('keydown', handleKeyDown);
-      return () => document.removeEventListener('keydown', handleKeyDown);
+      });
     }
   }, [confirming, handleDone]);
 
-  if (confirming != null) {
+  if (!isUndefined(confirming)) {
     const [, , Component] = actions[confirming];
     return (
       <>
@@ -66,7 +67,7 @@ export const ConfirmableActions = <
       </>
     );
   } else {
-    return actions.map(([icon, title], index) => (
+    return arrayMap(actions, ([icon, title], index) => (
       <img
         key={index}
         title={title}
@@ -146,20 +147,16 @@ export const Delete = ({
   readonly onClick: () => void;
   readonly prompt?: string;
 }) => {
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        onClick();
-      }
-    },
+  useEffect(
+    () =>
+      addEventListener(document, KEYDOWN, (event: KeyboardEvent) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          onClick();
+        }
+      }),
     [onClick],
   );
-
-  useEffect(() => {
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [handleKeyDown]);
 
   return (
     <>

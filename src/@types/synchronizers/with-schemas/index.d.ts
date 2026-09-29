@@ -33,7 +33,7 @@ export const enum Message {
 /// Send
 export type Send = (
   toClientId: IdOrNull,
-  requestId: Id,
+  requestId: IdOrNull,
   message: Message,
   body: any,
 ) => void;
@@ -41,20 +41,23 @@ export type Send = (
 /// Receive
 export type Receive = (
   fromClientId: Id,
-  requestId: Id,
+  requestId: IdOrNull,
   message: Message,
   body: any,
 ) => void;
 
 /// SynchronizerStats
 export type SynchronizerStats = {
+  /// SynchronizerStats.sends
   sends: number;
+  /// SynchronizerStats.receives
   receives: number;
 };
 
 /// Synchronizer
-export interface Synchronizer<Schemas extends OptionalSchemas>
-  extends Persister<Schemas, Persists.MergeableStoreOnly> {
+export interface Synchronizer<
+  Schemas extends OptionalSchemas,
+> extends Persister<Schemas, Persists.MergeableStoreOnly> {
   /// Synchronizer.startSync
   startSync(initialContent?: Content<Schemas, true>): Promise<this>;
   /// Synchronizer.stopSync
@@ -67,7 +70,7 @@ export interface Synchronizer<Schemas extends OptionalSchemas>
 export function createCustomSynchronizer<Schemas extends OptionalSchemas>(
   store: MergeableStore<Schemas>,
   send: Send,
-  registerReceive: (receive: Receive) => void,
+  registerReceive: (receive: Receive, fail: (error: Error) => void) => void,
   destroy: () => void,
   requestTimeoutSeconds: number,
   onSend?: Send,

@@ -5,6 +5,7 @@ export * from './indexes/index.ts';
 export * from './mergeable-store-enhanced/index.ts';
 export * from './mergeable-store/index.ts';
 export * from './metrics/index.ts';
+export * from './middleware/index.ts';
 export * from './queries/index.ts';
 export * from './relationships/index.ts';
 export * from './store/index.ts';

@@ -1,13 +1,13 @@
 import type {
   SortedTablePaginator as SortedTablePaginatorDecl,
   SortedTablePaginatorProps,
-} from '../@types/ui-react-dom/index.js';
-import {mathMin} from '../common/other.ts';
+} from '../@types/ui-react-dom/index.d.ts';
+import {isFalse, isTrue, mathMax, mathMin} from '../common/other.ts';
 import {useCallbackOrUndefined} from './common/hooks.tsx';
 
 import type {ComponentType, ReactNode} from 'react';
-import type {Id} from '../@types/index.js';
-import {useCallback, useMemo, useState} from '../common/react.ts';
+import type {Id} from '../@types/index.d.ts';
+import {useCallback, useEffect, useMemo, useState} from '../common/react.ts';
 import {HandleSort, SortAndOffset} from './common/index.tsx';
 
 const LEFT_ARROW = '\u2190';
@@ -51,16 +51,15 @@ export const useSortingAndPagination = (
       setStateAndChange([currentCellId, currentDescending, offset]),
     [setStateAndChange, currentCellId, currentDescending],
   );
-  const PaginatorComponent =
-    paginator === true
-      ? SortedTablePaginator
-      : (paginator as ComponentType<SortedTablePaginatorProps>);
+  const PaginatorComponent = isTrue(paginator)
+    ? SortedTablePaginator
+    : (paginator as ComponentType<SortedTablePaginatorProps>);
   return [
     [currentCellId, currentDescending, currentOffset],
     handleSort,
     useMemo(
       () =>
-        paginator === false ? null : (
+        isFalse(paginator) ? null : (
           <PaginatorComponent
             offset={currentOffset}
             limit={limit}
@@ -88,12 +87,17 @@ export const SortedTablePaginator: typeof SortedTablePaginatorDecl = ({
   singular = 'row',
   plural = singular + 's',
 }: SortedTablePaginatorProps) => {
-  if (offset > total || offset < 0) {
+  const invalidOffset = offset < 0 || (offset > 0 && offset >= total);
+  useEffect(() => {
+    if (invalidOffset) {
+      onChange(0);
+    }
+  }, [invalidOffset, onChange, offset, total]);
+  if (invalidOffset) {
     offset = 0;
-    onChange(0);
   }
   const handlePrevClick = useCallbackOrUndefined(
-    () => onChange(offset - limit),
+    () => onChange(mathMax(0, offset - limit)),
     [onChange, offset, limit],
     offset > 0,
   );

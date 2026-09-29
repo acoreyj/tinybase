@@ -27,7 +27,7 @@ queriesWithSchema.setQueryDefinition('q1', 't1', ({select, join, where}) => {
     getTableCell('t0', 'c2'); // !
     return 'c';
   });
-  select((_getCell) => null); // !
+  select((_getCell) => null);
 
   join('t1', 'c1');
   join('t1', 'c2'); // !
@@ -56,8 +56,8 @@ queriesWithSchema.setQueryDefinition('q1', 't1', ({select, join, where}) => {
   where('jt1', 'jc1', '');
   where((getTableCell) => {
     getTableCell('c1') as number;
-    getTableCell('c1') as string;
-    getTableCell('c2');
+    getTableCell('c1') as string; // !
+    getTableCell('c2'); // !
     getTableCell('jt1', 'jc1');
     return true;
   });
@@ -114,3 +114,30 @@ queriesWithSchema.addResultCellListener('q1', 'rr1', 'c1', (queries) => {
 
 queriesWithSchema.delListener('q1').getStore().getTables().t1;
 queriesWithSchema.delListener('q1').getStore().getTables().t2; // !
+
+queriesWithSchema.setQueryDefinition('q2', 't1', ({selectAll}) => {
+  selectAll();
+  selectAll('t0');
+  selectAll('t0', 'joined.');
+  selectAll('t0', (cellId) => {
+    cellId satisfies 'c0';
+    return `joined.${cellId}`;
+  });
+  selectAll('t0', (_cellId) => 1); // !
+  selectAll('jt1');
+  selectAll('jt1', (cellId) => `joined.${cellId}`);
+  selectAll(true, 'q2');
+  selectAll(true, 'q2', 'query.');
+});
+
+const resultCells: import('tinybase/queries').ResultCell[] = [null, {}, []];
+resultCells satisfies import('tinybase/queries/with-schemas').ResultCell[];
+
+const aggregate: import('tinybase/queries').Aggregate = (cells) => ({cells});
+aggregate satisfies import('tinybase/queries/with-schemas').Aggregate;
+const aggregateWithSchemas: import('tinybase/queries/with-schemas').Aggregate =
+  aggregate;
+aggregateWithSchemas satisfies import('tinybase/queries').Aggregate;
+
+queriesWithSchema.getListenerStats().paramValues;
+queriesWithSchema.getListenerStats().paramValue;

@@ -1,5 +1,8 @@
+import {beforeEach, describe, expect, test} from 'vitest';
+
 import {
   addOrRemoveHash,
+  defaultSorter,
   getCellHash,
   getCellInRowHash,
   getHash,
@@ -9,6 +12,7 @@ import {
   getTableHash,
   getTableInTablesHash,
   getTablesHash,
+  getUniqueId,
   getValueHash,
   getValueInValuesHash,
   getValuesHash,
@@ -18,6 +22,18 @@ const [reset, getNow] = getTimeFunctions();
 
 beforeEach(() => {
   reset();
+});
+
+test('getUniqueId', () => {
+  expect(getUniqueId()).toHaveLength(16);
+  expect(getUniqueId(5)).toHaveLength(5);
+});
+
+test('defaultSorter', () => {
+  expect(defaultSorter('a', 'b')).toEqual(-1);
+  expect(defaultSorter('b', 'a')).toEqual(1);
+  expect(defaultSorter('a', 'a')).toEqual(1);
+  expect(defaultSorter(undefined, 0)).toEqual(1);
 });
 
 test('getHlcFunctions', () => {
@@ -36,11 +52,34 @@ test('getHlcFunctions', () => {
 
   expect(encodeHlc(1704067201000, 2, 's2')).toEqual('Nn1JUUc---14JQFF');
   expect(decodeHlc('Nn1JUUc---14JQFF')).toEqual([1704067201000, 2, '4JQFF']);
+  expect(decodeHlc('!----------4JQFF')).toEqual([0, 0, '4JQFF']);
 
   seenHlc('Nn1JUUc---14JQFF');
   expect(getLastLogicalTime()).toEqual(1704067201000);
   expect(getLastCounter()).toEqual(2);
   expect(getClientId()).toEqual('7JQY8');
+});
+
+test('getHlcFunctions defaults', () => {
+  const [getNextHlc] = getHlcFunctions('s1');
+  expect(getNextHlc()).toHaveLength(16);
+});
+
+test('getHlcFunctions validates and carries', () => {
+  const [getNextHlc, seenHlc, encodeHlc, , getLastLogicalTime, getLastCounter] =
+    getHlcFunctions('s1', getNow);
+  const now = 1704067200000;
+
+  seenHlc('~~~~~~~~~~~~~~~~');
+  seenHlc('-----------------');
+  seenHlc(encodeHlc(now + 300001, 0, 's2'));
+  expect(getLastLogicalTime()).toEqual(0);
+  expect(getLastCounter()).toEqual(-1);
+
+  seenHlc(encodeHlc(now, 2 ** 24 - 1, 's2'));
+  expect(getNextHlc()).toEqual(encodeHlc(now + 1, 0));
+  expect(getLastLogicalTime()).toEqual(now + 1);
+  expect(getLastCounter()).toEqual(0);
 });
 
 describe('hash functions', () => {

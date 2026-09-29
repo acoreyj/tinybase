@@ -1,6 +1,12 @@
 import type {SyntheticEvent} from 'react';
-import {arrayIsEmpty, arrayMap} from '../common/array.ts';
-import {isUndefined, mathFloor} from '../common/other.ts';
+import {arrayMap} from '../common/array.ts';
+import {NO_PROVIDED_OBJECTS_MESSAGE} from '../common/inspector/common.ts';
+import {
+  cancelInspectorIdleCallback,
+  requestInspectorIdleCallback,
+} from '../common/inspector/idle.ts';
+import type {StoreProp} from '../common/inspector/types.ts';
+import {isEmpty, isUndefined, mathFloor} from '../common/other.ts';
 import {
   useCallback,
   useLayoutEffect,
@@ -26,7 +32,6 @@ import {MetricsView} from './MetricsView.tsx';
 import {QueriesView} from './QueriesView.tsx';
 import {RelationshipsView} from './RelationshipsView.tsx';
 import {StoreView} from './StoreView.tsx';
-import type {StoreProp} from './types.ts';
 
 export const Body = ({s}: StoreProp) => {
   const articleRef = useRef<HTMLElement>(null);
@@ -55,8 +60,8 @@ export const Body = ({s}: StoreProp) => {
   const handleScroll = useCallback(
     (event: SyntheticEvent<HTMLElement>) => {
       const {scrollLeft, scrollTop} = event[CURRENT_TARGET];
-      cancelIdleCallback(idleCallbackRef.current);
-      idleCallbackRef.current = requestIdleCallback(() => {
+      cancelInspectorIdleCallback(idleCallbackRef.current);
+      idleCallbackRef.current = requestInspectorIdleCallback(() => {
         setScrolled(true);
         s.setPartialValues({scrollLeft, scrollTop});
       });
@@ -76,19 +81,16 @@ export const Body = ({s}: StoreProp) => {
   const queriesIds = useQueriesIds();
 
   return isUndefined(store) &&
-    arrayIsEmpty(storeIds) &&
+    isEmpty(storeIds) &&
     isUndefined(metrics) &&
-    arrayIsEmpty(metricsIds) &&
+    isEmpty(metricsIds) &&
     isUndefined(indexes) &&
-    arrayIsEmpty(indexesIds) &&
+    isEmpty(indexesIds) &&
     isUndefined(relationships) &&
-    arrayIsEmpty(relationshipsIds) &&
+    isEmpty(relationshipsIds) &&
     isUndefined(queries) &&
-    arrayIsEmpty(queriesIds) ? (
-    <span className="warn">
-      There are no Stores or other objects to inspect. Make sure you placed the
-      Inspector inside a Provider component.
-    </span>
+    isEmpty(queriesIds) ? (
+    <span className="warn">{NO_PROVIDED_OBJECTS_MESSAGE}</span>
   ) : (
     <article ref={articleRef} onScroll={handleScroll}>
       <StoreView s={s} />

@@ -1,3 +1,13 @@
+import {
+  type Mock,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  test,
+  vi,
+} from 'vitest';
+
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import type {Cell, Id, IdOrNull, Store, Value} from 'tinybase';
 import {createMergeableStore, createStore} from 'tinybase';
@@ -5025,15 +5035,15 @@ describe.each([
 
       test('setTables', () => {
         // @ts-ignore
-        store.setTables({t1: {r1: {c1: []}}});
-        expectChanges(listener, 'i:/t1/r1/c1', {t1: {r1: {c1: [[]]}}});
-        expectChanges(listener, 'i:/t1/r1/c*', {t1: {r1: {c1: [[]]}}});
-        expectChanges(listener, 'i:/t1/r*/c1', {t1: {r1: {c1: [[]]}}});
-        expectChanges(listener, 'i:/t1/r*/c*', {t1: {r1: {c1: [[]]}}});
-        expectChanges(listener, 'i:/t*/r1/c1', {t1: {r1: {c1: [[]]}}});
-        expectChanges(listener, 'i:/t*/r1/c*', {t1: {r1: {c1: [[]]}}});
-        expectChanges(listener, 'i:/t*/r*/c1', {t1: {r1: {c1: [[]]}}});
-        expectChanges(listener, 'i:/t*/r*/c*', {t1: {r1: {c1: [[]]}}});
+        store.setTables({t1: {r1: {c1: new Date(0)}}});
+        expectChanges(listener, 'i:/t1/r1/c1', {t1: {r1: {c1: [new Date(0)]}}});
+        expectChanges(listener, 'i:/t1/r1/c*', {t1: {r1: {c1: [new Date(0)]}}});
+        expectChanges(listener, 'i:/t1/r*/c1', {t1: {r1: {c1: [new Date(0)]}}});
+        expectChanges(listener, 'i:/t1/r*/c*', {t1: {r1: {c1: [new Date(0)]}}});
+        expectChanges(listener, 'i:/t*/r1/c1', {t1: {r1: {c1: [new Date(0)]}}});
+        expectChanges(listener, 'i:/t*/r1/c*', {t1: {r1: {c1: [new Date(0)]}}});
+        expectChanges(listener, 'i:/t*/r*/c1', {t1: {r1: {c1: [new Date(0)]}}});
+        expectChanges(listener, 'i:/t*/r*/c*', {t1: {r1: {c1: [new Date(0)]}}});
         expectNoChanges(listener);
       });
 
@@ -5048,15 +5058,15 @@ describe.each([
 
       test('setTable', () => {
         // @ts-ignore
-        store.setTable('t1', {r1: {c1: []}});
-        expectChanges(listener, 'i:/t1/r1/c1', {t1: {r1: {c1: [[]]}}});
-        expectChanges(listener, 'i:/t1/r1/c*', {t1: {r1: {c1: [[]]}}});
-        expectChanges(listener, 'i:/t1/r*/c1', {t1: {r1: {c1: [[]]}}});
-        expectChanges(listener, 'i:/t1/r*/c*', {t1: {r1: {c1: [[]]}}});
-        expectChanges(listener, 'i:/t*/r1/c1', {t1: {r1: {c1: [[]]}}});
-        expectChanges(listener, 'i:/t*/r1/c*', {t1: {r1: {c1: [[]]}}});
-        expectChanges(listener, 'i:/t*/r*/c1', {t1: {r1: {c1: [[]]}}});
-        expectChanges(listener, 'i:/t*/r*/c*', {t1: {r1: {c1: [[]]}}});
+        store.setTable('t1', {r1: {c1: new Date(0)}});
+        expectChanges(listener, 'i:/t1/r1/c1', {t1: {r1: {c1: [new Date(0)]}}});
+        expectChanges(listener, 'i:/t1/r1/c*', {t1: {r1: {c1: [new Date(0)]}}});
+        expectChanges(listener, 'i:/t1/r*/c1', {t1: {r1: {c1: [new Date(0)]}}});
+        expectChanges(listener, 'i:/t1/r*/c*', {t1: {r1: {c1: [new Date(0)]}}});
+        expectChanges(listener, 'i:/t*/r1/c1', {t1: {r1: {c1: [new Date(0)]}}});
+        expectChanges(listener, 'i:/t*/r1/c*', {t1: {r1: {c1: [new Date(0)]}}});
+        expectChanges(listener, 'i:/t*/r*/c1', {t1: {r1: {c1: [new Date(0)]}}});
+        expectChanges(listener, 'i:/t*/r*/c*', {t1: {r1: {c1: [new Date(0)]}}});
         expectNoChanges(listener);
       });
 
@@ -5074,15 +5084,15 @@ describe.each([
 
       test('setRow', () => {
         // @ts-ignore
-        store.setRow('t1', 'r1', {c1: []});
-        expectChanges(listener, 'i:/t1/r1/c1', {t1: {r1: {c1: [[]]}}});
-        expectChanges(listener, 'i:/t1/r1/c*', {t1: {r1: {c1: [[]]}}});
-        expectChanges(listener, 'i:/t1/r*/c1', {t1: {r1: {c1: [[]]}}});
-        expectChanges(listener, 'i:/t1/r*/c*', {t1: {r1: {c1: [[]]}}});
-        expectChanges(listener, 'i:/t*/r1/c1', {t1: {r1: {c1: [[]]}}});
-        expectChanges(listener, 'i:/t*/r1/c*', {t1: {r1: {c1: [[]]}}});
-        expectChanges(listener, 'i:/t*/r*/c1', {t1: {r1: {c1: [[]]}}});
-        expectChanges(listener, 'i:/t*/r*/c*', {t1: {r1: {c1: [[]]}}});
+        store.setRow('t1', 'r1', {c1: new Date(0)});
+        expectChanges(listener, 'i:/t1/r1/c1', {t1: {r1: {c1: [new Date(0)]}}});
+        expectChanges(listener, 'i:/t1/r1/c*', {t1: {r1: {c1: [new Date(0)]}}});
+        expectChanges(listener, 'i:/t1/r*/c1', {t1: {r1: {c1: [new Date(0)]}}});
+        expectChanges(listener, 'i:/t1/r*/c*', {t1: {r1: {c1: [new Date(0)]}}});
+        expectChanges(listener, 'i:/t*/r1/c1', {t1: {r1: {c1: [new Date(0)]}}});
+        expectChanges(listener, 'i:/t*/r1/c*', {t1: {r1: {c1: [new Date(0)]}}});
+        expectChanges(listener, 'i:/t*/r*/c1', {t1: {r1: {c1: [new Date(0)]}}});
+        expectChanges(listener, 'i:/t*/r*/c*', {t1: {r1: {c1: [new Date(0)]}}});
         expectNoChanges(listener);
       });
 
@@ -5106,9 +5116,13 @@ describe.each([
 
       test('addRow', () => {
         // @ts-ignore
-        store.addRow('t2', {c1: []});
-        expectChanges(listener, 'i:/t*/r*/c1', {t2: {undefined: {c1: [[]]}}});
-        expectChanges(listener, 'i:/t*/r*/c*', {t2: {undefined: {c1: [[]]}}});
+        store.addRow('t2', {c1: new Date(0)});
+        expectChanges(listener, 'i:/t*/r*/c1', {
+          t2: {undefined: {c1: [new Date(0)]}},
+        });
+        expectChanges(listener, 'i:/t*/r*/c*', {
+          t2: {undefined: {c1: [new Date(0)]}},
+        });
         expectNoChanges(listener);
       });
 
@@ -5123,38 +5137,38 @@ describe.each([
 
       test('setPartialRow', () => {
         // @ts-ignore
-        store.setPartialRow('t1', 'r1', {c1: 1, c2: []});
-        expectChanges(listener, 'i:/t1/r1/c2', {t1: {r1: {c2: [[]]}}});
-        expectChanges(listener, 'i:/t1/r1/c*', {t1: {r1: {c2: [[]]}}});
-        expectChanges(listener, 'i:/t1/r*/c*', {t1: {r1: {c2: [[]]}}});
-        expectChanges(listener, 'i:/t*/r1/c*', {t1: {r1: {c2: [[]]}}});
-        expectChanges(listener, 'i:/t*/r*/c*', {t1: {r1: {c2: [[]]}}});
+        store.setPartialRow('t1', 'r1', {c1: 1, c2: new Date(0)});
+        expectChanges(listener, 'i:/t1/r1/c2', {t1: {r1: {c2: [new Date(0)]}}});
+        expectChanges(listener, 'i:/t1/r1/c*', {t1: {r1: {c2: [new Date(0)]}}});
+        expectChanges(listener, 'i:/t1/r*/c*', {t1: {r1: {c2: [new Date(0)]}}});
+        expectChanges(listener, 'i:/t*/r1/c*', {t1: {r1: {c2: [new Date(0)]}}});
+        expectChanges(listener, 'i:/t*/r*/c*', {t1: {r1: {c2: [new Date(0)]}}});
         expectNoChanges(listener);
         store.delTables();
       });
 
       test('setCell', () => {
         // @ts-ignore
-        store.setCell('t1', 'r1', 'c1', []);
-        expectChanges(listener, 'i:/t1/r1/c1', {t1: {r1: {c1: [[]]}}});
-        expectChanges(listener, 'i:/t1/r1/c*', {t1: {r1: {c1: [[]]}}});
-        expectChanges(listener, 'i:/t1/r*/c1', {t1: {r1: {c1: [[]]}}});
-        expectChanges(listener, 'i:/t1/r*/c*', {t1: {r1: {c1: [[]]}}});
-        expectChanges(listener, 'i:/t*/r1/c1', {t1: {r1: {c1: [[]]}}});
-        expectChanges(listener, 'i:/t*/r1/c*', {t1: {r1: {c1: [[]]}}});
-        expectChanges(listener, 'i:/t*/r*/c1', {t1: {r1: {c1: [[]]}}});
-        expectChanges(listener, 'i:/t*/r*/c*', {t1: {r1: {c1: [[]]}}});
+        store.setCell('t1', 'r1', 'c1', new Date(0));
+        expectChanges(listener, 'i:/t1/r1/c1', {t1: {r1: {c1: [new Date(0)]}}});
+        expectChanges(listener, 'i:/t1/r1/c*', {t1: {r1: {c1: [new Date(0)]}}});
+        expectChanges(listener, 'i:/t1/r*/c1', {t1: {r1: {c1: [new Date(0)]}}});
+        expectChanges(listener, 'i:/t1/r*/c*', {t1: {r1: {c1: [new Date(0)]}}});
+        expectChanges(listener, 'i:/t*/r1/c1', {t1: {r1: {c1: [new Date(0)]}}});
+        expectChanges(listener, 'i:/t*/r1/c*', {t1: {r1: {c1: [new Date(0)]}}});
+        expectChanges(listener, 'i:/t*/r*/c1', {t1: {r1: {c1: [new Date(0)]}}});
+        expectChanges(listener, 'i:/t*/r*/c*', {t1: {r1: {c1: [new Date(0)]}}});
         expectNoChanges(listener);
       });
 
       test('setCell, mapped', () => {
         store.setCell('t2', 'r1', 'c1', 1);
         // @ts-ignore
-        store.setCell('t2', 'r1', 'c1', (cell) => [cell]);
-        expectChanges(listener, 'i:/t*/r1/c1', {t2: {r1: {c1: [[1]]}}});
-        expectChanges(listener, 'i:/t*/r1/c*', {t2: {r1: {c1: [[1]]}}});
-        expectChanges(listener, 'i:/t*/r*/c1', {t2: {r1: {c1: [[1]]}}});
-        expectChanges(listener, 'i:/t*/r*/c*', {t2: {r1: {c1: [[1]]}}});
+        store.setCell('t2', 'r1', 'c1', () => new Date(0));
+        expectChanges(listener, 'i:/t*/r1/c1', {t2: {r1: {c1: [new Date(0)]}}});
+        expectChanges(listener, 'i:/t*/r1/c*', {t2: {r1: {c1: [new Date(0)]}}});
+        expectChanges(listener, 'i:/t*/r*/c1', {t2: {r1: {c1: [new Date(0)]}}});
+        expectChanges(listener, 'i:/t*/r*/c*', {t2: {r1: {c1: [new Date(0)]}}});
         expectNoChanges(listener);
       });
     });
@@ -5687,9 +5701,9 @@ describe.each([
 
       test('setValues', () => {
         // @ts-ignore
-        store.setValues({v1: []});
-        expectChanges(listener, 'i:/v1', {v1: [[]]});
-        expectChanges(listener, 'i:/v*', {v1: [[]]});
+        store.setValues({v1: new Date(0)});
+        expectChanges(listener, 'i:/v1', {v1: [new Date(0)]});
+        expectChanges(listener, 'i:/v*', {v1: [new Date(0)]});
         expectNoChanges(listener);
       });
 
@@ -5702,25 +5716,25 @@ describe.each([
 
       test('setPartialValues', () => {
         // @ts-ignore
-        store.setValues({v1: 1, v2: []});
-        expectChanges(listener, 'i:/v*', {v2: [[]]});
+        store.setValues({v1: 1, v2: new Date(0)});
+        expectChanges(listener, 'i:/v*', {v2: [new Date(0)]});
         expectNoChanges(listener);
       });
 
       test('setValue', () => {
         // @ts-ignore
-        store.setValue('v1', []);
-        expectChanges(listener, 'i:/v1', {v1: [[]]});
-        expectChanges(listener, 'i:/v*', {v1: [[]]});
+        store.setValue('v1', new Date(0));
+        expectChanges(listener, 'i:/v1', {v1: [new Date(0)]});
+        expectChanges(listener, 'i:/v*', {v1: [new Date(0)]});
         expectNoChanges(listener);
       });
 
       test('setValue, mapped', () => {
         store.setValue('v1', 1);
         // @ts-ignore
-        store.setValue('v1', (value) => [value]);
-        expectChanges(listener, 'i:/v1', {v1: [[1]]});
-        expectChanges(listener, 'i:/v*', {v1: [[1]]});
+        store.setValue('v1', () => new Date(0));
+        expectChanges(listener, 'i:/v1', {v1: [new Date(0)]});
+        expectChanges(listener, 'i:/v*', {v1: [new Date(0)]});
         expectNoChanges(listener);
       });
     });
@@ -8134,7 +8148,7 @@ describe.each([
           'r1',
           'c1',
           // @ts-ignore
-          getCellMutator([2]),
+          getCellMutator(new Date(2)),
           true,
         );
         store.addInvalidCellListener(
@@ -8142,7 +8156,7 @@ describe.each([
           'r1',
           null,
           // @ts-ignore
-          getCellMutator([3], null, null, 'c_'),
+          getCellMutator(new Date(3), null, null, 'c_'),
           true,
         );
         store.addInvalidCellListener(
@@ -8150,7 +8164,7 @@ describe.each([
           null,
           'c1',
           // @ts-ignore
-          getCellMutator([4], null, 'r_'),
+          getCellMutator(new Date(4), null, 'r_'),
           true,
         );
         store.addInvalidCellListener(
@@ -8158,7 +8172,7 @@ describe.each([
           null,
           null,
           // @ts-ignore
-          getCellMutator([5], null, 'r_', 'c_'),
+          getCellMutator(new Date(5), null, 'r_', 'c_'),
           true,
         );
         store.addInvalidCellListener(
@@ -8166,7 +8180,7 @@ describe.each([
           'r1',
           'c1',
           // @ts-ignore
-          getCellMutator([6], 't_'),
+          getCellMutator(new Date(6), 't_'),
           true,
         );
         store.addInvalidCellListener(
@@ -8174,7 +8188,7 @@ describe.each([
           'r1',
           null,
           // @ts-ignore
-          getCellMutator([7], 't_', null, 'c_'),
+          getCellMutator(new Date(7), 't_', null, 'c_'),
           true,
         );
         store.addInvalidCellListener(
@@ -8182,7 +8196,7 @@ describe.each([
           null,
           'c1',
           // @ts-ignore
-          getCellMutator([8], 't_', 'r_'),
+          getCellMutator(new Date(8), 't_', 'r_'),
           true,
         );
         store.addInvalidCellListener(
@@ -8190,7 +8204,7 @@ describe.each([
           null,
           null,
           // @ts-ignore
-          getCellMutator([9], 't_', 'r_', 'c_'),
+          getCellMutator(new Date(9), 't_', 'r_', 'c_'),
           true,
         );
       };
@@ -8198,61 +8212,63 @@ describe.each([
       test('setTables', () => {
         setMutatorListeners();
         // @ts-ignore
-        store.setTables({t1: {r1: {c1: [1]}}});
-        expectChanges(listener, 'i:/t1/r1/c1', {t1: {r1: {c1: [[1], [2]]}}});
+        store.setTables({t1: {r1: {c1: new Date(1)}}});
+        expectChanges(listener, 'i:/t1/r1/c1', {
+          t1: {r1: {c1: [new Date(1), new Date(2)]}},
+        });
         expectChanges(
           listener,
           'i:/t1/r1/c*',
-          {t1: {r1: {c1: [[1], [2]]}}},
-          {t1: {r1: {c_: [[3]]}}},
+          {t1: {r1: {c1: [new Date(1), new Date(2)]}}},
+          {t1: {r1: {c_: [new Date(3)]}}},
         );
         expectChanges(
           listener,
           'i:/t1/r*/c1',
-          {t1: {r1: {c1: [[1], [2]]}}},
-          {t1: {r_: {c1: [[4]]}}},
+          {t1: {r1: {c1: [new Date(1), new Date(2)]}}},
+          {t1: {r_: {c1: [new Date(4)]}}},
         );
         expectChanges(
           listener,
           'i:/t1/r*/c*',
-          {t1: {r1: {c1: [[1], [2]]}}},
-          {t1: {r1: {c_: [[3]]}}},
-          {t1: {r_: {c1: [[4]]}}},
-          {t1: {r_: {c_: [[5]]}}},
+          {t1: {r1: {c1: [new Date(1), new Date(2)]}}},
+          {t1: {r1: {c_: [new Date(3)]}}},
+          {t1: {r_: {c1: [new Date(4)]}}},
+          {t1: {r_: {c_: [new Date(5)]}}},
         );
         expectChanges(
           listener,
           'i:/t*/r1/c1',
-          {t1: {r1: {c1: [[1], [2]]}}},
-          {t_: {r1: {c1: [[6]]}}},
+          {t1: {r1: {c1: [new Date(1), new Date(2)]}}},
+          {t_: {r1: {c1: [new Date(6)]}}},
         );
         expectChanges(
           listener,
           'i:/t*/r1/c*',
-          {t1: {r1: {c1: [[1], [2]]}}},
-          {t1: {r1: {c_: [[3]]}}},
-          {t_: {r1: {c1: [[6]]}}},
-          {t_: {r1: {c_: [[7]]}}},
+          {t1: {r1: {c1: [new Date(1), new Date(2)]}}},
+          {t1: {r1: {c_: [new Date(3)]}}},
+          {t_: {r1: {c1: [new Date(6)]}}},
+          {t_: {r1: {c_: [new Date(7)]}}},
         );
         expectChanges(
           listener,
           'i:/t*/r*/c1',
-          {t1: {r1: {c1: [[1], [2]]}}},
-          {t1: {r_: {c1: [[4]]}}},
-          {t_: {r1: {c1: [[6]]}}},
-          {t_: {r_: {c1: [[8]]}}},
+          {t1: {r1: {c1: [new Date(1), new Date(2)]}}},
+          {t1: {r_: {c1: [new Date(4)]}}},
+          {t_: {r1: {c1: [new Date(6)]}}},
+          {t_: {r_: {c1: [new Date(8)]}}},
         );
         expectChanges(
           listener,
           'i:/t*/r*/c*',
-          {t1: {r1: {c1: [[1], [2]]}}},
-          {t1: {r1: {c_: [[3]]}}},
-          {t1: {r_: {c1: [[4]]}}},
-          {t1: {r_: {c_: [[5]]}}},
-          {t_: {r1: {c1: [[6]]}}},
-          {t_: {r1: {c_: [[7]]}}},
-          {t_: {r_: {c1: [[8]]}}},
-          {t_: {r_: {c_: [[9]]}}},
+          {t1: {r1: {c1: [new Date(1), new Date(2)]}}},
+          {t1: {r1: {c_: [new Date(3)]}}},
+          {t1: {r_: {c1: [new Date(4)]}}},
+          {t1: {r_: {c_: [new Date(5)]}}},
+          {t_: {r1: {c1: [new Date(6)]}}},
+          {t_: {r1: {c_: [new Date(7)]}}},
+          {t_: {r_: {c1: [new Date(8)]}}},
+          {t_: {r_: {c_: [new Date(9)]}}},
         );
         expectNoChanges(listener);
       });
@@ -8260,61 +8276,63 @@ describe.each([
       test('setTable', () => {
         setMutatorListeners();
         // @ts-ignore
-        store.setTable('t1', {r1: {c1: [1]}});
-        expectChanges(listener, 'i:/t1/r1/c1', {t1: {r1: {c1: [[1], [2]]}}});
+        store.setTable('t1', {r1: {c1: new Date(1)}});
+        expectChanges(listener, 'i:/t1/r1/c1', {
+          t1: {r1: {c1: [new Date(1), new Date(2)]}},
+        });
         expectChanges(
           listener,
           'i:/t1/r1/c*',
-          {t1: {r1: {c1: [[1], [2]]}}},
-          {t1: {r1: {c_: [[3]]}}},
+          {t1: {r1: {c1: [new Date(1), new Date(2)]}}},
+          {t1: {r1: {c_: [new Date(3)]}}},
         );
         expectChanges(
           listener,
           'i:/t1/r*/c1',
-          {t1: {r1: {c1: [[1], [2]]}}},
-          {t1: {r_: {c1: [[4]]}}},
+          {t1: {r1: {c1: [new Date(1), new Date(2)]}}},
+          {t1: {r_: {c1: [new Date(4)]}}},
         );
         expectChanges(
           listener,
           'i:/t1/r*/c*',
-          {t1: {r1: {c1: [[1], [2]]}}},
-          {t1: {r1: {c_: [[3]]}}},
-          {t1: {r_: {c1: [[4]]}}},
-          {t1: {r_: {c_: [[5]]}}},
+          {t1: {r1: {c1: [new Date(1), new Date(2)]}}},
+          {t1: {r1: {c_: [new Date(3)]}}},
+          {t1: {r_: {c1: [new Date(4)]}}},
+          {t1: {r_: {c_: [new Date(5)]}}},
         );
         expectChanges(
           listener,
           'i:/t*/r1/c1',
-          {t1: {r1: {c1: [[1], [2]]}}},
-          {t_: {r1: {c1: [[6]]}}},
+          {t1: {r1: {c1: [new Date(1), new Date(2)]}}},
+          {t_: {r1: {c1: [new Date(6)]}}},
         );
         expectChanges(
           listener,
           'i:/t*/r1/c*',
-          {t1: {r1: {c1: [[1], [2]]}}},
-          {t1: {r1: {c_: [[3]]}}},
-          {t_: {r1: {c1: [[6]]}}},
-          {t_: {r1: {c_: [[7]]}}},
+          {t1: {r1: {c1: [new Date(1), new Date(2)]}}},
+          {t1: {r1: {c_: [new Date(3)]}}},
+          {t_: {r1: {c1: [new Date(6)]}}},
+          {t_: {r1: {c_: [new Date(7)]}}},
         );
         expectChanges(
           listener,
           'i:/t*/r*/c1',
-          {t1: {r1: {c1: [[1], [2]]}}},
-          {t1: {r_: {c1: [[4]]}}},
-          {t_: {r1: {c1: [[6]]}}},
-          {t_: {r_: {c1: [[8]]}}},
+          {t1: {r1: {c1: [new Date(1), new Date(2)]}}},
+          {t1: {r_: {c1: [new Date(4)]}}},
+          {t_: {r1: {c1: [new Date(6)]}}},
+          {t_: {r_: {c1: [new Date(8)]}}},
         );
         expectChanges(
           listener,
           'i:/t*/r*/c*',
-          {t1: {r1: {c1: [[1], [2]]}}},
-          {t1: {r1: {c_: [[3]]}}},
-          {t1: {r_: {c1: [[4]]}}},
-          {t1: {r_: {c_: [[5]]}}},
-          {t_: {r1: {c1: [[6]]}}},
-          {t_: {r1: {c_: [[7]]}}},
-          {t_: {r_: {c1: [[8]]}}},
-          {t_: {r_: {c_: [[9]]}}},
+          {t1: {r1: {c1: [new Date(1), new Date(2)]}}},
+          {t1: {r1: {c_: [new Date(3)]}}},
+          {t1: {r_: {c1: [new Date(4)]}}},
+          {t1: {r_: {c_: [new Date(5)]}}},
+          {t_: {r1: {c1: [new Date(6)]}}},
+          {t_: {r1: {c_: [new Date(7)]}}},
+          {t_: {r_: {c1: [new Date(8)]}}},
+          {t_: {r_: {c_: [new Date(9)]}}},
         );
         expectNoChanges(listener);
       });
@@ -8322,61 +8340,63 @@ describe.each([
       test('setRow', () => {
         setMutatorListeners();
         // @ts-ignore
-        store.setRow('t1', 'r1', {c1: [1]});
-        expectChanges(listener, 'i:/t1/r1/c1', {t1: {r1: {c1: [[1], [2]]}}});
+        store.setRow('t1', 'r1', {c1: new Date(1)});
+        expectChanges(listener, 'i:/t1/r1/c1', {
+          t1: {r1: {c1: [new Date(1), new Date(2)]}},
+        });
         expectChanges(
           listener,
           'i:/t1/r1/c*',
-          {t1: {r1: {c1: [[1], [2]]}}},
-          {t1: {r1: {c_: [[3]]}}},
+          {t1: {r1: {c1: [new Date(1), new Date(2)]}}},
+          {t1: {r1: {c_: [new Date(3)]}}},
         );
         expectChanges(
           listener,
           'i:/t1/r*/c1',
-          {t1: {r1: {c1: [[1], [2]]}}},
-          {t1: {r_: {c1: [[4]]}}},
+          {t1: {r1: {c1: [new Date(1), new Date(2)]}}},
+          {t1: {r_: {c1: [new Date(4)]}}},
         );
         expectChanges(
           listener,
           'i:/t1/r*/c*',
-          {t1: {r1: {c1: [[1], [2]]}}},
-          {t1: {r1: {c_: [[3]]}}},
-          {t1: {r_: {c1: [[4]]}}},
-          {t1: {r_: {c_: [[5]]}}},
+          {t1: {r1: {c1: [new Date(1), new Date(2)]}}},
+          {t1: {r1: {c_: [new Date(3)]}}},
+          {t1: {r_: {c1: [new Date(4)]}}},
+          {t1: {r_: {c_: [new Date(5)]}}},
         );
         expectChanges(
           listener,
           'i:/t*/r1/c1',
-          {t1: {r1: {c1: [[1], [2]]}}},
-          {t_: {r1: {c1: [[6]]}}},
+          {t1: {r1: {c1: [new Date(1), new Date(2)]}}},
+          {t_: {r1: {c1: [new Date(6)]}}},
         );
         expectChanges(
           listener,
           'i:/t*/r1/c*',
-          {t1: {r1: {c1: [[1], [2]]}}},
-          {t1: {r1: {c_: [[3]]}}},
-          {t_: {r1: {c1: [[6]]}}},
-          {t_: {r1: {c_: [[7]]}}},
+          {t1: {r1: {c1: [new Date(1), new Date(2)]}}},
+          {t1: {r1: {c_: [new Date(3)]}}},
+          {t_: {r1: {c1: [new Date(6)]}}},
+          {t_: {r1: {c_: [new Date(7)]}}},
         );
         expectChanges(
           listener,
           'i:/t*/r*/c1',
-          {t1: {r1: {c1: [[1], [2]]}}},
-          {t1: {r_: {c1: [[4]]}}},
-          {t_: {r1: {c1: [[6]]}}},
-          {t_: {r_: {c1: [[8]]}}},
+          {t1: {r1: {c1: [new Date(1), new Date(2)]}}},
+          {t1: {r_: {c1: [new Date(4)]}}},
+          {t_: {r1: {c1: [new Date(6)]}}},
+          {t_: {r_: {c1: [new Date(8)]}}},
         );
         expectChanges(
           listener,
           'i:/t*/r*/c*',
-          {t1: {r1: {c1: [[1], [2]]}}},
-          {t1: {r1: {c_: [[3]]}}},
-          {t1: {r_: {c1: [[4]]}}},
-          {t1: {r_: {c_: [[5]]}}},
-          {t_: {r1: {c1: [[6]]}}},
-          {t_: {r1: {c_: [[7]]}}},
-          {t_: {r_: {c1: [[8]]}}},
-          {t_: {r_: {c_: [[9]]}}},
+          {t1: {r1: {c1: [new Date(1), new Date(2)]}}},
+          {t1: {r1: {c_: [new Date(3)]}}},
+          {t1: {r_: {c1: [new Date(4)]}}},
+          {t1: {r_: {c_: [new Date(5)]}}},
+          {t_: {r1: {c1: [new Date(6)]}}},
+          {t_: {r1: {c_: [new Date(7)]}}},
+          {t_: {r_: {c1: [new Date(8)]}}},
+          {t_: {r_: {c_: [new Date(9)]}}},
         );
         expectNoChanges(listener);
       });
@@ -8384,35 +8404,35 @@ describe.each([
       test('addRow', () => {
         setMutatorListeners();
         // @ts-ignore
-        store.addRow('t1', {c1: [1]});
+        store.addRow('t1', {c1: new Date(1)});
         expectChanges(
           listener,
           'i:/t1/r*/c1',
-          {t1: {undefined: {c1: [[1]]}}},
-          {t1: {r_: {c1: [[4]]}}},
+          {t1: {undefined: {c1: [new Date(1)]}}},
+          {t1: {r_: {c1: [new Date(4)]}}},
         );
         expectChanges(
           listener,
           'i:/t1/r*/c*',
-          {t1: {undefined: {c1: [[1]]}}},
-          {t1: {r_: {c1: [[4]]}}},
-          {t1: {r_: {c_: [[5]]}}},
+          {t1: {undefined: {c1: [new Date(1)]}}},
+          {t1: {r_: {c1: [new Date(4)]}}},
+          {t1: {r_: {c_: [new Date(5)]}}},
         );
         expectChanges(
           listener,
           'i:/t*/r*/c1',
-          {t1: {undefined: {c1: [[1]]}}},
-          {t1: {r_: {c1: [[4]]}}},
-          {t_: {r_: {c1: [[8]]}}},
+          {t1: {undefined: {c1: [new Date(1)]}}},
+          {t1: {r_: {c1: [new Date(4)]}}},
+          {t_: {r_: {c1: [new Date(8)]}}},
         );
         expectChanges(
           listener,
           'i:/t*/r*/c*',
-          {t1: {undefined: {c1: [[1]]}}},
-          {t1: {r_: {c1: [[4]]}}},
-          {t1: {r_: {c_: [[5]]}}},
-          {t_: {r_: {c1: [[8]]}}},
-          {t_: {r_: {c_: [[9]]}}},
+          {t1: {undefined: {c1: [new Date(1)]}}},
+          {t1: {r_: {c1: [new Date(4)]}}},
+          {t1: {r_: {c_: [new Date(5)]}}},
+          {t_: {r_: {c1: [new Date(8)]}}},
+          {t_: {r_: {c_: [new Date(9)]}}},
         );
         expectNoChanges(listener);
       });
@@ -8421,35 +8441,35 @@ describe.each([
         store.setTables({t1: {r1: {c1: 1}}});
         setMutatorListeners();
         // @ts-ignore
-        store.setPartialRow('t1', 'r1', {c1: 1, c2: [1]});
+        store.setPartialRow('t1', 'r1', {c1: 1, c2: new Date(1)});
         expectChanges(
           listener,
           'i:/t1/r1/c*',
-          {t1: {r1: {c2: [[1]]}}},
-          {t1: {r1: {c_: [[3]]}}},
+          {t1: {r1: {c2: [new Date(1)]}}},
+          {t1: {r1: {c_: [new Date(3)]}}},
         );
         expectChanges(
           listener,
           'i:/t1/r*/c*',
-          {t1: {r1: {c2: [[1]]}}},
-          {t1: {r1: {c_: [[3]]}}},
-          {t1: {r_: {c_: [[5]]}}},
+          {t1: {r1: {c2: [new Date(1)]}}},
+          {t1: {r1: {c_: [new Date(3)]}}},
+          {t1: {r_: {c_: [new Date(5)]}}},
         );
         expectChanges(
           listener,
           'i:/t*/r1/c*',
-          {t1: {r1: {c2: [[1]]}}},
-          {t1: {r1: {c_: [[3]]}}},
-          {t_: {r1: {c_: [[7]]}}},
+          {t1: {r1: {c2: [new Date(1)]}}},
+          {t1: {r1: {c_: [new Date(3)]}}},
+          {t_: {r1: {c_: [new Date(7)]}}},
         );
         expectChanges(
           listener,
           'i:/t*/r*/c*',
-          {t1: {r1: {c2: [[1]]}}},
-          {t1: {r1: {c_: [[3]]}}},
-          {t1: {r_: {c_: [[5]]}}},
-          {t_: {r1: {c_: [[7]]}}},
-          {t_: {r_: {c_: [[9]]}}},
+          {t1: {r1: {c2: [new Date(1)]}}},
+          {t1: {r1: {c_: [new Date(3)]}}},
+          {t1: {r_: {c_: [new Date(5)]}}},
+          {t_: {r1: {c_: [new Date(7)]}}},
+          {t_: {r_: {c_: [new Date(9)]}}},
         );
         expectNoChanges(listener);
       });
@@ -8457,61 +8477,63 @@ describe.each([
       test('setCell', () => {
         setMutatorListeners();
         // @ts-ignore
-        store.setCell('t1', 'r1', 'c1', [1]);
-        expectChanges(listener, 'i:/t1/r1/c1', {t1: {r1: {c1: [[1], [2]]}}});
+        store.setCell('t1', 'r1', 'c1', new Date(1));
+        expectChanges(listener, 'i:/t1/r1/c1', {
+          t1: {r1: {c1: [new Date(1), new Date(2)]}},
+        });
         expectChanges(
           listener,
           'i:/t1/r1/c*',
-          {t1: {r1: {c1: [[1], [2]]}}},
-          {t1: {r1: {c_: [[3]]}}},
+          {t1: {r1: {c1: [new Date(1), new Date(2)]}}},
+          {t1: {r1: {c_: [new Date(3)]}}},
         );
         expectChanges(
           listener,
           'i:/t1/r*/c1',
-          {t1: {r1: {c1: [[1], [2]]}}},
-          {t1: {r_: {c1: [[4]]}}},
+          {t1: {r1: {c1: [new Date(1), new Date(2)]}}},
+          {t1: {r_: {c1: [new Date(4)]}}},
         );
         expectChanges(
           listener,
           'i:/t1/r*/c*',
-          {t1: {r1: {c1: [[1], [2]]}}},
-          {t1: {r1: {c_: [[3]]}}},
-          {t1: {r_: {c1: [[4]]}}},
-          {t1: {r_: {c_: [[5]]}}},
+          {t1: {r1: {c1: [new Date(1), new Date(2)]}}},
+          {t1: {r1: {c_: [new Date(3)]}}},
+          {t1: {r_: {c1: [new Date(4)]}}},
+          {t1: {r_: {c_: [new Date(5)]}}},
         );
         expectChanges(
           listener,
           'i:/t*/r1/c1',
-          {t1: {r1: {c1: [[1], [2]]}}},
-          {t_: {r1: {c1: [[6]]}}},
+          {t1: {r1: {c1: [new Date(1), new Date(2)]}}},
+          {t_: {r1: {c1: [new Date(6)]}}},
         );
         expectChanges(
           listener,
           'i:/t*/r1/c*',
-          {t1: {r1: {c1: [[1], [2]]}}},
-          {t1: {r1: {c_: [[3]]}}},
-          {t_: {r1: {c1: [[6]]}}},
-          {t_: {r1: {c_: [[7]]}}},
+          {t1: {r1: {c1: [new Date(1), new Date(2)]}}},
+          {t1: {r1: {c_: [new Date(3)]}}},
+          {t_: {r1: {c1: [new Date(6)]}}},
+          {t_: {r1: {c_: [new Date(7)]}}},
         );
         expectChanges(
           listener,
           'i:/t*/r*/c1',
-          {t1: {r1: {c1: [[1], [2]]}}},
-          {t1: {r_: {c1: [[4]]}}},
-          {t_: {r1: {c1: [[6]]}}},
-          {t_: {r_: {c1: [[8]]}}},
+          {t1: {r1: {c1: [new Date(1), new Date(2)]}}},
+          {t1: {r_: {c1: [new Date(4)]}}},
+          {t_: {r1: {c1: [new Date(6)]}}},
+          {t_: {r_: {c1: [new Date(8)]}}},
         );
         expectChanges(
           listener,
           'i:/t*/r*/c*',
-          {t1: {r1: {c1: [[1], [2]]}}},
-          {t1: {r1: {c_: [[3]]}}},
-          {t1: {r_: {c1: [[4]]}}},
-          {t1: {r_: {c_: [[5]]}}},
-          {t_: {r1: {c1: [[6]]}}},
-          {t_: {r1: {c_: [[7]]}}},
-          {t_: {r_: {c1: [[8]]}}},
-          {t_: {r_: {c_: [[9]]}}},
+          {t1: {r1: {c1: [new Date(1), new Date(2)]}}},
+          {t1: {r1: {c_: [new Date(3)]}}},
+          {t1: {r_: {c1: [new Date(4)]}}},
+          {t1: {r_: {c_: [new Date(5)]}}},
+          {t_: {r1: {c1: [new Date(6)]}}},
+          {t_: {r1: {c_: [new Date(7)]}}},
+          {t_: {r_: {c1: [new Date(8)]}}},
+          {t_: {r_: {c_: [new Date(9)]}}},
         );
         expectNoChanges(listener);
       });
@@ -8762,15 +8784,9 @@ describe.each([
       test('setValues', () => {
         setMutatorListeners();
         // @ts-ignore
-        store.setValues({v1: [1]});
-        expectChanges(listener, '/v1', {v1: [[1]]});
-        expectChanges(
-          listener,
-          '/v*',
-          {v1: [[1]]},
-          {v1_1: [[[1]]]},
-          {v1__: [[[1]]]},
-        );
+        store.setValues({v1: new Date(1)});
+        expectChanges(listener, '/v1', {v1: [new Date(1)]});
+        expectChanges(listener, '/v*', {v1: [new Date(1)]});
         expectNoChanges(listener);
       });
 
@@ -8778,32 +8794,18 @@ describe.each([
         store.setValues({v1: 1});
         setMutatorListeners();
         // @ts-ignore
-        store.setPartialValues({v2: [2], v3: undefined});
-        expectChanges(listener, '/v2', {v2: [[2]]});
-        expectChanges(
-          listener,
-          '/v*',
-          {v2: [[2]]},
-          {v3: [undefined]},
-          {v2_2: [[[2]]]},
-          {v2__: [[[2]]]},
-          {v3__: [[undefined]]},
-        );
+        store.setPartialValues({v2: new Date(2), v3: undefined});
+        expectChanges(listener, '/v2', {v2: [new Date(2)]});
+        expectChanges(listener, '/v*', {v2: [new Date(2)]}, {v3: [undefined]});
         expectNoChanges(listener);
       });
 
       test('setValue', () => {
         setMutatorListeners();
         // @ts-ignore
-        store.setValue('v1', [1]);
-        expectChanges(listener, '/v1', {v1: [[1]]});
-        expectChanges(
-          listener,
-          '/v*',
-          {v1: [[1]]},
-          {v1_1: [[[1]]]},
-          {v1__: [[[1]]]},
-        );
+        store.setValue('v1', new Date(1));
+        expectChanges(listener, '/v1', {v1: [new Date(1)]});
+        expectChanges(listener, '/v*', {v1: [new Date(1)]});
         expectNoChanges(listener);
       });
     });
@@ -8816,7 +8818,7 @@ describe.each([
       });
 
       test('start can mutate', () => {
-        const listener = jest.fn(() => {
+        const listener = vi.fn(() => {
           store.setValue('mutated', true);
         });
         store.addStartTransactionListener(listener);
@@ -8827,7 +8829,7 @@ describe.each([
       });
 
       test('willFinish can mutate', () => {
-        const listener = jest.fn(() => {
+        const listener = vi.fn(() => {
           store.setValue('mutated', true);
         });
         store.addWillFinishTransactionListener(listener);
@@ -8838,7 +8840,7 @@ describe.each([
       });
 
       test('didFinish cannot mutate', () => {
-        const listener = jest.fn(() => {
+        const listener = vi.fn(() => {
           store.setValue('mutated', true);
         });
         store.addDidFinishTransactionListener(listener);
@@ -8939,13 +8941,13 @@ describe.each([
       });
 
       describe('mutation does not fire', () => {
-        let secondMutator: jest.Mock;
-        let secondListener: jest.Mock;
+        let secondMutator: Mock;
+        let secondListener: Mock;
 
         beforeEach(() => {
           store = createStore();
-          secondMutator = jest.fn(() => null);
-          secondListener = jest.fn(() => null);
+          secondMutator = vi.fn(() => null);
+          secondListener = vi.fn(() => null);
         });
 
         test('cell mutation, new cell', () => {
@@ -8983,7 +8985,7 @@ describe.each([
             't2',
             'r2',
             'c2',
-            2,
+            1,
             undefined,
             expect.any(Function),
           );
@@ -9004,7 +9006,7 @@ describe.each([
             store.setCell('t1', 'r1', 'c1', 1);
             store.setCell('t2', 'r2', 'c2', 2);
           });
-          expect(secondMutator).toHaveBeenCalledTimes(0);
+          expect(secondMutator).toHaveBeenCalledTimes(1);
           expect(secondListener).toHaveBeenCalledTimes(0);
         });
 
@@ -9150,7 +9152,7 @@ describe.each([
 
       test('cell mutation cancels listeners', () => {
         const store = createStore().setTables({t1: {r1: {c1: 1}}});
-        const second = jest.fn(() => null);
+        const second = vi.fn(() => null);
         store.addCellListener(
           't1',
           'r1',
@@ -9171,7 +9173,7 @@ describe.each([
 
       test('cell self-mutation does not stack overflow', () => {
         const store = createStore().setTables({t1: {r1: {c1: 1}}});
-        const second = jest.fn(() => null);
+        const second = vi.fn(() => null);
         store.addCellListener(
           't1',
           'r1',
@@ -9198,7 +9200,7 @@ describe.each([
 
       test('value mutation cancels listeners', () => {
         const store = createStore().setValues({v1: 1});
-        const second = jest.fn(() => null);
+        const second = vi.fn(() => null);
         store.addValueListener('v1', () => store.setValue('v1', 1), true);
         store.addValueListener(null, second);
         store.addValueIdsListener(second);
@@ -9209,7 +9211,7 @@ describe.each([
 
       test('value self-mutation does not stack overflow', () => {
         const store = createStore().setValues({v1: 1});
-        const second = jest.fn(() => null);
+        const second = vi.fn(() => null);
         store.addValueListener(
           'v1',
           () => store.setValue('v1', (value): Value => (value as number) - 1),
@@ -9235,7 +9237,7 @@ describe.each([
           t2: {r1: {c1: 5, c2: 6}, r2: {c1: 7, c2: 8}},
         })
         .setValues({v1: 1, v2: 2});
-      listener = jest.fn(() => null);
+      listener = vi.fn(() => null);
     });
 
     test('non-existent', () => {

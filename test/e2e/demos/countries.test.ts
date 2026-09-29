@@ -1,3 +1,4 @@
+import {type Page, test} from '@playwright/test';
 import {
   expectNoFramedElement,
   expectProperty,
@@ -6,28 +7,67 @@ import {
   getServerFunctions,
 } from '../common.ts';
 
-const [startServer, stopServer, expectPage] = getServerFunctions(8801);
+const {beforeAll, afterAll} = test;
+const [startServer, stopServer, expectPage] = getServerFunctions(8803);
 
 beforeAll(startServer);
 afterAll(stopServer);
 
-test('countries', async () => {
-  await expectPage(`/demos/countries`);
-  await expectedElement('h1', 'Countries');
-  await (await expectedFramedElement('.filter', '★8')).click();
-  await expectedFramedElement('#countries .country', 'United Kingdom');
-  await expectNoFramedElement('#countries .country', 'Bahamas');
-  await (await expectedFramedElement('#countries .country .star', '★')).click();
-  await expectedFramedElement('.filter', '★7');
-  await expectNoFramedElement('#countries .country', 'United Kingdom');
-  const b = await expectedFramedElement('.filter', 'B21');
+const exerciseCountriesDemo = async (page: Page): Promise<void> => {
+  await (await expectedFramedElement(page, '.filter', '★8')).click();
+  await expectedFramedElement(page, '#countries .country', 'United Kingdom');
+  await expectNoFramedElement(page, '#countries .country', 'Bahamas');
+  await (
+    await expectedFramedElement(page, '#countries .country .star', '★')
+  ).click();
+  await expectedFramedElement(page, '.filter', '★7');
+  await expectNoFramedElement(page, '#countries .country', 'United Kingdom');
+  const b = await expectedFramedElement(page, '.filter', 'B21');
   await expectProperty(b, 'className', 'filter');
   await b.click();
   await expectProperty(b, 'className', 'filter current');
-  await expectedFramedElement('#countries .country', 'Bahamas');
-  await (await expectedFramedElement('#countries .country .star', '☆')).click();
-  await (await expectedFramedElement('.filter', '★8')).click();
-  await expectedFramedElement('#countries .country', 'Bahamas');
+  await expectedFramedElement(page, '#countries .country', 'Bahamas');
+  await (
+    await expectedFramedElement(page, '#countries .country .star', '☆')
+  ).click();
+  await (await expectedFramedElement(page, '.filter', '★8')).click();
+  await expectedFramedElement(page, '#countries .country', 'Bahamas');
   await page.reload();
-  await expectedFramedElement('#countries .country', 'Bahamas');
+  await expectedFramedElement(page, '#countries .country', 'Bahamas');
+};
+
+test('countries-react', async ({page}) => {
+  await expectPage(page, `/demos/countries/countries-react/`);
+  await expectedElement(page, 'h1', 'Countries (React)');
+  await exerciseCountriesDemo(page);
+});
+
+test('countries-solid', async ({page}) => {
+  await expectPage(page, `/demos/countries/countries-solid/`);
+  await expectedElement(page, 'h1', 'Countries (Solid)');
+  await test
+    .expect(
+      page
+        .locator('iframe')
+        .first()
+        .contentFrame()
+        .locator('aside#tinybaseInspector'),
+    )
+    .toHaveCount(1);
+  await exerciseCountriesDemo(page);
+});
+
+test('countries-svelte', async ({page}) => {
+  await expectPage(page, `/demos/countries/countries-svelte/`);
+  await expectedElement(page, 'h1', 'Countries (Svelte)');
+  await test
+    .expect(
+      page
+        .locator('iframe')
+        .first()
+        .contentFrame()
+        .locator('aside#tinybaseInspector'),
+    )
+    .toHaveCount(1);
+  await exerciseCountriesDemo(page);
 });

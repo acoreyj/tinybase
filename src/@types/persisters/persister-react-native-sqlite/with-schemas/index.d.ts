@@ -7,13 +7,15 @@ import type {
 } from '../../../store/with-schemas/index.d.ts';
 import type {
   DatabasePersisterConfig,
+  DpcJson,
   Persister,
   Persists,
 } from '../../with-schemas/index.d.ts';
 
 /// ReactNativeSqlitePersister
-export interface ReactNativeSqlitePersister<Schemas extends OptionalSchemas>
-  extends Persister<Schemas, Persists.StoreOrMergeableStore> {
+export interface ReactNativeSqlitePersister<
+  Schemas extends OptionalSchemas,
+> extends Persister<Schemas, Persists.StoreOrMergeableStore> {
   /// ReactNativeSqlitePersister.getDb
   getDb(): SQLiteDatabase;
 }
@@ -22,7 +24,16 @@ export interface ReactNativeSqlitePersister<Schemas extends OptionalSchemas>
 export function createReactNativeSqlitePersister<
   Schemas extends OptionalSchemas,
 >(
-  store: Store<Schemas> | MergeableStore<Schemas>,
+  store: MergeableStore<Schemas>,
+  db: SQLiteDatabase,
+  configOrStoreTableName?: DpcJson | string,
+  onSqlCommand?: (sql: string, params?: any[]) => void,
+  onIgnoredError?: (error: any) => void,
+): ReactNativeSqlitePersister<Schemas>;
+export function createReactNativeSqlitePersister<
+  Schemas extends OptionalSchemas,
+>(
+  store: Store<Schemas> & {getMergeableContent?: never},
   db: SQLiteDatabase,
   configOrStoreTableName?: DatabasePersisterConfig<Schemas> | string,
   onSqlCommand?: (sql: string, params?: any[]) => void,

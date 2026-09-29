@@ -1,5 +1,6 @@
+import '@testing-library/jest-dom/vitest';
 import {fireEvent, render} from '@testing-library/react';
-import React, {act} from 'react';
+import {act, useState} from 'react';
 import type {Ids, Indexes, Queries, Relationships, Store} from 'tinybase';
 import {
   createIndexes,
@@ -20,6 +21,7 @@ import {
   TableInHtmlTable,
   ValuesInHtmlTable,
 } from 'tinybase/ui-react-dom';
+import {beforeEach, describe, expect, test, vi} from 'vitest';
 
 let store: Store;
 let indexes: Indexes;
@@ -993,6 +995,24 @@ describe('EditableCellView', () => {
     unmount();
   });
 
+  test('rejects a mismatched JSON container', () => {
+    store.setCell('t1', 'r1', 'c1', {x: 1});
+    const {getByRole, unmount} = render(
+      <EditableCellView store={store} tableId="t1" rowId="r1" cellId="c1" />,
+    );
+    const input = getByRole('textbox');
+
+    fireEvent.change(input, {target: {value: '[]'}});
+    expect(input).toHaveClass('invalid');
+    expect(store.getCell('t1', 'r1', 'c1')).toEqual({x: 1});
+
+    fireEvent.change(input, {target: {value: '{"x":2}'}});
+    expect(input).not.toHaveClass('invalid');
+    expect(store.getCell('t1', 'r1', 'c1')).toEqual({x: 2});
+
+    unmount();
+  });
+
   test('change type and Cell', () => {
     const {container, getAllByRole, unmount} = render(
       <EditableCellView store={store} tableId="t1" rowId="r1" cellId="c1" />,
@@ -1018,6 +1038,32 @@ describe('EditableCellView', () => {
     fireEvent.click(getAllByRole('checkbox')[0]);
     expect(store.getContent()).toEqual([
       {t1: {r1: {c1: false}}, t2: {r1: {c1: 2}, r2: {c1: 3, c2: 4}}},
+      {v1: 1, v2: 2},
+    ]);
+    expect(container.innerHTML).toMatchSnapshot();
+    fireEvent.click(getAllByRole('button')[0]);
+    expect(store.getContent()).toEqual([
+      {t1: {r1: {c1: {}}}, t2: {r1: {c1: 2}, r2: {c1: 3, c2: 4}}},
+      {v1: 1, v2: 2},
+    ]);
+    expect(container.innerHTML).toMatchSnapshot();
+    fireEvent.change(getAllByRole('textbox')[0], {
+      target: {value: '{"x":1}'},
+    });
+    expect(store.getContent()).toEqual([
+      {t1: {r1: {c1: {x: 1}}}, t2: {r1: {c1: 2}, r2: {c1: 3, c2: 4}}},
+      {v1: 1, v2: 2},
+    ]);
+    expect(container.innerHTML).toMatchSnapshot();
+    fireEvent.click(getAllByRole('button')[0]);
+    expect(store.getContent()).toEqual([
+      {t1: {r1: {c1: []}}, t2: {r1: {c1: 2}, r2: {c1: 3, c2: 4}}},
+      {v1: 1, v2: 2},
+    ]);
+    expect(container.innerHTML).toMatchSnapshot();
+    fireEvent.change(getAllByRole('textbox')[0], {target: {value: '[1,2]'}});
+    expect(store.getContent()).toEqual([
+      {t1: {r1: {c1: [1, 2]}}, t2: {r1: {c1: 2}, r2: {c1: 3, c2: 4}}},
       {v1: 1, v2: 2},
     ]);
     expect(container.innerHTML).toMatchSnapshot();
@@ -1120,6 +1166,32 @@ describe('EditableValueView', () => {
     fireEvent.click(getAllByRole('button')[0]);
     expect(store.getContent()).toEqual([
       {t1: {r1: {c1: 1}}, t2: {r1: {c1: 2}, r2: {c1: 3, c2: 4}}},
+      {v1: {}, v2: 2},
+    ]);
+    expect(container.innerHTML).toMatchSnapshot();
+    fireEvent.change(getAllByRole('textbox')[0], {
+      target: {value: '{"x":1}'},
+    });
+    expect(store.getContent()).toEqual([
+      {t1: {r1: {c1: 1}}, t2: {r1: {c1: 2}, r2: {c1: 3, c2: 4}}},
+      {v1: {x: 1}, v2: 2},
+    ]);
+    expect(container.innerHTML).toMatchSnapshot();
+    fireEvent.click(getAllByRole('button')[0]);
+    expect(store.getContent()).toEqual([
+      {t1: {r1: {c1: 1}}, t2: {r1: {c1: 2}, r2: {c1: 3, c2: 4}}},
+      {v1: [], v2: 2},
+    ]);
+    expect(container.innerHTML).toMatchSnapshot();
+    fireEvent.change(getAllByRole('textbox')[0], {target: {value: '[1,2]'}});
+    expect(store.getContent()).toEqual([
+      {t1: {r1: {c1: 1}}, t2: {r1: {c1: 2}, r2: {c1: 3, c2: 4}}},
+      {v1: [1, 2], v2: 2},
+    ]);
+    expect(container.innerHTML).toMatchSnapshot();
+    fireEvent.click(getAllByRole('button')[0]);
+    expect(store.getContent()).toEqual([
+      {t1: {r1: {c1: 1}}, t2: {r1: {c1: 2}, r2: {c1: 3, c2: 4}}},
       {v1: '1', v2: 2},
     ]);
     expect(container.innerHTML).toMatchSnapshot();
@@ -1159,6 +1231,56 @@ describe('EditableValueView', () => {
 });
 
 describe('SortedTablePaginator', () => {
+  test('defers invalid offset changes', () => {
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const Test = () => {
+      const [offset, setOffset] = useState(120);
+      return (
+        <SortedTablePaginator
+          onChange={setOffset}
+          total={100}
+          offset={offset}
+          limit={10}
+        />
+      );
+    };
+    const {unmount} = render(<Test />);
+
+    expect(consoleError).not.toHaveBeenCalled();
+    consoleError.mockRestore();
+    unmount();
+  });
+
+  test('normalizes boundary navigation', () => {
+    const onChange = vi.fn();
+    const {container, getByRole, rerender, unmount} = render(
+      <SortedTablePaginator
+        onChange={onChange}
+        total={100}
+        offset={5}
+        limit={10}
+      />,
+    );
+
+    fireEvent.click(getByRole('button', {name: '←'}));
+    expect(onChange).toHaveBeenLastCalledWith(0);
+
+    rerender(
+      <SortedTablePaginator
+        onChange={onChange}
+        total={100}
+        offset={100}
+        limit={10}
+      />,
+    );
+    expect(onChange).toHaveBeenLastCalledWith(0);
+    expect(container.textContent).toContain('1 to 10 of 100 rows');
+
+    unmount();
+  });
+
   test('basic', () => {
     const {container, unmount} = render(
       <SortedTablePaginator onChange={nullEvent} total={100} />,

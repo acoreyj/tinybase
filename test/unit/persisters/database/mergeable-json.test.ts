@@ -3,9 +3,17 @@ import 'fake-indexeddb/auto';
 import type {MergeableStore} from 'tinybase';
 import {createMergeableStore} from 'tinybase';
 import type {Persister} from 'tinybase/persisters';
+import {afterEach, beforeEach, describe, expect, test} from 'vitest';
 import {getTimeFunctions} from '../../common/mergeable.ts';
-import {mockFetchWasm} from '../../common/other.ts';
-import {MERGEABLE_VARIANTS, getDatabaseFunctions} from '../common/databases.ts';
+import {waitFor} from '../../common/other.ts';
+import {
+  MERGEABLE_VARIANTS,
+  getColumnType,
+  getDatabaseFunctions,
+  getDdlColumnType,
+  getPlaceholder,
+  getStoreContentWaiter,
+} from '../common/databases.ts';
 
 const [reset, getNow, pause] = getTimeFunctions();
 
@@ -25,20 +33,23 @@ describe.each(Object.entries(MERGEABLE_VARIANTS))(
       close,
       autoLoadPause = 3,
       autoLoadIntervalSeconds = 0.001,
-      isPostgres,
+      dialect,
       supportsMultipleConnections,
     ],
   ) => {
-    const [getDatabase, setDatabase] = getDatabaseFunctions(cmd, isPostgres);
+    const [getDatabase, setDatabase] = getDatabaseFunctions(cmd, dialect);
+    const expectStoreContent = getStoreContentWaiter(autoLoadPause);
 
-    const columnType = isPostgres ? 'text' : '';
+    const columnType = getColumnType(dialect);
+    const ddlColumnType = getDdlColumnType(dialect);
+    const placeholders = (...numbers: number[]) =>
+      numbers.map(getPlaceholder(dialect)).join(',');
 
     let db: any;
     let store: MergeableStore;
     let persister: Persister;
 
     beforeEach(async () => {
-      mockFetchWasm();
       db = await getOpenDatabase();
       store = createMergeableStore('s1', getNow);
       persister = await getPersister(store, db, {
@@ -193,10 +204,11 @@ describe.each(Object.entries(MERGEABLE_VARIANTS))(
             ],
           ],
         });
-        await cmd(db, 'UPDATE tinybase SET store=$1 WHERE _id=$2', [
-          '[{"t1":{"r1":{"c1":2}}},{"v1":2}]',
-          '_',
-        ]);
+        await cmd(
+          db,
+          `UPDATE tinybase SET store=${placeholders(1)} WHERE _id=${placeholders(2)}`,
+          ['[{"t1":{"r1":{"c1":2}}},{"v1":2}]', '_'],
+        );
         expect(await getDatabase(db)).toEqual({
           tinybase: [
             {_id: columnType, store: columnType},
@@ -223,9 +235,9 @@ describe.each(Object.entries(MERGEABLE_VARIANTS))(
         await setDatabase(db, {
           tinybase: [
             'CREATE TABLE "tinybase" ("_id" ' +
-              columnType +
+              ddlColumnType +
               ' PRIMARY KEY, "store" ' +
-              columnType +
+              ddlColumnType +
               ')',
             [{_id: '_', store: '[{"t1":1}]'}],
           ],
@@ -238,9 +250,9 @@ describe.each(Object.entries(MERGEABLE_VARIANTS))(
         await setDatabase(db, {
           tinybase: [
             'CREATE TABLE "tinybase" ("_id" ' +
-              columnType +
+              ddlColumnType +
               ' PRIMARY KEY, "store" ' +
-              columnType +
+              ddlColumnType +
               ')',
             [{_id: '_', store: '[{"t1":}]'}],
           ],
@@ -253,9 +265,9 @@ describe.each(Object.entries(MERGEABLE_VARIANTS))(
         await setDatabase(db, {
           tinybase: [
             'CREATE TABLE "tinybase" ("_id" ' +
-              columnType +
+              ddlColumnType +
               ' PRIMARY KEY, "store" ' +
-              columnType +
+              ddlColumnType +
               ')',
             [{_id: '_', store: '[{"t1":{"r1":{"c1":1}}},{}]'}],
           ],
@@ -268,9 +280,9 @@ describe.each(Object.entries(MERGEABLE_VARIANTS))(
         await setDatabase(db, {
           tinybase: [
             'CREATE TABLE "tinybase" ("_id" ' +
-              columnType +
+              ddlColumnType +
               ' PRIMARY KEY, "store" ' +
-              columnType +
+              ddlColumnType +
               ')',
             [{_id: '_', store: '[{}, {"v1":1}]'}],
           ],
@@ -284,9 +296,9 @@ describe.each(Object.entries(MERGEABLE_VARIANTS))(
           await setDatabase(db, {
             tinybase: [
               'CREATE TABLE "tinybase" ("_id" ' +
-                columnType +
+                ddlColumnType +
                 ' PRIMARY KEY, "store" ' +
-                columnType +
+                ddlColumnType +
                 ')',
               [{_id: '_', store: '[{"t1":{"r1":{"c1":1}}},{"v1":1}]'}],
             ],
@@ -300,10 +312,11 @@ describe.each(Object.entries(MERGEABLE_VARIANTS))(
 
         test('then delete', async () => {
           await persister.load();
-          await cmd(db, 'UPDATE tinybase SET store=$1 WHERE _id=$2', [
-            '[{},{}]',
-            '_',
-          ]);
+          await cmd(
+            db,
+            `UPDATE tinybase SET store=${placeholders(1)} WHERE _id=${placeholders(2)}`,
+            ['[{},{}]', '_'],
+          );
           await persister.load();
           expect(store.getContent()).toEqual([{}, {}]);
         });
@@ -313,9 +326,9 @@ describe.each(Object.entries(MERGEABLE_VARIANTS))(
         await setDatabase(db, {
           tinybase: [
             'CREATE TABLE "tinybase" ("_id" ' +
-              columnType +
+              ddlColumnType +
               ' PRIMARY KEY, "store" ' +
-              columnType +
+              ddlColumnType +
               ')',
             [{_id: '_', store: '[{"t1":{"r1":{"c1":1}}},{"v1":1}]'}],
           ],
@@ -366,9 +379,10 @@ describe.each(Object.entries(MERGEABLE_VARIANTS))(
       test('autoSave1', async () => {
         await persister.startAutoSave();
         store.setTables({t1: {r1: {c1: 1}}}).setValues({v1: 1});
-        await pause();
-        await persister2.load();
-        expect(store2.getContent()).toEqual([{t1: {r1: {c1: 1}}}, {v1: 1}]);
+        await waitFor(async () => {
+          await persister2.load();
+          expect(store2.getContent()).toEqual([{t1: {r1: {c1: 1}}}, {v1: 1}]);
+        });
       });
 
       test('autoLoad2', async () => {
@@ -376,8 +390,7 @@ describe.each(Object.entries(MERGEABLE_VARIANTS))(
         await pause(autoLoadPause);
         store.setTables({t1: {r1: {c1: 1}}}).setValues({v1: 1});
         await persister.save();
-        await pause(autoLoadPause);
-        expect(store2.getContent()).toEqual([{t1: {r1: {c1: 1}}}, {v1: 1}]);
+        await expectStoreContent(store2, [{t1: {r1: {c1: 1}}}, {v1: 1}]);
       });
 
       test('autoSave1 & autoLoad2', async () => {
@@ -385,8 +398,7 @@ describe.each(Object.entries(MERGEABLE_VARIANTS))(
         await persister2.startAutoLoad();
         await pause(autoLoadPause);
         store.setTables({t1: {r1: {c1: 1}}}).setValues({v1: 1});
-        await pause(autoLoadPause);
-        expect(store2.getContent()).toEqual([{t1: {r1: {c1: 1}}}, {v1: 1}]);
+        await expectStoreContent(store2, [{t1: {r1: {c1: 1}}}, {v1: 1}]);
       });
 
       test('autoSave1 & autoLoad2, complex transactions', async () => {
@@ -399,41 +411,31 @@ describe.each(Object.entries(MERGEABLE_VARIANTS))(
             t2: {r1: {c1: 1}},
           })
           .setValues({v1: 1, v2: 2});
-        await pause(autoLoadPause);
-        expect(store2.getContent()).toEqual([
+        await expectStoreContent(store2, [
           {t1: {r1: {c1: 1, c2: 2}, r2: {c1: 1}}, t2: {r1: {c1: 1}}},
           {v1: 1, v2: 2},
         ]);
         store.setCell('t1', 'r1', 'c1', 2);
-        await pause(autoLoadPause);
-        expect(store2.getContent()).toEqual([
+        await expectStoreContent(store2, [
           {t1: {r1: {c1: 2, c2: 2}, r2: {c1: 1}}, t2: {r1: {c1: 1}}},
           {v1: 1, v2: 2},
         ]);
         store.delCell('t1', 'r1', 'c2');
-        await pause(autoLoadPause);
-        expect(store2.getContent()).toEqual([
+        await expectStoreContent(store2, [
           {t1: {r1: {c1: 2}, r2: {c1: 1}}, t2: {r1: {c1: 1}}},
           {v1: 1, v2: 2},
         ]);
         store.delRow('t1', 'r2');
-        await pause(autoLoadPause);
-        expect(store2.getContent()).toEqual([
+        await expectStoreContent(store2, [
           {t1: {r1: {c1: 2}}, t2: {r1: {c1: 1}}},
           {v1: 1, v2: 2},
         ]);
         store.delTable('t2');
-        await pause(autoLoadPause);
-        expect(store2.getContent()).toEqual([
-          {t1: {r1: {c1: 2}}},
-          {v1: 1, v2: 2},
-        ]);
+        await expectStoreContent(store2, [{t1: {r1: {c1: 2}}}, {v1: 1, v2: 2}]);
         store.delValue('v2');
-        await pause(autoLoadPause);
-        expect(store2.getContent()).toEqual([{t1: {r1: {c1: 2}}}, {v1: 1}]);
+        await expectStoreContent(store2, [{t1: {r1: {c1: 2}}}, {v1: 1}]);
         store.setValue('v1', 2);
-        await pause(autoLoadPause);
-        expect(store2.getContent()).toEqual([{t1: {r1: {c1: 2}}}, {v1: 2}]);
+        await expectStoreContent(store2, [{t1: {r1: {c1: 2}}}, {v1: 2}]);
       }, 20000);
     });
 
@@ -470,9 +472,10 @@ describe.each(Object.entries(MERGEABLE_VARIANTS))(
       test('autoSave1', async () => {
         await persister.startAutoSave();
         store.setTables({t1: {r1: {c1: 1}}}).setValues({v1: 1});
-        await pause();
-        await persister2.load();
-        expect(store2.getContent()).toEqual([{t1: {r1: {c1: 1}}}, {v1: 1}]);
+        await waitFor(async () => {
+          await persister2.load();
+          expect(store2.getContent()).toEqual([{t1: {r1: {c1: 1}}}, {v1: 1}]);
+        });
       });
 
       test('autoLoad2', async () => {
@@ -480,8 +483,7 @@ describe.each(Object.entries(MERGEABLE_VARIANTS))(
         await pause(autoLoadPause);
         store.setTables({t1: {r1: {c1: 1}}}).setValues({v1: 1});
         await persister.save();
-        await pause(autoLoadPause);
-        expect(store2.getContent()).toEqual([{t1: {r1: {c1: 1}}}, {v1: 1}]);
+        await expectStoreContent(store2, [{t1: {r1: {c1: 1}}}, {v1: 1}]);
       });
 
       test('autoSave1 & autoLoad2', async () => {
@@ -489,8 +491,7 @@ describe.each(Object.entries(MERGEABLE_VARIANTS))(
         await persister2.startAutoLoad();
         await pause(autoLoadPause);
         store.setTables({t1: {r1: {c1: 1}}}).setValues({v1: 1});
-        await pause(autoLoadPause);
-        expect(store2.getContent()).toEqual([{t1: {r1: {c1: 1}}}, {v1: 1}]);
+        await expectStoreContent(store2, [{t1: {r1: {c1: 1}}}, {v1: 1}]);
       });
 
       test('autoSave1 & autoLoad2, complex transactions', async () => {
@@ -503,41 +504,31 @@ describe.each(Object.entries(MERGEABLE_VARIANTS))(
             t2: {r1: {c1: 1}},
           })
           .setValues({v1: 1, v2: 2});
-        await pause(autoLoadPause);
-        expect(store2.getContent()).toEqual([
+        await expectStoreContent(store2, [
           {t1: {r1: {c1: 1, c2: 2}, r2: {c1: 1}}, t2: {r1: {c1: 1}}},
           {v1: 1, v2: 2},
         ]);
         store.setCell('t1', 'r1', 'c1', 2);
-        await pause(autoLoadPause);
-        expect(store2.getContent()).toEqual([
+        await expectStoreContent(store2, [
           {t1: {r1: {c1: 2, c2: 2}, r2: {c1: 1}}, t2: {r1: {c1: 1}}},
           {v1: 1, v2: 2},
         ]);
         store.delCell('t1', 'r1', 'c2');
-        await pause(autoLoadPause);
-        expect(store2.getContent()).toEqual([
+        await expectStoreContent(store2, [
           {t1: {r1: {c1: 2}, r2: {c1: 1}}, t2: {r1: {c1: 1}}},
           {v1: 1, v2: 2},
         ]);
         store.delRow('t1', 'r2');
-        await pause(autoLoadPause);
-        expect(store2.getContent()).toEqual([
+        await expectStoreContent(store2, [
           {t1: {r1: {c1: 2}}, t2: {r1: {c1: 1}}},
           {v1: 1, v2: 2},
         ]);
         store.delTable('t2');
-        await pause(autoLoadPause);
-        expect(store2.getContent()).toEqual([
-          {t1: {r1: {c1: 2}}},
-          {v1: 1, v2: 2},
-        ]);
+        await expectStoreContent(store2, [{t1: {r1: {c1: 2}}}, {v1: 1, v2: 2}]);
         store.delValue('v2');
-        await pause(autoLoadPause);
-        expect(store2.getContent()).toEqual([{t1: {r1: {c1: 2}}}, {v1: 1}]);
+        await expectStoreContent(store2, [{t1: {r1: {c1: 2}}}, {v1: 1}]);
         store.setValue('v1', 2);
-        await pause(autoLoadPause);
-        expect(store2.getContent()).toEqual([{t1: {r1: {c1: 2}}}, {v1: 2}]);
+        await expectStoreContent(store2, [{t1: {r1: {c1: 2}}}, {v1: 2}]);
       });
     });
   },

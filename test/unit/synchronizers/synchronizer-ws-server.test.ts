@@ -1,29 +1,501 @@
+import {EventEmitter, once} from 'events';
 import {readFileSync, writeFileSync} from 'fs';
 import {join} from 'path';
 import type {Id, MergeableStore} from 'tinybase';
 import {createMergeableStore} from 'tinybase';
 import {createFilePersister} from 'tinybase/persisters/persister-file';
-import type {WsSynchronizer} from 'tinybase/synchronizers/synchronizer-ws-client';
-import {createWsSynchronizer} from 'tinybase/synchronizers/synchronizer-ws-client';
+import {Message} from 'tinybase/synchronizers';
+import * as WsClient from 'tinybase/synchronizers/synchronizer-ws-client';
 import type {WsServer} from 'tinybase/synchronizers/synchronizer-ws-server';
 import {createWsServer} from 'tinybase/synchronizers/synchronizer-ws-server';
 import tmp from 'tmp';
+import {afterEach, beforeEach, describe, expect, test, vi} from 'vitest';
 import {WebSocket, WebSocketServer} from 'ws';
 import {getTimeFunctions} from '../common/mergeable.ts';
+import {createTestWebSocketServer} from '../common/websocket.ts';
 
 const [reset, getNow, pause] = getTimeFunctions();
+const {createWsSynchronizer} = WsClient;
+
+class MockWebSocket {
+  OPEN = 1;
+  readyState = this.OPEN;
+  bufferedAmount = 0;
+  sentPayloads: string[] = [];
+  closeCalls = 0;
+  closeCode: number | undefined;
+  closeReason: string | undefined;
+  readonly #listeners: {[event: string]: ((event: any) => void)[]} = {};
+
+  addEventListener(event: string, listener: (event: any) => void): void {
+    (this.#listeners[event] ??= []).push(listener);
+  }
+
+  removeEventListener(event: string, listener: (event: any) => void): void {
+    this.#listeners[event] = (this.#listeners[event] ?? []).filter(
+      (testListener) => testListener != listener,
+    );
+  }
+
+  send(payload: string): void {
+    this.sentPayloads.push(payload);
+  }
+
+  receive(payload: string): void {
+    (this.#listeners.message ?? []).forEach((listener) =>
+      listener({data: payload}),
+    );
+  }
+
+  close(code?: number, reason?: string): void {
+    this.closeCalls++;
+    this.closeCode = code;
+    this.closeReason = reason;
+    this.readyState = 3;
+  }
+}
+
+const getFragments = (payloads: string[]): string[] =>
+  payloads.map(
+    (payload) => payload.match(/^[^\n]*\n.+\n\d+\n\d+\n([\s\S]*)$/)?.[1] ?? '',
+  );
+
+const getFragmentGroup = (
+  payloads: string[],
+  contains: string,
+): string[] | undefined => {
+  const groups = new Map<string, string[]>();
+  payloads.forEach((payload) => {
+    const [, messageId] = payload.match(/^[^\n]*\n(.+)\n\d+\n\d+\n/) ?? [];
+    if (messageId) {
+      (groups.get(messageId) ?? groups.set(messageId, []).get(messageId))?.push(
+        payload,
+      );
+    }
+  });
+  return [...groups.values()].find(
+    (group) =>
+      group.length > 1 && getFragments(group).join('').includes(contains),
+  );
+};
+
+const getPayloadFromClient = (clientId: string, payload: string) =>
+  clientId + payload.slice(payload.indexOf('\n'));
+
+const getPromiseResolvers = <Value = void>() => {
+  let resolve: (value: Value) => void;
+  let reject: (error: any) => void;
+  const promise = new Promise<Value>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return [promise, resolve!, reject!] as const;
+};
+
+const openWebSocket = async (
+  pathId: Id,
+  port: number,
+  protocol?: string,
+): Promise<WebSocket> => {
+  const webSocket = new WebSocket(
+    'ws://localhost:' + port + '/' + pathId,
+    protocol,
+  );
+  await once(webSocket, 'open');
+  return webSocket;
+};
+
+const sendMultipleControl = (
+  webSocket: WebSocket,
+  requestId: string | null,
+  control: number,
+  body: any,
+) => webSocket.send('S\n' + JSON.stringify([requestId, -1, [control, body]]));
+
+const closeWebSocket = async (webSocket: WebSocket) => {
+  if (webSocket.readyState != WebSocket.CLOSED) {
+    const closed = once(webSocket, 'close');
+    webSocket.close();
+    await closed;
+  }
+};
+
+const createTestPersister = (
+  startAutoLoad: () => Promise<void> = async () => {},
+  destroy: () => Promise<void> = async () => {},
+) => {
+  const store = createMergeableStore();
+  return {
+    destroy,
+    getStore: () => store,
+    startAutoLoad,
+    startAutoSave: async () => {},
+  } as any;
+};
 
 beforeEach(() => {
   reset();
 });
 
+test('malformed websocket traffic is reported and disconnected', async () => {
+  for (const payload of [
+    'peer\n{',
+    'peer\n[null,2,[0,0],"extra"]',
+    'peer\n[null,2,{}]',
+    'peer\n[null,3,[[{},"invalid"],[{},"invalid"],1]]',
+    'peer\n[null,4,null]',
+    'peer\n[null,99,null]',
+  ]) {
+    const errors: Error[] = [];
+    const received: any[] = [];
+    const webSocket = new MockWebSocket();
+    const synchronizer = await createWsSynchronizer(
+      createMergeableStore(),
+      webSocket as any,
+      1,
+      undefined,
+      (...args) => received.push(args),
+      (error) => errors.push(error),
+    );
+
+    expect(() => webSocket.receive(payload)).not.toThrow();
+    expect(received).toEqual([]);
+    expect(errors.map(({message}) => message)).toEqual(['tinybase:14']);
+    expect(webSocket.closeCalls).toBe(1);
+    expect(webSocket.closeCode).toBe(1007);
+    expect(webSocket.closeReason).toBe('tinybase:14');
+
+    await synchronizer.destroy();
+  }
+});
+
+test('fragment buffering limits are explicit', async () => {
+  for (const receiveOverflow of [
+    (webSocket: MockWebSocket) =>
+      webSocket.receive('peer\n0123456789ABCDEF\n0\n1001\nx'),
+    (webSocket: MockWebSocket) => {
+      for (let message = 0; message < 101; message++) {
+        webSocket.receive(
+          'peer\n' + message.toString().padStart(16, '0') + '\n0\n2\nx',
+        );
+      }
+    },
+    (webSocket: MockWebSocket) =>
+      webSocket.receive(
+        'peer\n0123456789ABCDEF\n0\n2\n' + 'x'.repeat(16_777_217),
+      ),
+  ]) {
+    const errors: Error[] = [];
+    const webSocket = new MockWebSocket();
+    const synchronizer = await createWsSynchronizer(
+      createMergeableStore(),
+      webSocket as any,
+      1,
+      undefined,
+      undefined,
+      (error) => errors.push(error),
+    );
+
+    receiveOverflow(webSocket);
+
+    expect(errors.map(({message}) => message)).toEqual([
+      'tinybase:15:fragments',
+    ]);
+    expect(webSocket.closeCalls).toBe(1);
+    expect(webSocket.closeCode).toBe(1013);
+    expect(webSocket.closeReason).toBe('tinybase:15:fragments');
+
+    await synchronizer.destroy();
+  }
+});
+
+test('legacy WebSocket backpressure is explicit', async () => {
+  const errors: Error[] = [];
+  const webSocket = new MockWebSocket();
+  const synchronizer = await createWsSynchronizer(
+    createMergeableStore(),
+    webSocket as any,
+    0.01,
+    undefined,
+    undefined,
+    (error) => errors.push(error),
+  );
+
+  webSocket.bufferedAmount = 16_777_216;
+  await synchronizer.startSync();
+
+  expect(errors.map(({message}) => message)).toContain('tinybase:15:socket');
+  expect(webSocket.closeCalls).toBe(1);
+  expect(webSocket.closeCode).toBe(1013);
+
+  await synchronizer.destroy();
+});
+
+test('malformed websocket traffic is not relayed', async () => {
+  const errors: Error[] = [];
+  const [webSocketServer, port] = await createTestWebSocketServer();
+  const server = createWsServer(webSocketServer, undefined, (error) =>
+    errors.push(error),
+  );
+  const attacker = new WebSocket(`ws://localhost:${port}`);
+  const otherClient = new WebSocket(`ws://localhost:${port}`);
+  const received: any[] = [];
+  otherClient.on('message', (message) => received.push(message));
+  await Promise.all(
+    [attacker, otherClient].map(
+      (webSocket) =>
+        new Promise<void>((resolve) => webSocket.on('open', () => resolve())),
+    ),
+  );
+  const closed = new Promise<void>((resolve) =>
+    attacker.on('close', () => resolve()),
+  );
+
+  attacker.send('\n0123456789ABCDEF\n0\n1\n{');
+  await closed;
+  await pause();
+
+  expect(errors.map(({message}) => message)).toEqual(['tinybase:14']);
+  expect(received).toEqual([]);
+  expect(otherClient.readyState).toBe(WebSocket.OPEN);
+  expect(server.getStats()).toEqual({clients: 1, paths: 1});
+
+  otherClient.close();
+  await server.destroy();
+});
+
+test('oversized websocket traffic is disconnected before relay', async () => {
+  const errors: Error[] = [];
+  const [webSocketServer, port] = await createTestWebSocketServer();
+  const server = createWsServer(webSocketServer, undefined, (error) =>
+    errors.push(error),
+  );
+  const attacker = new WebSocket(`ws://localhost:${port}`);
+  const otherClient = new WebSocket(`ws://localhost:${port}`);
+  const received: any[] = [];
+  otherClient.on('message', (message) => received.push(message));
+  await Promise.all(
+    [attacker, otherClient].map(
+      (webSocket) =>
+        new Promise<void>((resolve) => webSocket.on('open', () => resolve())),
+    ),
+  );
+  const closed = once(attacker, 'close');
+
+  attacker.send('\n[null,1,""]' + ' '.repeat(16_777_216));
+  await closed;
+  await pause();
+
+  expect(errors.map(({message}) => message)).toEqual(['tinybase:15:socket']);
+  expect(received).toEqual([]);
+  expect(otherClient.readyState).toBe(WebSocket.OPEN);
+  expect(server.getStats()).toEqual({clients: 1, paths: 1});
+
+  await closeWebSocket(otherClient);
+  await server.destroy();
+});
+
+test('multiplexed channel resources are bounded', async () => {
+  const [webSocketServer, port] = await createTestWebSocketServer();
+  const errors: Error[] = [];
+  const server = createWsServer(webSocketServer, undefined, (error) =>
+    errors.push(error),
+  );
+  const webSocket = await openWebSocket('base', port, 'tinybase');
+
+  sendMultipleControl(webSocket, 'hello', 0, 1);
+  sendMultipleControl(webSocket, 'duplicate1', 1, 'channel0');
+  sendMultipleControl(webSocket, 'duplicate2', 1, 'channel0');
+  for (let channel = 1; channel < 100; channel++) {
+    sendMultipleControl(webSocket, 'request' + channel, 1, 'channel' + channel);
+  }
+  sendMultipleControl(webSocket, null, 2, 'channel0');
+  sendMultipleControl(webSocket, 'replacement', 1, 'channel100');
+  await pause();
+
+  expect(webSocket.readyState).toBe(WebSocket.OPEN);
+  expect(server.getStats()).toEqual({clients: 100, paths: 100});
+
+  const closed = once(webSocket, 'close');
+  sendMultipleControl(webSocket, 'overflow', 1, 'channel101');
+  const [code, reason] = await closed;
+
+  expect(code).toBe(1013);
+  expect(reason.toString()).toBe('tinybase:15:channels');
+  expect(errors.map(({message}) => message)).toContain('tinybase:15:channels');
+
+  await server.destroy();
+});
+
+test('multiplexed teardown stays within the resource cap', async () => {
+  const [webSocketServer, port] = await createTestWebSocketServer();
+  const errors: Error[] = [];
+  const [setup, resolveSetup] = getPromiseResolvers<any>();
+  const server = createWsServer(
+    webSocketServer,
+    () => setup,
+    (error) => errors.push(error),
+  );
+  const webSocket = await openWebSocket('base', port, 'tinybase');
+  const closed = once(webSocket, 'close');
+
+  sendMultipleControl(webSocket, 'hello', 0, 1);
+  for (let channel = 0; channel < 200; channel++) {
+    const channelId = 'channel' + channel;
+    sendMultipleControl(webSocket, 'subscribe' + channel, 1, channelId);
+    sendMultipleControl(webSocket, null, 2, channelId);
+  }
+  sendMultipleControl(webSocket, 'overflow', 1, 'overflow');
+  const [code, reason] = await closed;
+
+  expect(code).toBe(1013);
+  expect(reason.toString()).toBe('tinybase:15:channels');
+  expect(server.getStats()).toEqual({clients: 0, paths: 200});
+  expect(errors.map(({message}) => message)).toContain('tinybase:15:channels');
+
+  resolveSetup(undefined);
+  await server.destroy();
+});
+
+test('multiplexed resources recover after pending teardown', async () => {
+  const [webSocketServer, port] = await createTestWebSocketServer();
+  const [setup, resolveSetup] = getPromiseResolvers<any>();
+  const errors: Error[] = [];
+  const server = createWsServer(
+    webSocketServer,
+    () => setup,
+    (error) => errors.push(error),
+  );
+  const webSocket = await openWebSocket('base', port, 'tinybase');
+
+  sendMultipleControl(webSocket, 'hello', 0, 1);
+  for (let channel = 0; channel < 200; channel++) {
+    const channelId = 'channel' + channel;
+    sendMultipleControl(webSocket, 'subscribe' + channel, 1, channelId);
+    sendMultipleControl(webSocket, null, 2, channelId);
+  }
+
+  expect(webSocket.readyState).toBe(WebSocket.OPEN);
+
+  resolveSetup(undefined);
+  await pause();
+  sendMultipleControl(webSocket, 'recovered', 1, 'recovered');
+  await pause();
+
+  expect(errors).toEqual([]);
+  expect(webSocket.readyState).toBe(WebSocket.OPEN);
+  expect(server.getStats()).toEqual({clients: 1, paths: 1});
+
+  await server.destroy();
+});
+
+test('multiplexed setup buffers recover after drain and removal', async () => {
+  const [webSocketServer, port] = await createTestWebSocketServer();
+  const setups = new Map<string, ReturnType<typeof getPromiseResolvers<any>>>();
+  const errors: Error[] = [];
+  const server = createWsServer(
+    webSocketServer,
+    (pathId) => {
+      const setup = getPromiseResolvers<any>();
+      setups.set(pathId, setup);
+      return setup[0];
+    },
+    (error) => errors.push(error),
+  );
+  const webSocket = await openWebSocket('base', port, 'tinybase');
+  const body = JSON.stringify([null, 4, {['x'.repeat(8_388_608)]: 0}]);
+
+  sendMultipleControl(webSocket, 'hello', 0, 1);
+  sendMultipleControl(webSocket, 'subscribe1', 1, 'channel1');
+  webSocket.send('M\nchannel1\n\n' + body);
+  await pause();
+  setups.get('base/channel1')?.[1](undefined);
+  await pause();
+
+  sendMultipleControl(webSocket, 'subscribe2', 1, 'channel2');
+  webSocket.send('M\nchannel2\n\n' + body);
+  await pause();
+
+  expect(webSocket.readyState).toBe(WebSocket.OPEN);
+
+  sendMultipleControl(webSocket, null, 2, 'channel2');
+  sendMultipleControl(webSocket, 'subscribe3', 1, 'channel3');
+  webSocket.send('M\nchannel3\n\n' + body);
+  await pause();
+
+  expect(errors).toEqual([]);
+  expect(webSocket.readyState).toBe(WebSocket.OPEN);
+
+  setups.get('base/channel2')?.[1](undefined);
+  setups.get('base/channel3')?.[1](undefined);
+  await server.destroy();
+});
+
+test('multiplexed setup buffers share the physical socket limit', async () => {
+  const [webSocketServer, port] = await createTestWebSocketServer();
+  const errors: Error[] = [];
+  const [setup, resolveSetup] = getPromiseResolvers<any>();
+  const server = createWsServer(
+    webSocketServer,
+    () => setup,
+    (error) => errors.push(error),
+  );
+  const webSocket = await openWebSocket('base', port, 'tinybase');
+  const closed = once(webSocket, 'close');
+  const body = JSON.stringify([null, 4, {['x'.repeat(8_388_608)]: 0}]);
+
+  sendMultipleControl(webSocket, 'hello', 0, 1);
+  sendMultipleControl(webSocket, 'subscribe1', 1, 'channel1');
+  sendMultipleControl(webSocket, 'subscribe2', 1, 'channel2');
+  webSocket.send('M\nchannel1\n\n' + body);
+  webSocket.send('M\nchannel2\n\n' + body);
+  const [code, reason] = await closed;
+
+  expect(code).toBe(1013);
+  expect(reason.toString()).toBe('tinybase:15:server');
+  expect(errors.map(({message}) => message)).toContain('tinybase:15:server');
+
+  resolveSetup(undefined);
+  await server.destroy();
+});
+
+test('multiplexed setup queue shares the physical socket limit', async () => {
+  const [webSocketServer, port] = await createTestWebSocketServer();
+  const errors: Error[] = [];
+  const [setup, resolveSetup] = getPromiseResolvers<any>();
+  const server = createWsServer(
+    webSocketServer,
+    () => setup,
+    (error) => errors.push(error),
+  );
+  const webSocket = await openWebSocket('base', port, 'tinybase');
+  const closed = once(webSocket, 'close');
+
+  sendMultipleControl(webSocket, 'hello', 0, 1);
+  sendMultipleControl(webSocket, 'subscribe1', 1, 'channel1');
+  sendMultipleControl(webSocket, 'subscribe2', 1, 'channel2');
+  for (let message = 0; message < 1_000; message++) {
+    webSocket.send(`M\nchannel1\n\n["${message}",1,""]`);
+  }
+  webSocket.send('M\nchannel2\n\n["1000",1,""]');
+  const [code, reason] = await closed;
+
+  expect(code).toBe(1013);
+  expect(reason.toString()).toBe('tinybase:15:server');
+  expect(errors.map(({message}) => message)).toContain('tinybase:15:server');
+
+  resolveSetup(undefined);
+  await server.destroy();
+});
+
 test('Basics', async () => {
-  const wsServer = createWsServer(new WebSocketServer({port: 8049}));
+  const [webSocketServer, port] = await createTestWebSocketServer();
+  const wsServer = createWsServer(webSocketServer);
 
   const s1 = createMergeableStore('s1', getNow);
   const synchronizer1 = await createWsSynchronizer(
     s1,
-    new WebSocket('ws://localhost:8049'),
+    new WebSocket(`ws://localhost:${port}`),
   );
   await synchronizer1.startSync();
   s1.setCell('t1', 'r1', 'c1', 4);
@@ -31,7 +503,7 @@ test('Basics', async () => {
   const s2 = createMergeableStore('s2', getNow);
   const synchronizer2 = await createWsSynchronizer(
     s2,
-    new WebSocket('ws://localhost:8049'),
+    new WebSocket(`ws://localhost:${port}`),
   );
   await synchronizer2.startSync();
   s2.setCell('t1', 'r2', 'price', 5);
@@ -50,15 +522,311 @@ test('Basics', async () => {
   await wsServer.destroy();
 });
 
+test('fragmented websocket payloads can arrive out of order', async () => {
+  const received: any[] = [];
+  const sourceStore = createMergeableStore('s1', getNow);
+  const targetStore = createMergeableStore('s2', getNow);
+  const sourceSocket = new MockWebSocket();
+  const targetSocket = new MockWebSocket();
+  const synchronizer1 = await createWsSynchronizer(
+    sourceStore,
+    sourceSocket as any,
+    1,
+    undefined,
+    undefined,
+    undefined,
+    12,
+  );
+  const synchronizer2 = await createWsSynchronizer(
+    targetStore,
+    targetSocket as any,
+    1,
+    undefined,
+    (...args) => received.push(args),
+    undefined,
+    12,
+  );
+
+  try {
+    await synchronizer1.startSync();
+    await synchronizer2.startSync();
+    sourceStore.setCell('t1', 'r1', 'c1', 'abcdefghijklmnopqrstuvwxyz');
+    await pause();
+
+    const fragmentGroup =
+      getFragmentGroup(
+        sourceSocket.sentPayloads,
+        'abcdefghijklmnopqrstuvwxyz',
+      ) ?? [];
+    expect(fragmentGroup.length).toBeGreaterThan(1);
+    fragmentGroup
+      .toReversed()
+      .forEach((payload) =>
+        targetSocket.receive(getPayloadFromClient('s1', payload)),
+      );
+
+    expect(
+      received.some(
+        ([fromClientId, , message, body]) =>
+          fromClientId == 's1' &&
+          message == Message.ContentDiff &&
+          JSON.stringify(body).includes('abcdefghijklmnopqrstuvwxyz'),
+      ),
+    ).toBe(true);
+  } finally {
+    await synchronizer1.destroy();
+    await synchronizer2.destroy();
+  }
+});
+
+test('incomplete fragmented websocket buffers expire', async () => {
+  const received: any[] = [];
+  const sourceStore = createMergeableStore('s1', getNow);
+  const targetStore = createMergeableStore('s2', getNow);
+  const sourceSocket = new MockWebSocket();
+  const targetSocket = new MockWebSocket();
+  const synchronizer1 = await createWsSynchronizer(
+    sourceStore,
+    sourceSocket as any,
+    1,
+    undefined,
+    undefined,
+    undefined,
+    12,
+  );
+  const synchronizer2 = await createWsSynchronizer(
+    targetStore,
+    targetSocket as any,
+    0.01,
+    undefined,
+    (...args) => received.push(args),
+    undefined,
+    12,
+  );
+
+  try {
+    await synchronizer1.startSync();
+    sourceStore.setCell('t1', 'r1', 'c1', 'abcdefghijklmnopqrstuvwxyz');
+    await pause();
+
+    const fragmentGroup =
+      getFragmentGroup(
+        sourceSocket.sentPayloads,
+        'abcdefghijklmnopqrstuvwxyz',
+      ) ?? [];
+    expect(fragmentGroup.length).toBeGreaterThan(1);
+    const receivePayload = (payload: string) =>
+      targetSocket.receive(getPayloadFromClient('s1', payload));
+    const receiveFirstFragment = () => receivePayload(fragmentGroup[0]);
+    const receiveRestOfFragments = () =>
+      fragmentGroup.slice(1).forEach(receivePayload);
+    const hasReceivedContentDiff = () =>
+      received.some(
+        ([fromClientId, , message, body]) =>
+          fromClientId == 's1' &&
+          message == Message.ContentDiff &&
+          JSON.stringify(body).includes('abcdefghijklmnopqrstuvwxyz'),
+      );
+
+    receiveFirstFragment();
+    await pause(20);
+    expect(hasReceivedContentDiff()).toBe(false);
+
+    receiveRestOfFragments();
+    await pause(20);
+    expect(hasReceivedContentDiff()).toBe(false);
+
+    receiveFirstFragment();
+    await pause(20);
+    expect(hasReceivedContentDiff()).toBe(false);
+
+    receiveRestOfFragments();
+    await pause(20);
+    expect(hasReceivedContentDiff()).toBe(false);
+  } finally {
+    await synchronizer1.destroy();
+    await synchronizer2.destroy();
+  }
+});
+
+test('fragmented websocket payloads', async () => {
+  const sentPayloads: string[] = [];
+  const [webSocketServer, port] = await createTestWebSocketServer();
+  const wsServer = createWsServer(webSocketServer);
+  let synchronizer1: WsClient.WsSynchronizer<WebSocket> | undefined;
+  let synchronizer2: WsClient.WsSynchronizer<WebSocket> | undefined;
+  const s1 = createMergeableStore('s1', getNow);
+  const s2 = createMergeableStore('s2', getNow);
+  s1.setCell('t1', 'r1', 'c1', 'abcdefghijklmnopqrstuvwxyz');
+
+  const webSocket1 = new WebSocket(`ws://localhost:${port}`);
+  const send1 = webSocket1.send.bind(webSocket1);
+  webSocket1.send = ((payload: string) => {
+    sentPayloads.push(payload);
+    return send1(payload);
+  }) as any;
+
+  try {
+    synchronizer1 = await createWsSynchronizer(
+      s1,
+      webSocket1,
+      1,
+      undefined,
+      undefined,
+      undefined,
+      20,
+    );
+    await synchronizer1.startSync();
+
+    synchronizer2 = await createWsSynchronizer(
+      s2,
+      new WebSocket(`ws://localhost:${port}`),
+      1,
+      undefined,
+      undefined,
+      undefined,
+      20,
+    );
+    await synchronizer2.startSync();
+    await pause();
+
+    expect(sentPayloads.some((payload) => payload.split('\n').length > 2)).toBe(
+      true,
+    );
+    expect(s2.getTables()).toEqual({
+      t1: {r1: {c1: 'abcdefghijklmnopqrstuvwxyz'}},
+    });
+  } finally {
+    await synchronizer1?.destroy();
+    await synchronizer2?.destroy();
+    await wsServer.destroy();
+  }
+});
+
+test('fragment groups stay within the protocol limit', async () => {
+  const fragmentSize = 1;
+  const value = 'x'.repeat(1_500);
+  const sentPayloads: string[] = [];
+  const [webSocketServer, port] = await createTestWebSocketServer();
+  const wsServer = createWsServer(webSocketServer);
+  let synchronizer1: WsClient.WsSynchronizer<WebSocket> | undefined;
+  let synchronizer2: WsClient.WsSynchronizer<WebSocket> | undefined;
+  const s1 = createMergeableStore('s1', getNow);
+  const s2 = createMergeableStore('s2', getNow);
+  s1.setCell('t1', 'r1', 'c1', value);
+
+  const webSocket1 = new WebSocket(`ws://localhost:${port}`);
+  const send1 = webSocket1.send.bind(webSocket1);
+  webSocket1.send = ((payload: string) => {
+    sentPayloads.push(payload);
+    return send1(payload);
+  }) as any;
+
+  try {
+    synchronizer1 = await createWsSynchronizer(
+      s1,
+      webSocket1,
+      1,
+      undefined,
+      undefined,
+      undefined,
+      fragmentSize,
+    );
+    await synchronizer1.startSync();
+
+    synchronizer2 = await createWsSynchronizer(
+      s2,
+      new WebSocket(`ws://localhost:${port}`),
+      1,
+      undefined,
+      undefined,
+      undefined,
+      fragmentSize,
+    );
+    await synchronizer2.startSync();
+    await pause(200);
+
+    const fragmentGroup = getFragmentGroup(sentPayloads, value) ?? [];
+    expect(fragmentGroup.length).toBeGreaterThan(1);
+    expect(fragmentGroup.length).toBeLessThanOrEqual(1_000);
+    expect(s2.getCell('t1', 'r1', 'c1')).toBe(value);
+  } finally {
+    await synchronizer1?.destroy();
+    await synchronizer2?.destroy();
+    await wsServer.destroy();
+  }
+});
+
+test('fragmented websocket payloads preserve Unicode', async () => {
+  const fragmentSize = 5;
+  // This four-code-unit pattern walks the emoji before, across, and after each
+  // five-code-unit boundary.
+  const unicodeValue = 'a😀b'.repeat(8);
+  const sentPayloads: string[] = [];
+  const [webSocketServer, port] = await createTestWebSocketServer();
+  const wsServer = createWsServer(webSocketServer);
+  let synchronizer1: WsClient.WsSynchronizer<WebSocket> | undefined;
+  let synchronizer2: WsClient.WsSynchronizer<WebSocket> | undefined;
+  const s1 = createMergeableStore('s1', getNow);
+  const s2 = createMergeableStore('s2', getNow);
+  s1.setCell('t1', 'r1', 'c1', unicodeValue);
+
+  const webSocket1 = new WebSocket(`ws://localhost:${port}`);
+  const send1 = webSocket1.send.bind(webSocket1);
+  webSocket1.send = ((payload: string) => {
+    sentPayloads.push(payload);
+    return send1(payload);
+  }) as any;
+
+  try {
+    synchronizer1 = await createWsSynchronizer(
+      s1,
+      webSocket1,
+      1,
+      undefined,
+      undefined,
+      undefined,
+      fragmentSize,
+    );
+    await synchronizer1.startSync();
+
+    synchronizer2 = await createWsSynchronizer(
+      s2,
+      new WebSocket(`ws://localhost:${port}`),
+      1,
+      undefined,
+      undefined,
+      undefined,
+      fragmentSize,
+    );
+    await synchronizer2.startSync();
+    await pause();
+
+    const fragmentGroup = getFragmentGroup(sentPayloads, unicodeValue) ?? [];
+    expect(fragmentGroup.length).toBeGreaterThan(1);
+    expect(
+      getFragments(fragmentGroup).every(
+        (fragment) => new TextEncoder().encode(fragment).length <= fragmentSize,
+      ),
+    ).toBe(true);
+    expect(s2.getCell('t1', 'r1', 'c1')).toBe(unicodeValue);
+  } finally {
+    await synchronizer1?.destroy();
+    await synchronizer2?.destroy();
+    await wsServer.destroy();
+  }
+});
+
 describe('Multiple connections', () => {
+  let port: number;
   let wssServer: WebSocketServer;
   let wsServer: WsServer;
-  let synchronizer1: WsSynchronizer<WebSocket>;
-  let synchronizer2: WsSynchronizer<WebSocket>;
-  let synchronizer3: WsSynchronizer<WebSocket>;
+  let synchronizer1: WsClient.WsSynchronizer<WebSocket>;
+  let synchronizer2: WsClient.WsSynchronizer<WebSocket>;
+  let synchronizer3: WsClient.WsSynchronizer<WebSocket>;
 
   beforeEach(async () => {
-    wssServer = new WebSocketServer({port: 8049});
+    [wssServer, port] = await createTestWebSocketServer();
     wsServer = createWsServer(wssServer);
   });
 
@@ -73,22 +841,28 @@ describe('Multiple connections', () => {
     synchronizer1 = await (
       await createWsSynchronizer(
         createMergeableStore('s1', getNow),
-        new WebSocket('ws://localhost:8049/p1'),
+        new WebSocket(`ws://localhost:${port}/p1`),
       )
     ).startSync();
     synchronizer2 = await (
       await createWsSynchronizer(
         createMergeableStore('s2', getNow),
-        new WebSocket('ws://localhost:8049/p1'),
+        new WebSocket(`ws://localhost:${port}/p1`),
       )
     ).startSync();
     synchronizer3 = await (
       await createWsSynchronizer(
         createMergeableStore('s3', getNow),
-        new WebSocket('ws://localhost:8049/p2'),
+        new WebSocket(`ws://localhost:${port}/p2`),
       )
     ).startSync();
     expect(wsServer.getWebSocketServer()).toEqual(wssServer);
+    expect(wssServer.listenerCount('error')).toBeGreaterThan(0);
+    expect(
+      [...wssServer.clients].every(
+        (webSocket) => webSocket.listenerCount('error') > 0,
+      ),
+    ).toBe(true);
     expect(wsServer.getPathIds()).toEqual(['p1', 'p2']);
     expect(wsServer.getClientIds('p1').length).toEqual(2);
     expect(wsServer.getClientIds('p2').length).toEqual(1);
@@ -136,19 +910,19 @@ describe('Multiple connections', () => {
     synchronizer1 = await (
       await createWsSynchronizer(
         createMergeableStore('s1', getNow),
-        new WebSocket('ws://localhost:8049/p1'),
+        new WebSocket(`ws://localhost:${port}/p1`),
       )
     ).startSync();
     synchronizer2 = await (
       await createWsSynchronizer(
         createMergeableStore('s2', getNow),
-        new WebSocket('ws://localhost:8049/p1'),
+        new WebSocket(`ws://localhost:${port}/p1`),
       )
     ).startSync();
     synchronizer3 = await (
       await createWsSynchronizer(
         createMergeableStore('s3', getNow),
-        new WebSocket('ws://localhost:8049/p2'),
+        new WebSocket(`ws://localhost:${port}/p2`),
       )
     ).startSync();
 
@@ -183,12 +957,425 @@ describe('Multiple connections', () => {
   });
 });
 
+describe('Lifecycle', () => {
+  test('failed setup releases only its multiplexed generation', async () => {
+    const [webSocketServer, port] = await createTestWebSocketServer();
+    const plainError = new Error('plain setup');
+    const staleError = new Error('stale setup');
+    const [plainSetup, , rejectPlainSetup] = getPromiseResolvers<any>();
+    const [staleSetup, , rejectStaleSetup] = getPromiseResolvers<any>();
+    const attempts = {plain: 0, stale: 0};
+    const errors: Error[] = [];
+    const wsServer = createWsServer(
+      webSocketServer,
+      ((pathId: string) => {
+        const channelId = pathId.split('/').at(-1) as 'plain' | 'stale';
+        attempts[channelId]++;
+        return attempts[channelId] == 1
+          ? channelId == 'plain'
+            ? plainSetup
+            : staleSetup
+          : undefined;
+      }) as any,
+      (error) => errors.push(error),
+      0.01,
+    );
+    const webSocket = await openWebSocket('base', port, 'tinybase');
+
+    sendMultipleControl(webSocket, 'hello', 0, 1);
+    sendMultipleControl(webSocket, 'plain1', 1, 'plain');
+    sendMultipleControl(webSocket, 'plain2', 1, 'plain');
+    await pause();
+
+    expect(attempts.plain).toBe(1);
+
+    rejectPlainSetup(plainError);
+    await pause();
+    sendMultipleControl(webSocket, 'plain3', 1, 'plain');
+    await pause();
+
+    expect(attempts.plain).toBe(2);
+
+    sendMultipleControl(webSocket, 'stale1', 1, 'stale');
+    sendMultipleControl(webSocket, 'stale2', 1, 'stale');
+    await pause();
+
+    expect(attempts.stale).toBe(1);
+
+    sendMultipleControl(webSocket, null, 2, 'stale');
+    sendMultipleControl(webSocket, 'stale3', 1, 'stale');
+    await pause();
+
+    expect(attempts.stale).toBe(2);
+
+    rejectStaleSetup(staleError);
+    await pause();
+    sendMultipleControl(webSocket, 'stale4', 1, 'stale');
+    await pause();
+
+    expect(attempts.stale).toBe(2);
+    expect(wsServer.getStats()).toEqual({clients: 2, paths: 2});
+    expect(errors).toEqual([plainError, staleError]);
+
+    await closeWebSocket(webSocket);
+    await wsServer.destroy();
+  });
+
+  test('listener failures do not interrupt path lifecycles', async () => {
+    const [webSocketServer, port] = await createTestWebSocketServer();
+    const pathErrors = [
+      [new Error('path add first'), new Error('path add second')],
+      [new Error('path del first'), new Error('path del second')],
+    ];
+    const clientErrors = [
+      [new Error('client add first'), new Error('client add second')],
+      [new Error('client del first'), new Error('client del second')],
+    ];
+    const errors: Error[] = [];
+    const pathChanges: number[] = [];
+    const clientChanges: number[] = [];
+    const wsServer = createWsServer(webSocketServer, undefined, (error) => {
+      errors.push(error);
+      throw new Error('reporter');
+    });
+    wsServer.addPathIdsListener((_server, _pathId, addedOrRemoved) => {
+      throw pathErrors[addedOrRemoved == 1 ? 0 : 1][0];
+    });
+    wsServer.addPathIdsListener((_server, _pathId, addedOrRemoved) => {
+      pathChanges.push(addedOrRemoved);
+      throw pathErrors[addedOrRemoved == 1 ? 0 : 1][1];
+    });
+    wsServer.addClientIdsListener(
+      null,
+      (_server, _pathId, _clientId, addedOrRemoved) => {
+        throw clientErrors[addedOrRemoved == 1 ? 0 : 1][0];
+      },
+    );
+    wsServer.addClientIdsListener(
+      null,
+      (_server, _pathId, _clientId, addedOrRemoved) => {
+        clientChanges.push(addedOrRemoved);
+        throw clientErrors[addedOrRemoved == 1 ? 0 : 1][1];
+      },
+    );
+
+    const webSocket = await openWebSocket('path', port);
+    await pause();
+    expect(wsServer.getStats()).toEqual({clients: 1, paths: 1});
+
+    await closeWebSocket(webSocket);
+    await pause();
+    expect(wsServer.getStats()).toEqual({clients: 0, paths: 0});
+    expect(pathChanges).toEqual([1, -1]);
+    expect(clientChanges).toEqual([1, -1]);
+    expect(errors).toEqual([
+      pathErrors[0][0],
+      clientErrors[0][0],
+      clientErrors[1][0],
+      pathErrors[1][0],
+    ]);
+
+    await wsServer.destroy();
+  });
+
+  test('failed setup can be retried', async () => {
+    const [webSocketServer, port] = await createTestWebSocketServer();
+    const setupError = new Error('setup');
+    const errors: Error[] = [];
+    let attempts = 0;
+    const wsServer = createWsServer(
+      webSocketServer,
+      (() => {
+        attempts++;
+        if (attempts == 1) {
+          throw setupError;
+        }
+        return createTestPersister();
+      }) as any,
+      (error) => errors.push(error),
+      0.01,
+    );
+
+    const webSocket1 = await openWebSocket('path', port);
+    await pause();
+    expect(errors).toEqual([setupError]);
+    expect(wsServer.getStats()).toEqual({clients: 0, paths: 0});
+    await closeWebSocket(webSocket1);
+
+    const webSocket2 = await openWebSocket('path', port);
+    await pause();
+    expect(attempts).toBe(2);
+    expect(wsServer.getStats()).toEqual({clients: 1, paths: 1});
+
+    await closeWebSocket(webSocket2);
+    await wsServer.destroy();
+  });
+
+  test('pre-readiness content hashes are coalesced', async () => {
+    const [webSocketServer, port] = await createTestWebSocketServer();
+    const [setup, resolveSetup] = getPromiseResolvers<any>();
+    const wsServer = createWsServer(webSocketServer, (() => setup) as any);
+    const webSocket1 = await openWebSocket('path', port);
+    const webSocket2 = await openWebSocket('path', port);
+    const received: string[] = [];
+    webSocket2.on('message', (message) => received.push(message.toString()));
+
+    webSocket1.send('\n["one",2,[1,1]]');
+    webSocket1.send('\n["two",2,[2,2]]');
+    await pause();
+    resolveSetup(undefined);
+    await pause();
+
+    expect(received.filter((payload) => payload.includes(',2,['))).toHaveLength(
+      1,
+    );
+    expect(received[0]).toContain('["two",2,[2,2]]');
+
+    await closeWebSocket(webSocket1);
+    await closeWebSocket(webSocket2);
+    await wsServer.destroy();
+  });
+
+  test('pre-readiness queues expire', async () => {
+    const [webSocketServer, port] = await createTestWebSocketServer();
+    const [setup, resolveSetup] = getPromiseResolvers<any>();
+    const errors: Error[] = [];
+    const wsServer = createWsServer(
+      webSocketServer,
+      (() => setup) as any,
+      (error) => errors.push(error),
+      0.01,
+    );
+    const webSocket = await openWebSocket('path', port);
+    const closed = once(webSocket, 'close');
+
+    webSocket.send('\n["request",4,{}]');
+    await closed;
+
+    expect(errors.map(({message}) => message)).toContain('tinybase:15:server');
+
+    resolveSetup(undefined);
+    await pause();
+    await wsServer.destroy();
+  });
+
+  test('pre-readiness queues have a message cap', async () => {
+    const [webSocketServer, port] = await createTestWebSocketServer();
+    const [setup, resolveSetup] = getPromiseResolvers<any>();
+    const errors: Error[] = [];
+    const wsServer = createWsServer(
+      webSocketServer,
+      (() => setup) as any,
+      (error) => errors.push(error),
+    );
+    const webSocket = await openWebSocket('path', port);
+    const closed = once(webSocket, 'close');
+
+    for (let request = 0; request < 1_001; request++) {
+      webSocket.send('\n["request' + request + '",4,{}]');
+    }
+    await closed;
+
+    expect(errors.map(({message}) => message)).toContain('tinybase:15:server');
+
+    resolveSetup(undefined);
+    await pause();
+    await wsServer.destroy();
+  });
+
+  test('closed pending client does not replace a new generation', async () => {
+    const [webSocketServer, port] = await createTestWebSocketServer();
+    const [firstSetup, resolveFirstSetup] = getPromiseResolvers<any>();
+    let attempts = 0;
+    const wsServer = createWsServer(
+      webSocketServer,
+      (() => (++attempts == 1 ? firstSetup : createTestPersister())) as any,
+      undefined,
+      0.01,
+    );
+
+    const webSocket1 = await openWebSocket('path', port);
+    expect(wsServer.getStats()).toEqual({clients: 1, paths: 1});
+    await closeWebSocket(webSocket1);
+    await pause();
+    expect(wsServer.getStats()).toEqual({clients: 0, paths: 1});
+
+    const webSocket2 = await openWebSocket('path', port);
+    await pause();
+    expect(attempts).toBe(2);
+    expect(wsServer.getStats()).toEqual({clients: 1, paths: 1});
+
+    resolveFirstSetup(createTestPersister());
+    await pause();
+    expect(wsServer.getStats()).toEqual({clients: 1, paths: 1});
+
+    await closeWebSocket(webSocket2);
+    await wsServer.destroy();
+  });
+
+  test('pending cleanup does not delete a replacement path', async () => {
+    const [webSocketServer, port] = await createTestWebSocketServer();
+    const [firstDestroy, resolveFirstDestroy] = getPromiseResolvers();
+    let firstDestroyStarted = false;
+    let attempts = 0;
+    const wsServer = createWsServer(
+      webSocketServer,
+      (() =>
+        ++attempts == 1
+          ? createTestPersister(undefined, async () => {
+              firstDestroyStarted = true;
+              await firstDestroy;
+            })
+          : createTestPersister()) as any,
+      undefined,
+      0.01,
+    );
+
+    const webSocket1 = await openWebSocket('path', port);
+    await pause();
+    await closeWebSocket(webSocket1);
+    await pause();
+    expect(firstDestroyStarted).toBe(true);
+
+    const webSocket2 = await openWebSocket('path', port);
+    await pause();
+    expect(attempts).toBe(2);
+    expect(wsServer.getStats()).toEqual({clients: 1, paths: 1});
+
+    resolveFirstDestroy();
+    await pause();
+    expect(wsServer.getStats()).toEqual({clients: 1, paths: 1});
+
+    await closeWebSocket(webSocket2);
+    await wsServer.destroy();
+  });
+
+  test('failed cleanup still deletes path state', async () => {
+    const [webSocketServer, port] = await createTestWebSocketServer();
+    const cleanupError = new Error('cleanup');
+    const errors: Error[] = [];
+    let attempts = 0;
+    const wsServer = createWsServer(
+      webSocketServer,
+      (() =>
+        ++attempts == 1
+          ? createTestPersister(undefined, async () => {
+              throw cleanupError;
+            })
+          : createTestPersister()) as any,
+      (error) => errors.push(error),
+      0.01,
+    );
+
+    const webSocket1 = await openWebSocket('path', port);
+    await pause();
+    await closeWebSocket(webSocket1);
+    await pause();
+    expect(errors).toContain(cleanupError);
+    expect(wsServer.getStats()).toEqual({clients: 0, paths: 0});
+
+    const webSocket2 = await openWebSocket('path', port);
+    await pause();
+    expect(attempts).toBe(2);
+    expect(wsServer.getStats()).toEqual({clients: 1, paths: 1});
+
+    await closeWebSocket(webSocket2);
+    await wsServer.destroy();
+  });
+
+  test('destroy waits for server and client closure', async () => {
+    const [webSocketServer, port] = await createTestWebSocketServer();
+    const wsServer = createWsServer(webSocketServer);
+    let closed = 0;
+    webSocketServer.on('connection', (client) =>
+      client.on('close', () => closed++),
+    );
+    const webSocket1 = await openWebSocket('path1', port);
+    const webSocket2 = await openWebSocket('path2', port);
+    await pause();
+
+    await wsServer.destroy();
+    expect(closed).toBe(2);
+    expect(webSocketServer.clients.size).toBe(0);
+    expect(webSocketServer.address()).toBeNull();
+    expect(wsServer.getStats()).toEqual({clients: 0, paths: 0});
+    await closeWebSocket(webSocket1);
+    await closeWebSocket(webSocket2);
+    await wsServer.destroy();
+  });
+
+  test('destroy removes owned listeners when closure fails', async () => {
+    const serverCloseError = new Error('server close');
+    const clientCloseError = new Error('client close');
+    const externalServerError = () => {};
+    const externalConnection = () => {};
+    const externalClientError = () => {};
+    const externalClientClose = () => {};
+    const webSocketServer = new EventEmitter() as any;
+    webSocketServer.on('error', externalServerError);
+    webSocketServer.on('connection', externalConnection);
+    webSocketServer.close = (() => {
+      throw serverCloseError;
+    }) as any;
+    const webSocket = new EventEmitter() as any;
+    webSocket.OPEN = 1;
+    webSocket.CLOSED = 3;
+    webSocket.protocol = 'tinybase';
+    webSocket.readyState = webSocket.OPEN;
+    webSocket.on('error', externalClientError);
+    webSocket.on('close', externalClientClose);
+    webSocket.close = () => {
+      throw clientCloseError;
+    };
+
+    const wsServer = createWsServer(webSocketServer);
+    webSocketServer.emit('connection', webSocket, {
+      headers: {'sec-websocket-key': 'client'},
+      url: '/path',
+    });
+    await pause();
+
+    await expect(wsServer.destroy()).rejects.toBe(serverCloseError);
+    expect(webSocketServer.listeners('error')).toEqual([externalServerError]);
+    expect(webSocketServer.listeners('connection')).toEqual([
+      externalConnection,
+    ]);
+    expect(webSocket.listeners('error')).toEqual([externalClientError]);
+    expect(webSocket.listeners('close')).toEqual([externalClientClose]);
+  });
+
+  test('destroy reports WebSocket server callback errors', async () => {
+    const closeError = new Error('not running');
+    const webSocketServer = new EventEmitter() as any;
+    webSocketServer.close = (callback: (error?: Error) => void) =>
+      callback(closeError);
+    const wsServer = createWsServer(webSocketServer);
+
+    await expect(wsServer.destroy()).rejects.toBe(closeError);
+    expect(webSocketServer.listenerCount('error')).toBe(0);
+    expect(webSocketServer.listenerCount('connection')).toBe(0);
+  });
+});
+
 describe('Persistence', () => {
   let tmpDir: string;
+  let synchronizerCleanups: (() => Promise<unknown>)[];
+  let wsServerCleanups: (() => Promise<unknown>)[];
 
   beforeEach(() => {
     tmp.setGracefulCleanup();
     tmpDir = tmp.dirSync().name;
+    synchronizerCleanups = [];
+    wsServerCleanups = [];
+  });
+
+  afterEach(async () => {
+    for (const cleanup of synchronizerCleanups) {
+      await cleanup();
+    }
+    for (const cleanup of wsServerCleanups) {
+      await cleanup();
+    }
   });
 
   const createPersister = (serverStore: MergeableStore, pathId: Id) =>
@@ -197,24 +1384,38 @@ describe('Persistence', () => {
       join(tmpDir, pathId.replaceAll('/', '-') + '.json'),
     );
 
+  const expectPersisted = (pathId: Id, expected: unknown) =>
+    vi.waitFor(() =>
+      expect(
+        JSON.parse(
+          readFileSync(
+            join(tmpDir, pathId.replaceAll('/', '-') + '.json'),
+            'utf-8',
+          ),
+        ),
+      ).toEqual(expected),
+    );
+
   test('single client', async () => {
     const serverStore = createMergeableStore('ss', getNow);
-    const wsServer = createWsServer(
-      new WebSocketServer({port: 8049}),
-      (pathId) => createPersister(serverStore, pathId),
+    const [webSocketServer, port] = await createTestWebSocketServer();
+    const wsServer = createWsServer(webSocketServer, (pathId) =>
+      createPersister(serverStore, pathId),
     );
+    wsServerCleanups.push(() => wsServer.destroy());
 
     const clientStore = createMergeableStore('s1', getNow);
     const synchronizer = await createWsSynchronizer(
       clientStore,
-      new WebSocket('ws://localhost:8049/p1'),
+      new WebSocket(`ws://localhost:${port}/p1`),
     );
+    synchronizerCleanups.push(() => synchronizer.destroy());
     await synchronizer.startSync();
     clientStore.setCell('t1', 'r1', 'c1', 1);
 
     await pause();
     expect(serverStore.getTables()).toEqual({t1: {r1: {c1: 1}}});
-    expect(JSON.parse(readFileSync(join(tmpDir, 'p1.json'), 'utf-8'))).toEqual([
+    await expectPersisted('p1', [
       [
         {
           t1: [
@@ -236,7 +1437,7 @@ describe('Persistence', () => {
     expect(clientStore.getTables()).toEqual({
       t1: {r1: {c1: 1}, r2: {c2: 2}},
     });
-    expect(JSON.parse(readFileSync(join(tmpDir, 'p1.json'), 'utf-8'))).toEqual([
+    await expectPersisted('p1', [
       [
         {
           t1: [
@@ -256,6 +1457,163 @@ describe('Persistence', () => {
 
     await synchronizer.destroy();
     await wsServer.destroy();
+  });
+
+  test('fragmented server payloads', async () => {
+    const sentPayloads: string[] = [];
+    const [webSocketServer, port] = await createTestWebSocketServer();
+    webSocketServer.on('connection', (client) => {
+      const send = client.send.bind(client);
+      client.send = ((payload: string) => {
+        sentPayloads.push(payload);
+        return send(payload);
+      }) as any;
+    });
+    const serverStore = createMergeableStore('ss', getNow);
+    const wsServer = createWsServer(
+      webSocketServer,
+      (pathId) => createPersister(serverStore, pathId),
+      undefined,
+      undefined,
+      20,
+    );
+    wsServerCleanups.push(() => wsServer.destroy());
+
+    const clientStore = createMergeableStore('s1', getNow);
+    const synchronizer = await createWsSynchronizer(
+      clientStore,
+      new WebSocket(`ws://localhost:${port}/p1`),
+      1,
+      undefined,
+      undefined,
+      undefined,
+      20,
+    );
+    synchronizerCleanups.push(() => synchronizer.destroy());
+
+    try {
+      await synchronizer.startSync();
+      serverStore.setCell('t1', 'r1', 'c1', 'abcdefghijklmnopqrstuvwxyz');
+      await pause();
+
+      expect(
+        sentPayloads.some((payload) => payload.split('\n').length > 2),
+      ).toBe(true);
+      expect(clientStore.getTables()).toEqual({
+        t1: {r1: {c1: 'abcdefghijklmnopqrstuvwxyz'}},
+      });
+    } finally {
+      await synchronizer.destroy();
+      await wsServer.destroy();
+    }
+  });
+
+  test('only sends missing data to first persisted client', async () => {
+    const persistedStore = createMergeableStore('seed', getNow);
+    persistedStore.setCell('t1', 'r1', 'c1', 'existing');
+    const clientContent = persistedStore.getMergeableContent();
+    persistedStore.setCell('t1', 'r2', 'c1', 'missing');
+    writeFileSync(
+      join(tmpDir, 'p1.json'),
+      JSON.stringify(persistedStore.getMergeableContent()),
+      'utf-8',
+    );
+
+    const sentPayloads: string[] = [];
+    const [webSocketServer, port] = await createTestWebSocketServer();
+    webSocketServer.on('connection', (client) => {
+      const send = client.send.bind(client);
+      client.send = ((payload: string) => {
+        sentPayloads.push(payload);
+        return send(payload);
+      }) as any;
+    });
+
+    const wsServer = createWsServer(webSocketServer, (pathId) =>
+      createPersister(createMergeableStore('ss', getNow), pathId),
+    );
+    wsServerCleanups.push(() => wsServer.destroy());
+    const clientStore = createMergeableStore('s1', getNow);
+    clientStore.setMergeableContent(clientContent);
+    const synchronizer = await createWsSynchronizer(
+      clientStore,
+      new WebSocket(`ws://localhost:${port}/p1`),
+    );
+    synchronizerCleanups.push(() => synchronizer.destroy());
+
+    try {
+      await synchronizer.startSync();
+      await pause();
+
+      expect(clientStore.getTables()).toEqual({
+        t1: {r1: {c1: 'existing'}, r2: {c1: 'missing'}},
+      });
+      expect(sentPayloads.some((payload) => payload.includes('missing'))).toBe(
+        true,
+      );
+      expect(sentPayloads.some((payload) => payload.includes('existing'))).toBe(
+        false,
+      );
+    } finally {
+      await synchronizer.destroy();
+      await wsServer.destroy();
+    }
+  });
+
+  test('incomplete fragmented server buffers expire', async () => {
+    const sourceStore = createMergeableStore('s1', getNow);
+    const sourceSocket = new MockWebSocket();
+    const sourceSynchronizer = await createWsSynchronizer(
+      sourceStore,
+      sourceSocket as any,
+      1,
+      undefined,
+      undefined,
+      undefined,
+      12,
+    );
+    synchronizerCleanups.push(() => sourceSynchronizer.destroy());
+    const serverStore = createMergeableStore('ss', getNow);
+    const [webSocketServer, port] = await createTestWebSocketServer();
+    const wsServer = createWsServer(
+      webSocketServer,
+      (pathId) => createPersister(serverStore, pathId),
+      undefined,
+      0.01,
+    );
+    wsServerCleanups.push(() => wsServer.destroy());
+    const webSocket = new WebSocket(`ws://localhost:${port}/p1`);
+    await new Promise<void>((resolve) => webSocket.on('open', () => resolve()));
+    await pause();
+
+    try {
+      await sourceSynchronizer.startSync();
+      sourceStore.setCell('t1', 'r1', 'c1', 'abcdefghijklmnopqrstuvwxyz');
+      await pause();
+
+      const fragmentGroup =
+        getFragmentGroup(
+          sourceSocket.sentPayloads,
+          'abcdefghijklmnopqrstuvwxyz',
+        ) ?? [];
+      expect(fragmentGroup.length).toBeGreaterThan(1);
+      const sendFirstFragment = () => webSocket.send(fragmentGroup[0]);
+      const sendRestOfFragments = () =>
+        fragmentGroup.slice(1).forEach((payload) => webSocket.send(payload));
+
+      sendFirstFragment();
+      await pause(20);
+      sendRestOfFragments();
+      await pause(20);
+      sendFirstFragment();
+      await pause(20);
+
+      expect(serverStore.getTables()).toEqual({});
+    } finally {
+      webSocket.close();
+      await sourceSynchronizer.destroy();
+      await wsServer.destroy();
+    }
   });
 
   describe('single client to existing path', () => {
@@ -290,19 +1648,19 @@ describe('Persistence', () => {
     });
 
     test('alters data prematurely', async () => {
-      const wsServer = createWsServer(
-        new WebSocketServer({port: 8049}),
-        (pathId) => {
-          serverStore.setValue('p', pathId);
-          return createPersister(serverStore, pathId);
-        },
-      );
+      const [webSocketServer, port] = await createTestWebSocketServer();
+      const wsServer = createWsServer(webSocketServer, (pathId) => {
+        serverStore.setValue('p', pathId);
+        return createPersister(serverStore, pathId);
+      });
+      wsServerCleanups.push(() => wsServer.destroy());
 
       const clientStore = createMergeableStore('s1', getNow);
       const synchronizer = await createWsSynchronizer(
         clientStore,
-        new WebSocket('ws://localhost:8049/p1'),
+        new WebSocket(`ws://localhost:${port}/p1`),
       );
+      synchronizerCleanups.push(() => synchronizer.destroy());
       await synchronizer.startSync();
 
       await pause();
@@ -313,22 +1671,22 @@ describe('Persistence', () => {
     });
 
     test('alters data after path first persisted', async () => {
-      const wsServer = createWsServer(
-        new WebSocketServer({port: 8049}),
-        (pathId) => {
-          serverStore.setValue('p', pathId);
-          return [
-            createPersister(serverStore, pathId),
-            (store) => store.setValue('p', pathId),
-          ];
-        },
-      );
+      const [webSocketServer, port] = await createTestWebSocketServer();
+      const wsServer = createWsServer(webSocketServer, (pathId) => {
+        serverStore.setValue('p', pathId);
+        return [
+          createPersister(serverStore, pathId),
+          (store) => store.setValue('p', pathId),
+        ];
+      });
+      wsServerCleanups.push(() => wsServer.destroy());
 
       const clientStore = createMergeableStore('s1', getNow);
       const synchronizer = await createWsSynchronizer(
         clientStore,
-        new WebSocket('ws://localhost:8049/p1'),
+        new WebSocket(`ws://localhost:${port}/p1`),
       );
+      synchronizerCleanups.push(() => synchronizer.destroy());
       await synchronizer.startSync();
 
       await pause();
@@ -336,9 +1694,7 @@ describe('Persistence', () => {
         {t1: {r1: {c1: 1}}},
         {p: 'p1'},
       ]);
-      expect(
-        JSON.parse(readFileSync(join(tmpDir, 'p1.json'), 'utf-8')),
-      ).toEqual([
+      await expectPersisted('p1', [
         [
           {
             t1: [
@@ -360,24 +1716,27 @@ describe('Persistence', () => {
 
   test('multiple clients, one path', async () => {
     const serverStore = createMergeableStore('ss', getNow);
-    const wsServer = createWsServer(
-      new WebSocketServer({port: 8049}),
-      (pathId) => createPersister(serverStore, pathId),
+    const [webSocketServer, port] = await createTestWebSocketServer();
+    const wsServer = createWsServer(webSocketServer, (pathId) =>
+      createPersister(serverStore, pathId),
     );
+    wsServerCleanups.push(() => wsServer.destroy());
 
     const clientStore1 = createMergeableStore('s1', getNow);
     const synchronizer1 = await createWsSynchronizer(
       clientStore1,
-      new WebSocket('ws://localhost:8049/p1'),
+      new WebSocket(`ws://localhost:${port}/p1`),
     );
+    synchronizerCleanups.push(() => synchronizer1.destroy());
     await synchronizer1.startSync();
     clientStore1.setCell('t1', 'r1', 'c1', 1);
 
     const clientStore2 = createMergeableStore('s2', getNow);
     const synchronizer2 = await createWsSynchronizer(
       clientStore2,
-      new WebSocket('ws://localhost:8049/p1'),
+      new WebSocket(`ws://localhost:${port}/p1`),
     );
+    synchronizerCleanups.push(() => synchronizer2.destroy());
     await synchronizer2.startSync();
     clientStore1.setCell('t1', 'r2', 'c2', 2);
 
@@ -403,41 +1762,45 @@ describe('Persistence', () => {
   test('multiple clients, multiple paths', async () => {
     const serverStore1 = createMergeableStore('ss1', getNow);
     const serverStore2 = createMergeableStore('ss2', getNow);
-    const wsServer = createWsServer(
-      new WebSocketServer({port: 8049}),
-      (pathId) =>
-        createPersister(pathId == 'p1' ? serverStore1 : serverStore2, pathId),
+    const [webSocketServer, port] = await createTestWebSocketServer();
+    const wsServer = createWsServer(webSocketServer, (pathId) =>
+      createPersister(pathId == 'p1' ? serverStore1 : serverStore2, pathId),
     );
+    wsServerCleanups.push(() => wsServer.destroy());
 
     const clientStore1 = createMergeableStore('s1', getNow);
     const synchronizer1 = await createWsSynchronizer(
       clientStore1,
-      new WebSocket('ws://localhost:8049/p1'),
+      new WebSocket(`ws://localhost:${port}/p1`),
     );
+    synchronizerCleanups.push(() => synchronizer1.destroy());
     await synchronizer1.startSync();
     clientStore1.setCell('t1', 'r1', 'c1', 1);
 
     const clientStore2 = createMergeableStore('s2', getNow);
     const synchronizer2 = await createWsSynchronizer(
       clientStore2,
-      new WebSocket('ws://localhost:8049/p1'),
+      new WebSocket(`ws://localhost:${port}/p1`),
     );
+    synchronizerCleanups.push(() => synchronizer2.destroy());
     await synchronizer2.startSync();
     clientStore1.setCell('t2', 'r2', 'c2', 2);
 
     const clientStore3 = createMergeableStore('s3', getNow);
     const synchronizer3 = await createWsSynchronizer(
       clientStore3,
-      new WebSocket('ws://localhost:8049/p2'),
+      new WebSocket(`ws://localhost:${port}/p2`),
     );
+    synchronizerCleanups.push(() => synchronizer3.destroy());
     await synchronizer3.startSync();
     clientStore3.setCell('t3', 'r3', 'c3', 3);
 
     const clientStore4 = createMergeableStore('s4', getNow);
     const synchronizer4 = await createWsSynchronizer(
       clientStore4,
-      new WebSocket('ws://localhost:8049/p2'),
+      new WebSocket(`ws://localhost:${port}/p2`),
     );
+    synchronizerCleanups.push(() => synchronizer4.destroy());
     await synchronizer4.startSync();
     clientStore4.setCell('t4', 'r4', 'c4', 4);
     await pause();
@@ -480,19 +1843,81 @@ describe('Persistence', () => {
     await wsServer.destroy();
   });
 
-  test('two clients, connecting in turn', async () => {
-    const wsServer = createWsServer(
-      new WebSocketServer({port: 8049}),
-      (pathId) => createPersister(createMergeableStore('ss', getNow), pathId),
+  test('store ids do not select paths', async () => {
+    const pathIds: Id[] = [];
+    const serverStores: {[pathId: string]: MergeableStore} = {};
+    const [webSocketServer, port] = await createTestWebSocketServer();
+    const wsServer = createWsServer(webSocketServer, (pathId) => {
+      pathIds.push(pathId);
+      const serverStore = createMergeableStore('ss' + pathId, getNow);
+      serverStores[pathId] = serverStore;
+      return createPersister(serverStore, pathId || 'root');
+    });
+    wsServerCleanups.push(() => wsServer.destroy());
+
+    const clientStore1 = createMergeableStore('store1', getNow);
+    const synchronizer1 = await createWsSynchronizer(
+      clientStore1,
+      new WebSocket(`ws://localhost:${port}`),
     );
+    synchronizerCleanups.push(() => synchronizer1.destroy());
+    await synchronizer1.startSync();
+    clientStore1.setCell('t1', 'r1', 'c1', 1);
+
+    const clientStore2 = createMergeableStore('store2', getNow);
+    const synchronizer2 = await createWsSynchronizer(
+      clientStore2,
+      new WebSocket(`ws://localhost:${port}`),
+    );
+    synchronizerCleanups.push(() => synchronizer2.destroy());
+    await synchronizer2.startSync();
+    clientStore2.setCell('t1', 'r2', 'c2', 2);
+
+    const clientStore3 = createMergeableStore('store3', getNow);
+    const synchronizer3 = await createWsSynchronizer(
+      clientStore3,
+      new WebSocket(`ws://localhost:${port}/store3`),
+    );
+    synchronizerCleanups.push(() => synchronizer3.destroy());
+    await synchronizer3.startSync();
+    clientStore3.setCell('t1', 'r3', 'c3', 3);
+
+    await pause();
+
+    expect(pathIds).toEqual(['', 'store3']);
+    expect(serverStores[''].getTables()).toEqual({
+      t1: {r1: {c1: 1}, r2: {c2: 2}},
+    });
+    expect(serverStores.store3.getTables()).toEqual({t1: {r3: {c3: 3}}});
+    expect(clientStore1.getTables()).toEqual({
+      t1: {r1: {c1: 1}, r2: {c2: 2}},
+    });
+    expect(clientStore2.getTables()).toEqual({
+      t1: {r1: {c1: 1}, r2: {c2: 2}},
+    });
+    expect(clientStore3.getTables()).toEqual({t1: {r3: {c3: 3}}});
+
+    await synchronizer1.destroy();
+    await synchronizer2.destroy();
+    await synchronizer3.destroy();
+    await wsServer.destroy();
+  });
+
+  test('two clients, connecting in turn', async () => {
+    const [webSocketServer, port] = await createTestWebSocketServer();
+    const wsServer = createWsServer(webSocketServer, (pathId) =>
+      createPersister(createMergeableStore('ss', getNow), pathId),
+    );
+    wsServerCleanups.push(() => wsServer.destroy());
 
     const clientStore1 = createMergeableStore('s1', getNow);
     clientStore1.setCell('t1', 'r1', 'c1', 1);
     const synchronizer1 = await createWsSynchronizer(
       clientStore1,
-      new WebSocket('ws://localhost:8049/p'),
+      new WebSocket(`ws://localhost:${port}/p`),
       1,
     );
+    synchronizerCleanups.push(() => synchronizer1.destroy());
     await synchronizer1.startSync();
     await pause();
     await synchronizer1.destroy();
@@ -500,9 +1925,10 @@ describe('Persistence', () => {
     const clientStore2 = createMergeableStore('s2', getNow);
     const synchronizer2 = await createWsSynchronizer(
       clientStore2,
-      new WebSocket('ws://localhost:8049/p'),
+      new WebSocket(`ws://localhost:${port}/p`),
       1,
     );
+    synchronizerCleanups.push(() => synchronizer2.destroy());
     await synchronizer2.startSync();
     await pause();
     await synchronizer2.destroy();

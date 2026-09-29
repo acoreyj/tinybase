@@ -2,6 +2,9 @@
  * The persister-libsql module of the TinyBase project lets you save and load
  * Store data to and from a local LibSQL database (in an appropriate
  * environment).
+ *
+ * This is also the module to use with hosted services built on LibSQL, such as
+ * Turso.
  * @see Database Persistence guide
  * @packageDocumentation
  * @module persister-libsql
@@ -31,7 +34,7 @@
    * This example creates a Persister object against a newly-created Store and
    * then gets the database client back out again.
    *
-   * ```js yolo
+   * ```js ignore
    * import {createClient} from '@libsql/client';
    * import {createStore} from 'tinybase';
    * import {createLibSqlPersister} from 'tinybase/persisters/persister-libsql';
@@ -71,6 +74,34 @@
  *
  * See the documentation for the DpcJson and DpcTabular types for more
  * information on how both of those modes can be configured.
+ *
+ * Note: When using tabular mode, SQL NULL values are loaded as TinyBase null
+ * values, making tables dense (every Row has every Cell). See the Database
+ * Persistence guide for details.
+ *
+ * In a project on Astro 6 or earlier (Astro removed `@astrojs/db` in v7), the
+ * `db` object exported from `astro:db` is a Drizzle wrapper around a LibSQL
+ * client, and its `$client` property is the client this Persister needs. That
+ * property is present at runtime but missing from the type that Astro exports,
+ * so TypeScript needs a cast to reach it:
+ *
+ * ```js ignore
+ * import type {Database} from '@astrojs/db/runtime';
+ * import type {Client} from '@libsql/client';
+ * import {db} from 'astro:db';
+ * import {createStore} from 'tinybase';
+ * import {createLibSqlPersister} from 'tinybase/persisters/persister-libsql';
+ *
+ * const client = (db as Database & {$client: Client}).$client;
+ * const persister = createLibSqlPersister(
+ *   createStore(),
+ *   client,
+ *   'my_tinybase',
+ * );
+ *
+ * await persister.load();
+ * await persister.destroy();
+ * ```
  * @param store The Store to persist.
  * @param client The database client that was returned from `createClient(...)`.
  * @param configOrStoreTableName A DatabasePersisterConfig to configure the
@@ -89,7 +120,7 @@
  * It makes a change to the database directly and then reloads it back into the
  * Store.
  *
- * ```js yolo
+ * ```js ignore
  * import {createClient} from '@libsql/client';
  * import {createStore} from 'tinybase';
  * import {createLibSqlPersister} from 'tinybase/persisters/persister-libsql';
@@ -118,7 +149,7 @@
  * This example creates a LibSqlPersister object and persists the Store to a
  * local SQLite database with tabular mapping.
  *
- * ```js yolo
+ * ```js ignore
  * import {createClient} from '@libsql/client';
  * import {createStore} from 'tinybase';
  * import {createLibSqlPersister} from 'tinybase/persisters/persister-libsql';

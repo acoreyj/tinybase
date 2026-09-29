@@ -18,7 +18,7 @@ import {jsonStringWithMap} from './json.ts';
 import {objEntries} from './obj.ts';
 import {GLOBAL} from './other.ts';
 
-const textEncoder = /* @__PURE__ */ new GLOBAL.TextEncoder();
+const textEncoder = new GLOBAL.TextEncoder();
 
 // fnv1a
 export const getHash: typeof getHashDecl = (string: string): Hash => {
@@ -73,7 +73,8 @@ export const getRowInTableHash: typeof getRowHashInTableDecl =
 
 export const getTableHash: typeof getTableHashDecl = (rowHashes: {
   [rowId: Id]: Hash;
-}): Hash => // alias to getValuesHash in v7
+}): Hash =>
+  // alias to getValuesHash in v7
   arrayReduce(
     objEntries(rowHashes),
     (valuesHash, [rowId, rowHash]) =>

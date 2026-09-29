@@ -12,6 +12,49 @@
  */
 /// queries
 /**
+ * The ParamValue type describes a single param value that can be used in a
+ * parameterized query.
+ *
+ * A ParamValue is a JavaScript string, number, boolean, null - or an array of
+ * strings, numbers, or booleans. Arrays are useful for filtering by multiple
+ * values, such as checking if a cell value is included in a list of options.
+ * @example
+ * ```js
+ * import type {ParamValue} from 'tinybase';
+ *
+ * export const paramValue1: ParamValue = 'dog';
+ * export const paramValue2: ParamValue = 5;
+ * export const paramValue3: ParamValue = true;
+ * export const paramValue4: ParamValue = null;
+ * export const paramValue5: ParamValue = ['Ford', 'Toyota', 'Honda'];
+ * export const paramValue6: ParamValue = [1970, 1975, 1980];
+ * export const paramValue7: ParamValue = [true, false];
+ * ```
+ * @category Params
+ * @since v7.2.0
+ */
+/// ParamValue
+/**
+ * The ParamValues type describes an object of param values, keyed by param Id,
+ * used to provide values for a parameterized query.
+ *
+ * A ParamValues object is provided when setting a query definition with params,
+ * or when updating params with the setParamValues method.
+ * @example
+ * ```js
+ * import type {ParamValues} from 'tinybase';
+ *
+ * export const paramValues: ParamValues = {
+ *   species: 'dog',
+ *   minAge: 5,
+ *   active: true,
+ * };
+ * ```
+ * @category Params
+ * @since v7.2.0
+ */
+/// ParamValues
+/**
  * The ResultTable type is the data structure representing the results of a
  * query.
  *
@@ -57,7 +100,7 @@
  * A ResultCell is typically accessed with the getResultCell method or
  * addResultCellListener method. It is similar to the Cell type in the store
  * module, but without schema-specific typing, and is a JavaScript string,
- * number, or boolean.
+ * number, boolean, null, object, or array.
  * @example
  * ```js
  * import type {ResultCell} from 'tinybase';
@@ -219,19 +262,50 @@
  */
 /// ResultCellCallback
 /**
- * The QueryIdsListener type describes a function that is used to listen
- * to Query definitions being added or removed.
+ * The QueryIdsListener type describes a function that is used to listen to
+ * Query definitions being added or removed.
  *
- * A QueryIdsListener is provided when using the
- * addQueryIdsListener method. See that method for specific examples.
+ * A QueryIdsListener is provided when using the addQueryIdsListener method. See
+ * that method for specific examples.
  *
- * When called, a QueryIdsListener is given a reference to the
- * Queries object.
+ * When called, a QueryIdsListener is given a reference to the Queries object.
  * @param queries A reference to the Queries object that changed.
  * @category Listener
  * @since v2.0.0
  */
 /// QueryIdsListener
+/**
+ * The ParamValuesListener type describes a function that is used to listen to
+ * changes to the param values of a parameterized query.
+ *
+ * A ParamValuesListener is provided when using the addParamValuesListener
+ * method. See that method for specific examples.
+ *
+ * When called, a ParamValuesListener is given a reference to the Queries
+ * object, and the Id of the query whose param values changed.
+ * @param queries A reference to the Queries object that changed.
+ * @param queryId The Id of the query whose param values changed.
+ * @category Listener
+ * @since v7.2.0
+ */
+/// ParamValuesListener
+/**
+ * The ParamValueListener type describes a function that is used to listen to
+ * changes to a single param value of a parameterized query.
+ *
+ * A ParamValueListener is provided when using the addParamValueListener method.
+ * See that method for specific examples.
+ *
+ * When called, a ParamValueListener is given a reference to the Queries object,
+ * the Id of the query whose param value changed, and the Id of the param whose
+ * value changed.
+ * @param queries A reference to the Queries object that changed.
+ * @param queryId The Id of the query whose param value changed.
+ * @param paramId The Id of the param whose value changed.
+ * @category Listener
+ * @since v7.2.0
+ */
+/// ParamValueListener
 /**
  * The ResultTableListener type describes a function that is used to listen to
  * changes to a query's ResultTable.
@@ -516,6 +590,20 @@
    * @since v2.0.0
    */
   /// QueriesListenerStats.cell
+  /**
+   * The number of ParamValuesListener functions registered with the Queries
+   * object.
+   * @category Stat
+   * @since v2.0.0
+   */
+  /// QueriesListenerStats.paramValues
+  /**
+   * The number of ParamValueListener functions registered with the Queries
+   * object.
+   * @category Stat
+   * @since v7.2.0
+   */
+  /// QueriesListenerStats.paramValue
 }
 /**
  * The GetTableCell type describes a function that takes a Id and returns the
@@ -530,9 +618,9 @@
 /// GetTableCell
 {
   /**
-   * When called with one parameter, this function will return the value of
-   * the specified Cell from the query's root Table for the Row being selected
-   * or filtered.
+   * When called with one parameter, this function will return the value of the
+   * specified Cell from the query's root Table for the Row being selected or
+   * filtered.
    * @param cellId The Id of the Cell to fetch the value for.
    * @returns A Cell value or `undefined`.
    * @category Callback
@@ -540,9 +628,9 @@
    */
   /// GetTableCell.1
   /**
-   * When called with two parameters, this function will return the value of
-   * the specified Cell from a Table that has been joined in the query, for
-   * the Row being selected or filtered.
+   * When called with two parameters, this function will return the value of the
+   * specified Cell from a Table that has been joined in the query, for the Row
+   * being selected or filtered.
    * @param joinedTableId The Id of the Table to fetch the value from. If the
    * underlying Table was joined 'as' a different Id, that should instead be
    * used.
@@ -552,7 +640,99 @@
    * @since v2.0.0
    */
   /// GetTableCell.2
+  /**
+   * Calling this function with three parameters (where the first is `true`)
+   * will return the value of the specified Cell from a query result that has
+   * been joined in the query, for the Row being selected or filtered.
+   * @param asQuery A flag indicating that the next Id is a query Id.
+   * @param joinedQueryId The Id of the query result to fetch the value from. If
+   * the underlying query result was joined 'as' a different Id, that should
+   * instead be used.
+   * @param joinedCellId The Id of the Cell to fetch the value for.
+   * @returns A Cell value or `undefined`.
+   * @category Callback
+   * @since v8.3.0
+   */
+  /// GetTableCell.3
 }
+/**
+ * The Param type describes a function that takes a param Id and returns its
+ * value within a parameterized query.
+ *
+ * A Param function is provided when setting parameterized query definitions,
+ * and allows you to reference dynamic param values that can be updated without
+ * redefining the entire query. Param values can be primitives (string, number,
+ * boolean, null) or arrays of those types.
+ * @param paramId The Id of the param to fetch the value for.
+ * @returns A Cell value or `undefined` if the param is not set.
+ * @example
+ * This example shows a query that uses a param to filter results.
+ *
+ * ```js
+ * import {createQueries, createStore} from 'tinybase';
+ *
+ * const store = createStore().setTable('pets', {
+ *   fido: {species: 'dog', color: 'brown'},
+ *   felix: {species: 'cat', color: 'black'},
+ *   cujo: {species: 'dog', color: 'black'},
+ * });
+ *
+ * const queries = createQueries(store);
+ * queries.setQueryDefinition(
+ *   'query',
+ *   'pets',
+ *   ({select, where, param}) => {
+ *     select('color');
+ *     where('species', param('species'));
+ *   },
+ *   {species: 'dog'},
+ * );
+ *
+ * console.log(queries.getResultTable('query'));
+ * // -> {fido: {color: 'brown'}, cujo: {color: 'black'}}
+ *
+ * queries.setParamValue('query', 'species', 'cat');
+ * console.log(queries.getResultTable('query'));
+ * // -> {felix: {color: 'black'}}
+ * ```
+ * @example
+ * This example shows a query that uses an array param to filter by multiple
+ * values.
+ *
+ * ```js
+ * import {createQueries, createStore} from 'tinybase';
+ *
+ * const store = createStore().setTable('pets', {
+ *   fido: {species: 'dog', color: 'brown'},
+ *   felix: {species: 'cat', color: 'black'},
+ *   cujo: {species: 'dog', color: 'black'},
+ *   rex: {species: 'dog', color: 'gold'},
+ * });
+ *
+ * const queries = createQueries(store);
+ * queries.setQueryDefinition(
+ *   'query',
+ *   'pets',
+ *   ({select, where, param}) => {
+ *     select('species');
+ *     where((getTableCell) =>
+ *       (param('colors') as string[])?.includes(getTableCell('color')),
+ *     );
+ *   },
+ *   {colors: ['brown', 'gold']},
+ * );
+ *
+ * console.log(queries.getResultTable('query'));
+ * // -> {fido: {species: 'dog'}, rex: {species: 'dog'}}
+ *
+ * queries.setParamValue('query', 'colors', ['black']);
+ * console.log(queries.getResultTable('query'));
+ * // -> {felix: {species: 'cat'}, cujo: {species: 'dog'}}
+ * ```
+ * @category Definition
+ * @since v7.2.0
+ */
+/// Param
 /**
  * The Select type describes a function that lets you specify a Cell or
  * calculated value for including into the query's result.
@@ -560,6 +740,10 @@
  * The Select function is provided to the third `query` parameter of the
  * setQueryDefinition method. A query definition must call the Select function
  * at least once, otherwise it will be meaningless and return no data.
+ *
+ * A Row will only appear in the ResultTable if at least one Select clause
+ * produces a defined value for it. If all selected Cells or calculated values
+ * resolve to `undefined`, no ResultRow is created for that Row.
  * @example
  * This example shows a query that selects two Cells from the main query Table.
  *
@@ -682,6 +866,21 @@
    */
   /// Select.2
   /**
+   * Calling this function with three parameters (where the first is `true`)
+   * will indicate that the query should select the value of the specified Cell
+   * from a query result that has been joined in the query.
+   * @param asQuery A flag indicating that the next Id is a query Id.
+   * @param joinedQueryId The Id of the query result to fetch the value from. If
+   * the underlying query result was joined 'as' a different Id, that should
+   * instead be used.
+   * @param joinedCellId The Id of the Cell to fetch the value for.
+   * @returns A SelectedAs object so that the selected Cell Id can be optionally
+   * aliased.
+   * @category Definition
+   * @since v8.3.0
+   */
+  /// Select.3
+  /**
    * Calling this function with one callback parameter will indicate that the
    * query should select a calculated value, based on one or more Cell values in
    * the root Table or a joined Table, or on the root Table's Row Id.
@@ -693,7 +892,138 @@
    * @category Definition
    * @since v2.0.0
    */
-  /// Select.3
+  /// Select.4
+}
+/**
+ * The CellIdMapper type describes a function used by a SelectAll clause to map
+ * a source Cell Id to a Cell Id in the query result.
+ * @param cellId The Id of a Cell in the source Row.
+ * @returns The Id to use for that Cell in the result Row.
+ * @category Callback
+ * @since v9.4.0
+ */
+/// CellIdMapper
+/**
+ * The SelectAll type describes a function that lets you select every Cell
+ * present in a source Row.
+ *
+ * The SelectAll function is provided to the third `query` parameter of the
+ * setQueryDefinition method. Different source Rows can contain different Cell
+ * Ids, and each result Row will contain only the Cells present in its
+ * corresponding source Row. The result Table's Cell Ids are therefore the union
+ * of the Cells in its result Rows.
+ *
+ * Source Cell Ids are processed in lexical order, and selection clauses are
+ * processed in the order they are declared. If multiple selected Cells map to
+ * the same result Cell Id, the later one wins.
+ *
+ * When used in a grouped query, the current table-wide union of source Cell Ids
+ * is expanded into individual selections. The query is rebuilt if this union
+ * changes, and any selected Cell that is not grouped becomes a grouping
+ * dimension as usual.
+ *
+ * A cycle between query results is allowed when every SelectAll clause retains
+ * its source Cell Ids. A prefix or CellIdMapper callback in such a cycle is
+ * rejected because it could expand Cell Ids indefinitely.
+ * @category Definition
+ * @since v9.4.0
+ */
+/// SelectAll
+{
+  /**
+   * Calling this function with no parameters will select every Cell present in
+   * each Row of the query's root Table, retaining the source Cell Ids.
+   * @example
+   * This example selects all the Cells from heterogeneous root Rows:
+   *
+   * ```js
+   * import {createQueries, createStore} from 'tinybase';
+   *
+   * const store = createStore().setTable('pets', {
+   *   fido: {species: 'dog', color: 'brown'},
+   *   felix: {species: 'cat', indoor: true},
+   * });
+   * const queries = createQueries(store);
+   *
+   * queries.setQueryDefinition('query', 'pets', ({selectAll}) => selectAll());
+   *
+   * console.log(queries.getResultRow('query', 'fido'));
+   * // -> {color: 'brown', species: 'dog'}
+   * console.log(queries.getResultRow('query', 'felix'));
+   * // -> {indoor: true, species: 'cat'}
+   * ```
+   * @category Definition
+   * @since v9.4.0
+   */
+  /// SelectAll.1
+  /**
+   * Calling this function with a joined Table Id will select every Cell present
+   * in the joined Row.
+   *
+   * An optional second parameter can map each Cell Id with a prefix or
+   * callback.
+   * @param joinedTableId The Id of the joined Table. If the Table was joined
+   * 'as' a different Id, that should instead be used.
+   * @param cellIdPrefixOrMapper An optional prefix to prepend to every Cell Id,
+   * or a CellIdMapper callback that returns each result Cell Id.
+   * @example
+   * This example selects all the Cells from a joined Table, retaining their
+   * Cell Ids:
+   *
+   * ```js
+   * import {createQueries, createStore} from 'tinybase';
+   *
+   * const store = createStore()
+   *   .setTable('pets', {fido: {ownerId: '1'}})
+   *   .setTable('owners', {'1': {name: 'Alice', city: 'London'}});
+   * const queries = createQueries(store);
+   *
+   * queries.setQueryDefinition('query', 'pets', ({selectAll, join}) => {
+   *   selectAll('owners');
+   *   join('owners', 'ownerId');
+   * });
+   *
+   * console.log(queries.getResultRow('query', 'fido'));
+   * // -> {city: 'London', name: 'Alice'}
+   * ```
+   * @category Definition
+   * @since v9.4.0
+   */
+  /// SelectAll.2
+  /**
+   * Calling this function with `true` and a joined query Id will select every
+   * Cell present in the joined result Row.
+   *
+   * An optional third parameter can map each Cell Id with a prefix or callback.
+   * @param asQuery A flag indicating that the next Id is a query Id.
+   * @param joinedQueryId The Id of the joined query result. If the query result
+   * was joined 'as' a different Id, that should instead be used.
+   * @param cellIdPrefixOrMapper An optional prefix to prepend to every Cell Id,
+   * or a CellIdMapper callback that returns each result Cell Id.
+   * @example
+   * This example selects all the Cells from a joined query result, prefixing
+   * each Cell Id:
+   *
+   * ```js
+   * import {createQueries, createStore} from 'tinybase';
+   *
+   * const store = createStore()
+   *   .setTable('pets', {fido: {ownerId: '1'}})
+   *   .setTable('owners', {'1': {name: 'Alice', city: 'London'}});
+   * const queries = createQueries(store)
+   *   .setQueryDefinition('owners', 'owners', ({selectAll}) => selectAll())
+   *   .setQueryDefinition('query', 'pets', ({selectAll, join}) => {
+   *     selectAll(true, 'owners', 'owner.');
+   *     join(true, 'owners', 'ownerId');
+   *   });
+   *
+   * console.log(queries.getResultRow('query', 'fido'));
+   * // -> {'owner.city': 'London', 'owner.name': 'Alice'}
+   * ```
+   * @category Definition
+   * @since v9.4.0
+   */
+  /// SelectAll.3
 }
 /**
  * The SelectedAs type describes an object returned from calling a Select
@@ -941,6 +1271,20 @@
    */
   /// Join.1
   /**
+   * Calling this function with three parameters (where the first is `true`)
+   * will indicate that the join to a Row in an adjacent query result is made by
+   * finding its Id in a Cell of the query's root Table.
+   * @param asQuery A flag indicating that the next Id is a query Id.
+   * @param joinedQueryId The Id of the query result to join to.
+   * @param on The Id of the Cell in the root Table that contains the joined
+   * query result's Row Id.
+   * @returns A JoinedAs object so that the joined Table Id can be optionally
+   * aliased.
+   * @category Definition
+   * @since v8.3.0
+   */
+  /// Join.2
+  /**
    * Calling this function with two parameters (where the second is a function)
    * will indicate that the join to a Row in an adjacent Table is made by
    * calculating its Id from the Cells and the Row Id of the query's root Table.
@@ -953,7 +1297,23 @@
    * @category Definition
    * @since v2.0.0
    */
-  /// Join.2
+  /// Join.3
+  /**
+   * Calling this function with three parameters (where the first is `true` and
+   * the third is a function) will indicate that the join to a Row in an
+   * adjacent query result is made by calculating its Id from the Cells and the
+   * Row Id of the query's root Table.
+   * @param asQuery A flag indicating that the next Id is a query Id.
+   * @param joinedQueryId The Id of the query result to join to.
+   * @param on A callback that takes a GetCell function and the root Table's Row
+   * Id. These can be used to programmatically calculate the joined query
+   * result's Row Id.
+   * @returns A JoinedAs object so that the joined Table Id can be optionally
+   * aliased.
+   * @category Definition
+   * @since v8.3.0
+   */
+  /// Join.4
   /**
    * Calling this function with three Id parameters will indicate that the join
    * to a Row in distant Table is made by finding its Id in a Cell of an
@@ -969,7 +1329,24 @@
    * @category Definition
    * @since v2.0.0
    */
-  /// Join.3
+  /// Join.5
+  /**
+   * Calling this function with four parameters (where the first is `true`) will
+   * indicate that the join to a Row in a distant query result is made by
+   * finding its Id in a Cell of an intermediately joined Table.
+   * @param asQuery A flag indicating that the next Id is a query Id.
+   * @param joinedQueryId The Id of the distant query result to join to.
+   * @param fromIntermediateJoinedTableId The Id of an intermediate Table (which
+   * should have been in turn joined to the main query table via other Join
+   * clauses).
+   * @param on The Id of the Cell in the intermediate Table that contains the
+   * joined query result's Row Id.
+   * @returns A JoinedAs object so that the joined Table Id can be optionally
+   * aliased.
+   * @category Definition
+   * @since v8.3.0
+   */
+  /// Join.6
   /**
    * Calling this function with three parameters (where the third is a function)
    * will indicate that the join to a Row in distant Table is made by
@@ -987,7 +1364,26 @@
    * @category Definition
    * @since v2.0.0
    */
-  /// Join.4
+  /// Join.7
+  /**
+   * Calling this function with four parameters (where the first is `true` and
+   * the fourth is a function) will indicate that the join to a Row in a distant
+   * query result is made by calculating its Id from the Cells and the Row Id of
+   * an intermediately joined Table.
+   * @param asQuery A flag indicating that the next Id is a query Id.
+   * @param joinedQueryId The Id of the query result to join to.
+   * @param fromIntermediateJoinedTableId The Id of an intermediate Table (which
+   * should have been in turn joined to the main query table via other Join
+   * clauses).
+   * @param on A callback that takes a GetCell function and the intermediate
+   * Table's Row Id. These can be used to programmatically calculate the joined
+   * query result's Row Id.
+   * @returns A JoinedAs object so that the joined Table Id can be optionally
+   * aliased.
+   * @category Definition
+   * @since v8.3.0
+   */
+  /// Join.8
 }
 /**
  * The JoinedAs type describes an object returned from calling a Join function
@@ -1193,6 +1589,21 @@
    */
   /// Where.2
   /**
+   * Calling this function with four parameters (where the first is `true`) is
+   * used to include only those Rows for which a specified Cell in a joined
+   * query result has a specified value.
+   * @param asQuery A flag indicating that the next Id is a query Id.
+   * @param joinedQueryId The Id of the joined query result to test a value in.
+   * If the underlying query result was joined 'as' a different Id, that should
+   * instead be used.
+   * @param joinedCellId The Id of the Cell in the joined query result to test.
+   * @param equals The value that the Cell has to have for the Row to be
+   * included in the result.
+   * @category Definition
+   * @since v8.3.0
+   */
+  /// Where.3
+  /**
    * Calling this function with one callback parameter is used to include only
    * those Rows which meet a calculated boolean condition, based on values in
    * the main and (optionally) joined Tables.
@@ -1201,7 +1612,7 @@
    * @category Definition
    * @since v2.0.0
    */
-  /// Where.3
+  /// Where.4
 }
 /**
  * The Group type describes a function that lets you specify that the values of
@@ -1609,8 +2020,8 @@
    * The third `query` parameter is a callback that you provide to define the
    * query. That callback is provided with a `keywords` object that contains the
    * functions you use to define the query, like `select`, `join`, and so on.
-   * You can see how that is used in the simple example below. The following
-   * five clause types are supported:
+   * You can see how that is used in the simple example below. The following six
+   * clause types are supported:
    *
    * - The Select type describes a function that lets you specify a Cell or
    *   calculated value for including into the query's result.
@@ -1623,6 +2034,8 @@
    *   of a Cell in multiple ResultRows should be aggregated together.
    * - The Having type describes a function that lets you specify conditions to
    *   filter results, based on the grouped Cells resulting from a Group clause.
+   * - The Param type (since v7.2) describes a function that lets you specify
+   *   parameters for a parameterized query.
    *
    * Full documentation and examples are provided in the sections for each of
    * those clause types.
@@ -1641,7 +2054,7 @@
    *
    * ```js
    * import {createQueries, createStore} from 'tinybase';
-   * 
+   *
    * const store = createStore().setTable('pets', {
    *   fido: {species: 'dog', color: 'brown'},
    *   felix: {species: 'cat', color: 'black'},
@@ -1661,6 +2074,57 @@
    * @since v2.0.0
    */
   /// Queries.setQueryDefinition
+  /**
+   * When called with `true` as its second parameter, the setQueryDefinition
+   * method lets you define a query whose root is the result of another query,
+   * rather than an underlying Table.
+   *
+   * This allows you to build more complex queries out of simpler ones and pipe
+   * them together. The same clause types are supported as when the query is
+   * based on a Table.
+   * @param queryId The Id of the query to define.
+   * @param asQuery A flag indicating that the next Id is a query Id.
+   * @param rootQueryId The Id of the root query the query will be based on.
+   * @param query A callback which can take a `keywords` object and which uses
+     the functions it contains to define the query.
+   * @param paramValues An optional object containing the param Ids and values
+   * to use for a parameterized query.
+   * @returns A reference to the Queries object.
+   * @example
+   * This example creates a Store, creates a Queries object, and defines a
+   * query that selects from the result of another one.
+   *
+   * ```js
+   * import {createQueries, createStore} from 'tinybase';
+   *
+   * const store = createStore().setTable('pets', {
+   *   fido: {species: 'dog', color: 'brown'},
+   *   felix: {species: 'cat', color: 'black'},
+   *   cujo: {species: 'dog', color: 'black'},
+   * });
+   *
+   * const queries = createQueries(store);
+   * queries.setQueryDefinition('dogs', 'pets', ({select, where}) => {
+   *   select('color');
+   *   where('species', 'dog');
+   * });
+   * queries.setQueryDefinition(
+   *   'blackDogs',
+   *   true,
+   *   'dogs',
+   *   ({select, where}) => {
+   *     select((_, rowId) => rowId).as('petId');
+   *     where('color', 'black');
+   *   },
+   * );
+   *
+   * console.log(queries.getResultTable('blackDogs'));
+   * // -> {cujo: {petId: 'cujo'}}
+   * ```
+   * @category Configuration
+   * @since v8.3.0
+   */
+  /// Queries.setQueryDefinition.2
   /**
    * The delQueryDefinition method removes an existing query definition.
    * @param queryId The Id of the query to remove.
@@ -1694,6 +2158,173 @@
    * @since v2.0.0
    */
   /// Queries.delQueryDefinition
+  /**
+   * The getParamValues method returns all the param values currently set for a
+   * parameterized query.
+   * @param queryId The Id of the query to get the params for.
+   * @returns An object containing all param Ids and their values, or an empty
+   * object if the query doesn't exist.
+   * @example
+   * This example creates a parameterized query and retrieves its param values.
+   *
+   * ```js
+   * import {createQueries, createStore} from 'tinybase';
+   *
+   * const store = createStore().setTable('pets', {
+   *   fido: {species: 'dog', color: 'brown'},
+   *   felix: {species: 'cat', color: 'black'},
+   *   cujo: {species: 'dog', color: 'black'},
+   * });
+   *
+   * const queries = createQueries(store);
+   * queries.setQueryDefinition(
+   *   'query',
+   *   'pets',
+   *   ({select, where, param}) => {
+   *     select('color');
+   *     where('species', param('species'));
+   *     where((getTableCell) => getTableCell('age') >= param('minAge'));
+   *   },
+   *   {species: 'dog', minAge: 5},
+   * );
+   *
+   * console.log(queries.getParamValues('query'));
+   * // -> {species: 'dog', minAge: 5}
+   *
+   * queries.setParamValue('query', 'species', 'cat');
+   * console.log(queries.getParamValues('query'));
+   * // -> {species: 'cat', minAge: 5}
+   * ```
+   * @category Getter
+   * @since v7.2.0
+   */
+  /// Queries.getParamValues
+  /**
+   * The getParamValue method returns a single param value currently set for a
+   * parameterized query.
+   * @param queryId The Id of the query to get the param for.
+   * @param paramId The Id of the param to get.
+   * @returns The value of the param, or `undefined` if the query or param
+   * doesn't exist.
+   * @example
+   * This example creates a parameterized query and retrieves one of its param
+   * values.
+   *
+   * ```js
+   * import {createQueries, createStore} from 'tinybase';
+   *
+   * const store = createStore().setTable('pets', {
+   *   fido: {species: 'dog', color: 'brown'},
+   *   felix: {species: 'cat', color: 'black'},
+   *   cujo: {species: 'dog', color: 'black'},
+   * });
+   *
+   * const queries = createQueries(store);
+   * queries.setQueryDefinition(
+   *   'query',
+   *   'pets',
+   *   ({select, where, param}) => {
+   *     select('color');
+   *     where('species', param('species'));
+   *   },
+   *   {species: 'dog'},
+   * );
+   *
+   * console.log(queries.getParamValue('query', 'species'));
+   * // -> 'dog'
+   *
+   * queries.setParamValue('query', 'species', 'cat');
+   * console.log(queries.getParamValue('query', 'species'));
+   * // -> 'cat'
+   * ```
+   * @category Getter
+   * @since v7.2.0
+   */
+  /// Queries.getParamValue
+  /**
+   * The setParamValues method sets multiple param values for a parameterized
+   * query at once, causing the query to re-evaluate with the new param values.
+   * @param queryId The Id of the query to update the params for.
+   * @param paramValues An object containing the param Ids and values to set.
+   * @returns A reference to the Queries object for convenient chaining.
+   * @example
+   * This example creates a parameterized query and then updates multiple
+   * parameters at once.
+   *
+   * ```js
+   * import {createQueries, createStore} from 'tinybase';
+   *
+   * const store = createStore().setTable('pets', {
+   *   fido: {species: 'dog', color: 'brown', age: 5},
+   *   felix: {species: 'cat', color: 'black', age: 3},
+   *   cujo: {species: 'dog', color: 'black', age: 7},
+   * });
+   *
+   * const queries = createQueries(store);
+   * queries.setQueryDefinition(
+   *   'query',
+   *   'pets',
+   *   ({select, where, param}) => {
+   *     select('color');
+   *     where('species', param('species'));
+   *     where((getTableCell) => getTableCell('age') >= param('minAge'));
+   *   },
+   *   {species: 'dog', minAge: 5},
+   * );
+   *
+   * console.log(queries.getResultTable('query'));
+   * // -> {fido: {color: 'brown'}, cujo: {color: 'black'}}
+   *
+   * queries.setParamValues('query', {species: 'cat', minAge: 2});
+   * console.log(queries.getResultTable('query'));
+   * // -> {felix: {color: 'black'}}
+   * ```
+   * @category Configuration
+   * @since v7.2.0
+   */
+  /// Queries.setParamValues
+  /**
+   * The setParamValue method sets a single param value for a parameterized
+   * query, causing the query to re-evaluate with the new param value.
+   * @param queryId The Id of the query to update the param  for.
+   * @param paramId The Id of the param to set.
+   * @param value The value to set for the param.
+   * @returns A reference to the Queries object for convenient chaining.
+   * @example
+   * This example creates a parameterized query and then updates one of its
+   * params.
+   *
+   * ```js
+   * import {createQueries, createStore} from 'tinybase';
+   *
+   * const store = createStore().setTable('pets', {
+   *   fido: {species: 'dog', color: 'brown'},
+   *   felix: {species: 'cat', color: 'black'},
+   *   cujo: {species: 'dog', color: 'black'},
+   * });
+   *
+   * const queries = createQueries(store);
+   * queries.setQueryDefinition(
+   *   'query',
+   *   'pets',
+   *   ({select, where, param}) => {
+   *     select('color');
+   *     where('species', param('species'));
+   *   },
+   *   {species: 'dog'},
+   * );
+   *
+   * console.log(queries.getResultTable('query'));
+   * // -> {fido: {color: 'brown'}, cujo: {color: 'black'}}
+   *
+   * queries.setParamValue('query', 'species', 'cat');
+   * console.log(queries.getResultTable('query'));
+   * // -> {felix: {color: 'black'}}
+   * ```
+   * @category Configuration
+   * @since v7.2.0
+   */
+  /// Queries.setParamValue
   /**
    * The getStore method returns a reference to the underlying Store that is
    * backing this Queries object.
@@ -2469,6 +3100,7 @@
    * with a reference to the Queries object.
    * @param listener The function that will be called whenever a Query
    * definition is added or removed.
+   * @returns A unique Id for the listener that can later be used to remove it.
    * @example
    * This example creates a Store, a Queries object, and then registers a
    * listener that responds to the addition and the removal of a Query
@@ -2502,6 +3134,143 @@
    * @since v4.1.0
    */
   /// Queries.addQueryIdsListener
+  /**
+   * The addParamValuesListener method registers a listener function with the
+   * Queries object that will be called whenever the param values of a query
+   * change.
+   *
+   * You can either listen to a single query (by specifying a query Id as the
+   * method's first parameter) or changes to any query (by providing a `null`
+   * wildcard).
+   *
+   * The provided listener is a ParamValuesListener function, and will be called
+   * with a reference to the Queries object, the Id of the query whose param
+   * values changed, and an object containing the new param values.
+   * @param queryId The Id of the query to listen to, or `null` as a wildcard.
+   * @param listener The function that will be called whenever the param values
+   * of the query change.
+   * @returns A unique Id for the listener that can later be used to remove it.
+   * @example
+   * This example registers two listeners that respond to changes to the param
+   * values of a specific query, or any query respectively.
+   *
+   * ```js
+   * import {createQueries, createStore} from 'tinybase';
+   *
+   * const store = createStore().setTable('pets', {
+   *   // store data
+   * });
+   *
+   * const queries = createQueries(store).setQueryDefinition(
+   *   'petsByColor',
+   *   'pets',
+   *   () => {
+   *     // query definition
+   *   },
+   *   {color: 'white'},
+   * );
+   *
+   * const listenerId1 = queries.addParamValuesListener(
+   *   'petsByColor',
+   *   (queries, queryId, paramValues) => {
+   *     console.log(
+   *       `Params for specific query changed: ${JSON.stringify(paramValues)}`,
+   *     );
+   *   },
+   * );
+   * const listenerId2 = queries.addParamValuesListener(
+   *   null,
+   *   (queries, queryId, paramValues) => {
+   *     console.log(
+   *       `Params for "${queryId}" changed: ${JSON.stringify(paramValues)}`,
+   *     );
+   *   },
+   * );
+   *
+   * queries.setParamValues('petsByColor', {color: 'black'});
+   * // -> 'Params for specific query changed: {"color":"black"}'
+   * // -> 'Params for "petsByColor" changed: {"color":"black"}'
+   * queries.setParamValues('petsByColor', {color: 'brown'});
+   * // -> 'Params for specific query changed: {"color":"brown"}'
+   * // -> 'Params for "petsByColor" changed: {"color":"brown"}'
+   *
+   * queries.delListener(listenerId1);
+   * queries.delListener(listenerId2);
+   * ```
+   * @category Listener
+   * @since v7.2.0
+   */
+  /// Queries.addParamValuesListener
+  /**
+   * The addParamValueListener method registers a listener function with the
+   * Queries object that will be called whenever a specific param value of a
+   * query changes.
+   *
+   * You can either listen to a single query (by specifying a query Id as the
+   * method's first parameter) or changes to any query (by providing a `null`
+   * wildcard). Additionally, you can either listen to a specific param (by
+   * specifying a param Id as the second parameter) or changes to any param (by
+   * providing a `null` wildcard).
+   *
+   * The provided listener is a ParamValueListener function, and will be called
+   * with a reference to the Queries object, the Id of the query whose param
+   * value changed, the Id of the param whose value changed, and the new value
+   * of the param.
+   * @param queryId The Id of the query to listen to, or `null` as a wildcard.
+   * @param paramId The Id of the param to listen to, or `null` as a wildcard.
+   * @param listener The function that will be called whenever the specific
+   * param value of the query changes.
+   * @returns A unique Id for the listener that can later be used to remove it.
+   * @example
+   * This example registers two listeners that respond to changes to a specific
+   * param value of a specific query, or any param value of any query
+   * respectively.
+   *
+   * ```js
+   * import {createQueries, createStore} from 'tinybase';
+   *
+   * const store = createStore().setTable('pets', {
+   *   // store data
+   * });
+   *
+   * const queries = createQueries(store).setQueryDefinition(
+   *   'petsByColor',
+   *   'pets',
+   *   () => {
+   *     // query definition
+   *   },
+   *   {color: 'white'},
+   * );
+   *
+   * const listenerId1 = queries.addParamValueListener(
+   *   'petsByColor',
+   *   'color',
+   *   (queries, queryId, paramId, value) => {
+   *     console.log(`Specific param for specific query changed: "${value}"`);
+   *   },
+   * );
+   * const listenerId2 = queries.addParamValueListener(
+   *   null,
+   *   null,
+   *   (queries, queryId, paramId, value) => {
+   *     console.log(`Param "${paramId}" for "${queryId}" changed: "${value}"`);
+   *   },
+   * );
+   *
+   * queries.setParamValue('petsByColor', 'color', 'black');
+   * // -> 'Specific param for specific query changed: "black"'
+   * // -> 'Param "color" for "petsByColor" changed: "black"'
+   * queries.setParamValue('petsByColor', 'color', 'brown');
+   * // -> 'Specific param for specific query changed: "brown"'
+   * // -> 'Param "color" for "petsByColor" changed: "brown"'
+   *
+   * queries.delListener(listenerId1);
+   * queries.delListener(listenerId2);
+   * ```
+   * @category Listener
+   * @since v7.2.0
+   */
+  /// Queries.addParamValueListener
   /**
    * The addResultTableListener method registers a listener function with the
    * Queries object that will be called whenever data in a ResultTable changes.
@@ -2597,23 +3366,23 @@
   /// Queries.addResultTableListener
   /**
    * The addResultTableCellIdsListener method registers a listener function with
-   * the Queries object that will be called whenever the Cell Ids that
-   * appear anywhere in a ResultTable change.
+   * the Queries object that will be called whenever the Cell Ids that appear
+   * anywhere in a ResultTable change.
    *
    * The provided listener is a ResultTableCellIdsListener function, and will be
    * called with a reference to the Queries object and the Id of the ResultTable
    * that changed (which is also the query Id).
    *
-   * By default, such a listener is only called when a Cell Id is added
-   * to, or removed from, the ResultTable. To listen to all changes in the
-   * ResultTable, use the addResultTableListener method.
+   * By default, such a listener is only called when a Cell Id is added to, or
+   * removed from, the ResultTable. To listen to all changes in the ResultTable,
+   * use the addResultTableListener method.
    *
    * You can either listen to a single ResultTable (by specifying a query Id as
    * the method's first parameter) or changes to any ResultTable (by providing a
    * `null` wildcard).
    * @param queryId The Id of the query to listen to, or `null` as a wildcard.
-   * @param listener The function that will be called whenever the Cell
-   * Ids that appear anywhere in the ResultTable change.
+   * @param listener The function that will be called whenever the Cell Ids that
+   * appear anywhere in the ResultTable change.
    * @returns A unique Id for the listener that can later be used to remove it.
    * @example
    * This example registers a listener that responds to any change to the

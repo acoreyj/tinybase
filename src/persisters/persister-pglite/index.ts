@@ -9,8 +9,9 @@ import type {
   createPglitePersister as createPglitePersisterDecl,
 } from '../../@types/persisters/persister-pglite/index.d.ts';
 import type {Store} from '../../@types/store/index.d.ts';
+import {tryCatch} from '../../common/error.ts';
 import {IdObj} from '../../common/obj.ts';
-import {noop, tryCatch} from '../../common/other.ts';
+import {noop} from '../../common/other.ts';
 import {createCustomPostgreSqlPersister} from '../common/database/postgresql.ts';
 
 export const createPglitePersister = (async (
@@ -19,8 +20,8 @@ export const createPglitePersister = (async (
   configOrStoreTableName?: DatabasePersisterConfig | string,
   onSqlCommand?: (sql: string, params?: any[]) => void,
   onIgnoredError?: (error: any) => void,
-): Promise<PglitePersister> => {
-  return createCustomPostgreSqlPersister(
+): Promise<PglitePersister> =>
+  createCustomPostgreSqlPersister(
     store,
     configOrStoreTableName,
     async (sql: string, params: any[] = []): Promise<IdObj<any>[]> =>
@@ -36,5 +37,4 @@ export const createPglitePersister = (async (
     3, // StoreOrMergeableStore,
     pglite,
     'getPglite',
-  ) as PglitePersister;
-}) as typeof createPglitePersisterDecl;
+  ) as PglitePersister) as typeof createPglitePersisterDecl;

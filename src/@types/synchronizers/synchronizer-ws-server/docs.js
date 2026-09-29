@@ -1,6 +1,6 @@
 /**
- * The synchronizer-ws-server module of the TinyBase project lets you create
- * a server that facilitates synchronization between clients.
+ * The synchronizer-ws-server module of the TinyBase project lets you create a
+ * server that facilitates synchronization between clients.
  * @see Synchronization guide
  * @see Todo App v6 (collaboration) demo
  * @packageDocumentation
@@ -41,6 +41,10 @@
  * When the client disconnects from a path, it will be called again with the Id
  * of the path, the Id of the leaving client, and an `addedOrRemoved` value of
  * `-1`.
+ *
+ * The client Id is connection metadata derived from the `Sec-WebSocket-Key`
+ * header. It is not stable across reconnections or an authenticated user or
+ * session identity, and must not be used for authorization.
  *
  * A ClientIdsListener is provided when using the addClientIdsListener method.
  * See that method for specific examples.
@@ -160,14 +164,16 @@
    */
   /// WsServer.getPathIds
   /**
-   * The getClientIds method method returns the active clients that the WsServer
-   * is handling for a given path.
+   * The getClientIds method returns the active clients that the WsServer is
+   * handling for a given path. These connection-scoped Ids are derived from
+   * the `Sec-WebSocket-Key` header. They are not authenticated identities and
+   * must not be used for authorization.
    * @param pathId The path for which to return the list of active clients.
    * @returns An array of the clients connected to the given path.
    * @example
    * This example creates a WsServer, sets some clients up to connect
    * to it, and then gets the number of clients on the given paths. (The client
-   * Ids themselves are unique, based on the `sec-websocket-key` header.)
+   * Ids themselves are unique, based on the `Sec-WebSocket-Key` header.)
    *
    * ```js
    * import {createMergeableStore} from 'tinybase';
@@ -490,6 +496,25 @@
  * only exist when there are active clients on that particular path. The
  * creation callback can be asynchronous.
  *
+ * A path is taken from the path in the client WebSocket URL. For example,
+ * clients connecting to `ws://localhost:8047/petShop` will share the `petShop`
+ * path. The Id of a client's MergeableStore does not select this path.
+ *
+ * Since v9.3, multiple WsSynchronizer instances can share one WebSocket by
+ * using channel Ids. Each channel Id is appended to the WebSocket URL path and
+ * treated as an ordinary server path. This means a multiplexed channel can
+ * interoperate with legacy clients connected directly to that full path. A
+ * channel Id can contain at most 1,024 UTF-8 bytes, and each multiplexed
+ * WebSocket can have at most 100 subscribed channels. Pending setup and
+ * teardown resources are also bounded. Fragment reassembly and traffic
+ * buffered while paths start share limits across the physical WebSocket.
+ *
+ * The WsServer does not authenticate or authorize URL paths or channel Ids.
+ * Once a client WebSocket is accepted on a base path, it can subscribe to any
+ * valid channel beneath that path. For untrusted clients, authenticate the
+ * upgrade request and either grant access to all descendant paths or use a
+ * separate authenticated WebSocket for each authorized path.
+ *
  * You are responsible for creating a MergeableStore to pass to this Persister,
  * but starting and stopping its automatic saving and loading is taken care of
  * by the WsServer. As a result, the server MergeableStore will be kept in sync
@@ -512,6 +537,15 @@
  * @param onIgnoredError An optional handler for the errors that the server
  * would otherwise ignore when trying to sync data. This is suitable for
  * debugging issues in a development environment.
+ * @param requestTimeoutSeconds An optional time in seconds that the server will
+ * wait for responses to synchronization requests and incomplete fragments,
+ * defaulting to `1`.
+ * @param fragmentSize An optional target maximum UTF-8 byte size for each
+ * WebSocket message fragment. Unicode code points are never split and can
+ * exceed this size. TinyBase sends at most 1,000 fragments for one payload,
+ * increasing the target when needed. When set, larger synchronization payloads
+ * sent by the server are split into fragments and reassembled by the receiving
+ * WsSynchronizer, since v9.0.
  * @returns A reference to the new WsServer object.
  * @example
  * This example creates a WsServer that synchronizes two clients on a shared
@@ -521,7 +555,7 @@
  * import {createMergeableStore} from 'tinybase';
  * import {createWsSynchronizer} from 'tinybase/synchronizers/synchronizer-ws-client';
  * import {createWsServer} from 'tinybase/synchronizers/synchronizer-ws-server';
- * import {WebSocketServer} from 'ws';
+ * import {WebSocket, WebSocketServer} from 'ws';
  *
  * // Server
  * const server = createWsServer(new WebSocketServer({port: 8047}));
@@ -562,20 +596,21 @@
  * client connects, it picks up the data the previous two were using.
  *
  * ```js
- * import {rmSync} from 'fs';
+ * import {mkdirSync, rmSync} from 'fs';
  * import {createMergeableStore} from 'tinybase';
  * import {createFilePersister} from 'tinybase/persisters/persister-file';
  * import {createWsSynchronizer} from 'tinybase/synchronizers/synchronizer-ws-client';
  * import {createWsServer} from 'tinybase/synchronizers/synchronizer-ws-server';
- * import {WebSocketServer} from 'ws';
+ * import {WebSocket, WebSocketServer} from 'ws';
  *
  * // Server
+ * mkdirSync('./tmp', {recursive: true});
  * const server = createWsServer(
  *   new WebSocketServer({port: 8047}),
  *   (pathId) =>
  *     createFilePersister(
  *       createMergeableStore(),
- *       pathId.replace(/[^a-zA-Z0-9]/g, '-') + '.json',
+ *       './tmp/' + pathId.replace(/[^a-zA-Z0-9]/g, '-') + '.json',
  *     ),
  * );
  *
@@ -625,7 +660,7 @@
  * await server.destroy();
  *
  * // Remove file for the purposes of this demo.
- * rmSync('petShop.json');
+ * rmSync('./tmp/petShop.json');
  * ```
  * @example
  * This example creates a WsServer that persists a MergeableStore to file that
@@ -633,20 +668,21 @@
  * data once synchronization has started.
  *
  * ```js
- * import {rmSync} from 'fs';
+ * import {mkdirSync, rmSync} from 'fs';
  * import {createMergeableStore} from 'tinybase';
  * import {createFilePersister} from 'tinybase/persisters/persister-file';
  * import {createWsSynchronizer} from 'tinybase/synchronizers/synchronizer-ws-client';
  * import {createWsServer} from 'tinybase/synchronizers/synchronizer-ws-server';
- * import {WebSocketServer} from 'ws';
+ * import {WebSocket, WebSocketServer} from 'ws';
  *
  * // Server
+ * mkdirSync('./tmp', {recursive: true});
  * const server = createWsServer(
  *   new WebSocketServer({port: 8047}),
  *   (pathId) => [
  *     createFilePersister(
  *       createMergeableStore(),
- *       pathId.replace(/[^a-zA-Z0-9]/g, '-') + '.json',
+ *       './tmp/' + pathId.replace(/[^a-zA-Z0-9]/g, '-') + '.json',
  *     ),
  *     (store) => store.setValue('pathId', pathId),
  *   ],
@@ -668,7 +704,7 @@
  * await server.destroy();
  *
  * // Remove file for the purposes of this demo.
- * rmSync('petShop.json');
+ * rmSync('./tmp/petShop.json');
  * ```
  * @example
  * This example creates a WsServer with a custom listener that displays

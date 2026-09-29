@@ -12,22 +12,16 @@ import type {
   BackwardCheckpointsProps,
   CellProps,
   CheckpointProps,
-  CheckpointsOrCheckpointsId,
   ComponentReturnType,
   CurrentCheckpointProps,
   ExtraProps,
   ForwardCheckpointsProps,
   GetId,
   IndexProps,
-  IndexesOrIndexesId,
   LinkedRowsProps,
   LocalRowsProps,
   MetricProps,
-  MetricsOrMetricsId,
-  PersisterOrPersisterId,
   ProviderProps,
-  QueriesOrQueriesId,
-  RelationshipsOrRelationshipsId,
   RemoteRowProps,
   ResultCellProps,
   ResultRowProps,
@@ -36,14 +30,22 @@ import type {
   RowProps,
   SliceProps,
   SortedTableProps,
-  StoreOrStoreId,
-  SynchronizerOrSynchronizerId,
   TableProps,
   TablesProps,
   UndoOrRedoInformation,
   ValueProps,
   ValuesProps,
 } from '../../_internal/ui-react/with-schemas/index.d.ts';
+import type {
+  CheckpointsOrCheckpointsId,
+  IndexesOrIndexesId,
+  MetricsOrMetricsId,
+  PersisterOrPersisterId,
+  QueriesOrQueriesId,
+  RelationshipsOrRelationshipsId,
+  StoreOrStoreId,
+  SynchronizerOrSynchronizerId,
+} from '../../_internal/ui/with-schemas/index.d.ts';
 import type {
   CheckpointIds,
   CheckpointIdsListener,
@@ -56,6 +58,7 @@ import type {
   IdOrNull,
   Ids,
   ParameterizedCallback,
+  Sorter,
 } from '../../common/with-schemas/index.d.ts';
 import type {
   Indexes,
@@ -76,6 +79,10 @@ import type {
   StatusListener,
 } from '../../persisters/with-schemas/index.d.ts';
 import type {
+  ParamValue,
+  ParamValueListener,
+  ParamValues,
+  ParamValuesListener,
   Queries,
   ResultCell,
   ResultCellIdsListener,
@@ -110,6 +117,8 @@ import type {
   MapCell,
   MapValue,
   OptionalSchemas,
+  PartialRow,
+  PartialValues,
   Row,
   RowCountListener,
   RowIdsListener,
@@ -195,6 +204,11 @@ export type WithSchemas<Schemas extends OptionalSchemas> = {
   /// useTables
   useTables: (storeOrStoreId?: StoreOrStoreId<Schemas>) => Tables<Schemas[0]>;
 
+  /// useTablesState
+  useTablesState: (
+    storeOrStoreId?: StoreOrStoreId<Schemas>,
+  ) => [Tables<Schemas[0]>, (tables: Tables<Schemas[0]>) => void];
+
   /// useTableIds
   useTableIds: (
     storeOrStoreId?: StoreOrStoreId<Schemas>,
@@ -211,6 +225,15 @@ export type WithSchemas<Schemas extends OptionalSchemas> = {
     tableId: TableId,
     storeOrStoreId?: StoreOrStoreId<Schemas>,
   ) => Table<Schemas[0], TableId>;
+
+  /// useTableState
+  useTableState: <TableId extends TableIdFromSchema<Schemas[0]>>(
+    tableId: TableId,
+    storeOrStoreId?: StoreOrStoreId<Schemas>,
+  ) => [
+    Table<Schemas[0], TableId>,
+    (table: Table<Schemas[0], TableId>) => void,
+  ];
 
   /// useTableCellIds
   useTableCellIds: <TableId extends TableIdFromSchema<Schemas[0]>>(
@@ -248,6 +271,7 @@ export type WithSchemas<Schemas extends OptionalSchemas> = {
       descending?: boolean,
       offset?: number,
       limit?: number,
+      sorterOrStoreOrStoreId?: Sorter | StoreOrStoreId<Schemas>,
       storeOrStoreId?: StoreOrStoreId<Schemas>,
     ): Ids;
 
@@ -271,6 +295,13 @@ export type WithSchemas<Schemas extends OptionalSchemas> = {
     rowId: Id,
     storeOrStoreId?: StoreOrStoreId<Schemas>,
   ) => Row<Schemas[0], TableId>;
+
+  /// useRowState
+  useRowState: <TableId extends TableIdFromSchema<Schemas[0]>>(
+    tableId: TableId,
+    rowId: Id,
+    storeOrStoreId?: StoreOrStoreId<Schemas>,
+  ) => [Row<Schemas[0], TableId>, (row: Row<Schemas[0], TableId>) => void];
 
   /// useCellIds
   useCellIds: <TableId extends TableIdFromSchema<Schemas[0]>>(
@@ -301,11 +332,30 @@ export type WithSchemas<Schemas extends OptionalSchemas> = {
     storeOrStoreId?: StoreOrStoreId<Schemas>,
   ) => NoInfer<CellOrUndefined<Schemas[0], TableId, CellId>>;
 
+  /// useCellState
+  useCellState: <
+    TableId extends TableIdFromSchema<Schemas[0]>,
+    CellId extends CellIdFromSchema<Schemas[0], TableId>,
+  >(
+    tableId: TableId,
+    rowId: Id,
+    cellId: CellId,
+    storeOrStoreId?: StoreOrStoreId<Schemas>,
+  ) => [
+    CellOrUndefined<Schemas[0], TableId, CellId>,
+    (cell: Cell<Schemas[0], TableId, CellId>) => void,
+  ];
+
   /// useHasValues
   useHasValues: (storeOrStoreId?: StoreOrStoreId<Schemas>) => boolean;
 
   /// useValues
   useValues: (storeOrStoreId?: StoreOrStoreId<Schemas>) => Values<Schemas[1]>;
+
+  /// useValuesState
+  useValuesState: (
+    storeOrStoreId?: StoreOrStoreId<Schemas>,
+  ) => [Values<Schemas[1]>, (values: Values<Schemas[1]>) => void];
 
   /// useValueIds
   useValueIds: (
@@ -324,15 +374,24 @@ export type WithSchemas<Schemas extends OptionalSchemas> = {
     storeOrStoreId?: StoreOrStoreId<Schemas>,
   ) => DefaultedValueFromSchema<Schemas[1], ValueId>;
 
+  /// useValueState
+  useValueState: <ValueId extends ValueIdFromSchema<Schemas[1]>>(
+    valueId: ValueId,
+    storeOrStoreId?: StoreOrStoreId<Schemas>,
+  ) => [
+    value: DefaultedValueFromSchema<Schemas[1], ValueId>,
+    setValue: (value: Value<Schemas[1], ValueId>) => void,
+  ];
+
   /// useSetTablesCallback
-  useSetTablesCallback: <Parameter, SetTables = Tables<Schemas[0], true>>(
+  useSetTablesCallback: <Parameter>(
     getTables: (
       parameter: Parameter,
       store: Store<Schemas>,
-    ) => NoInfer<SetTables>,
+    ) => Tables<Schemas[0], true>,
     getTablesDeps?: React.DependencyList,
     storeOrStoreId?: StoreOrStoreId<Schemas>,
-    then?: (store: Store<Schemas>, tables: SetTables) => void,
+    then?: (store: Store<Schemas>, tables: Tables<Schemas[0], true>) => void,
     thenDeps?: React.DependencyList,
   ) => ParameterizedCallback<Parameter>;
 
@@ -340,45 +399,49 @@ export type WithSchemas<Schemas extends OptionalSchemas> = {
   useSetTableCallback: <
     Parameter,
     TableId extends TableIdFromSchema<Schemas[0]>,
-    SetTable = Table<Schemas[0], TableId, true>,
   >(
     tableId: TableId | GetId<Schemas, Parameter, TableId>,
     getTable: (
       parameter: Parameter,
       store: Store<Schemas>,
-    ) => NoInfer<SetTable>,
+    ) => Table<Schemas[0], TableId, true>,
     getTableDeps?: React.DependencyList,
     storeOrStoreId?: StoreOrStoreId<Schemas>,
-    then?: (store: Store<Schemas>, table: SetTable) => void,
+    then?: (
+      store: Store<Schemas>,
+      table: Table<Schemas[0], TableId, true>,
+    ) => void,
     thenDeps?: React.DependencyList,
   ) => ParameterizedCallback<Parameter>;
 
   /// useSetRowCallback
-  useSetRowCallback: <
-    Parameter,
-    TableId extends TableIdFromSchema<Schemas[0]>,
-    SetRow = Row<Schemas[0], TableId, true>,
-  >(
+  useSetRowCallback: <Parameter, TableId extends TableIdFromSchema<Schemas[0]>>(
     tableId: TableId | GetId<Schemas, Parameter, TableId>,
     rowId: Id | GetId<Schemas, Parameter, Id>,
-    getRow: (parameter: Parameter, store: Store<Schemas>) => NoInfer<SetRow>,
+    getRow: (
+      parameter: Parameter,
+      store: Store<Schemas>,
+    ) => Row<Schemas[0], TableId, true>,
     getRowDeps?: React.DependencyList,
     storeOrStoreId?: StoreOrStoreId<Schemas>,
-    then?: (store: Store<Schemas>, row: SetRow) => void,
+    then?: (store: Store<Schemas>, row: Row<Schemas[0], TableId, true>) => void,
     thenDeps?: React.DependencyList,
   ) => ParameterizedCallback<Parameter>;
 
   /// useAddRowCallback
-  useAddRowCallback: <
-    Parameter,
-    TableId extends TableIdFromSchema<Schemas[0]>,
-    AddRow = Row<Schemas[0], TableId, true>,
-  >(
+  useAddRowCallback: <Parameter, TableId extends TableIdFromSchema<Schemas[0]>>(
     tableId: TableId | GetId<Schemas, Parameter, TableId>,
-    getRow: (parameter: Parameter, store: Store<Schemas>) => NoInfer<AddRow>,
+    getRow: (
+      parameter: Parameter,
+      store: Store<Schemas>,
+    ) => Row<Schemas[0], TableId, true>,
     getRowDeps?: React.DependencyList,
     storeOrStoreId?: StoreOrStoreId<Schemas>,
-    then?: (rowId: Id | undefined, store: Store<Schemas>, row: AddRow) => void,
+    then?: (
+      rowId: Id | undefined,
+      store: Store<Schemas>,
+      row: Row<Schemas[0], TableId, true>,
+    ) => void,
     thenDeps?: React.DependencyList,
     reuseRowIds?: boolean,
   ) => ParameterizedCallback<Parameter>;
@@ -387,17 +450,19 @@ export type WithSchemas<Schemas extends OptionalSchemas> = {
   useSetPartialRowCallback: <
     Parameter,
     TableId extends TableIdFromSchema<Schemas[0]>,
-    SetPartialRow = Row<Schemas[0], TableId, true>,
   >(
     tableId: TableId | GetId<Schemas, Parameter, TableId>,
     rowId: Id | GetId<Schemas, Parameter, Id>,
     getPartialRow: (
       parameter: Parameter,
       store: Store<Schemas>,
-    ) => NoInfer<SetPartialRow>,
+    ) => PartialRow<Schemas[0], TableId>,
     getPartialRowDeps?: React.DependencyList,
     storeOrStoreId?: StoreOrStoreId<Schemas>,
-    then?: (store: Store<Schemas>, partialRow: SetPartialRow) => void,
+    then?: (
+      store: Store<Schemas>,
+      partialRow: PartialRow<Schemas[0], TableId>,
+    ) => void,
     thenDeps?: React.DependencyList,
   ) => ParameterizedCallback<Parameter>;
 
@@ -407,8 +472,7 @@ export type WithSchemas<Schemas extends OptionalSchemas> = {
     TableId extends TableIdFromSchema<Schemas[0]>,
     CellId extends CellIdFromSchema<Schemas[0], TableId>,
     SetOrMapCell =
-      | Cell<Schemas[0], TableId, CellId>
-      | MapCell<Schemas[0], TableId, CellId>,
+      Cell<Schemas[0], TableId, CellId> | MapCell<Schemas[0], TableId, CellId>,
   >(
     tableId: TableId | GetId<Schemas, Parameter, TableId>,
     rowId: Id | GetId<Schemas, Parameter, Id>,
@@ -424,29 +488,29 @@ export type WithSchemas<Schemas extends OptionalSchemas> = {
   ) => ParameterizedCallback<Parameter>;
 
   /// useSetValuesCallback
-  useSetValuesCallback: <Parameter, SetValues = Values<Schemas[1], true>>(
+  useSetValuesCallback: <Parameter>(
     getValues: (
       parameter: Parameter,
       store: Store<Schemas>,
-    ) => NoInfer<SetValues>,
+    ) => Values<Schemas[1], true>,
     getValuesDeps?: React.DependencyList,
     storeOrStoreId?: StoreOrStoreId<Schemas>,
-    then?: (store: Store<Schemas>, values: SetValues) => void,
+    then?: (store: Store<Schemas>, values: Values<Schemas[1], true>) => void,
     thenDeps?: React.DependencyList,
   ) => ParameterizedCallback<Parameter>;
 
   /// useSetPartialValuesCallback
-  useSetPartialValuesCallback: <
-    Parameter,
-    SetPartialValues = Values<Schemas[1], true>,
-  >(
+  useSetPartialValuesCallback: <Parameter>(
     getPartialValues: (
       parameter: Parameter,
       store: Store<Schemas>,
-    ) => NoInfer<SetPartialValues>,
+    ) => PartialValues<Schemas[1]>,
     getPartialValuesDeps?: React.DependencyList,
     storeOrStoreId?: StoreOrStoreId<Schemas>,
-    then?: (store: Store<Schemas>, partialValues: SetPartialValues) => void,
+    then?: (
+      store: Store<Schemas>,
+      partialValues: PartialValues<Schemas[1]>,
+    ) => void,
     thenDeps?: React.DependencyList,
   ) => ParameterizedCallback<Parameter>;
 
@@ -628,8 +692,7 @@ export type WithSchemas<Schemas extends OptionalSchemas> = {
     <
       TableId extends TableIdFromSchema<Schemas[0]>,
       CellIdOrUndefined extends
-        | CellIdFromSchema<Schemas[0], TableId>
-        | undefined,
+        CellIdFromSchema<Schemas[0], TableId> | undefined,
     >(
       tableId: TableId,
       cellId: CellIdOrUndefined,
@@ -646,8 +709,7 @@ export type WithSchemas<Schemas extends OptionalSchemas> = {
     <
       TableId extends TableIdFromSchema<Schemas[0]>,
       CellIdOrUndefined extends
-        | CellIdFromSchema<Schemas[0], TableId>
-        | undefined,
+        CellIdFromSchema<Schemas[0], TableId> | undefined,
     >(
       args: SortedRowIdsArgs<Schemas[0], TableId>,
       listener: SortedRowIdsListener<Schemas, TableId, CellIdOrUndefined>,
@@ -824,7 +886,7 @@ export type WithSchemas<Schemas extends OptionalSchemas> = {
     metricsOrMetricsId?: MetricsOrMetricsId<Schemas>,
   ) => Metrics<Schemas> | undefined;
 
-  // useProvideMetrics
+  /// useProvideMetrics
   useProvideMetrics: (metricsId: Id, metrics: Metrics<Schemas>) => void;
 
   /// useMetricIds
@@ -862,17 +924,30 @@ export type WithSchemas<Schemas extends OptionalSchemas> = {
     indexesOrIndexesId?: IndexesOrIndexesId<Schemas>,
   ) => Indexes<Schemas> | undefined;
 
-  // useProvideIndexes
+  /// useProvideIndexes
   useProvideIndexes: (indexesId: Id, indexes: Indexes<Schemas>) => void;
 
   /// useIndexIds
   useIndexIds(indexesOrIndexesId?: IndexesOrIndexesId<Schemas>): Ids;
+
+  /// useHasIndex
+  useHasIndex: (
+    indexId: Id,
+    indexesOrIndexesId?: IndexesOrIndexesId<Schemas>,
+  ) => boolean;
 
   /// useSliceIds
   useSliceIds: (
     indexId: Id,
     indexesOrIndexesId?: IndexesOrIndexesId<Schemas>,
   ) => Ids;
+
+  /// useHasSlice
+  useHasSlice: (
+    indexId: Id,
+    sliceId: Id,
+    indexesOrIndexesId?: IndexesOrIndexesId<Schemas>,
+  ) => boolean;
 
   /// useSliceRowIds
   useSliceRowIds: (
@@ -916,7 +991,7 @@ export type WithSchemas<Schemas extends OptionalSchemas> = {
     relationshipsOrRelationshipsId?: RelationshipsOrRelationshipsId<Schemas>,
   ) => Relationships<Schemas> | undefined;
 
-  // useProvideRelationships
+  /// useProvideRelationships
   useProvideRelationships: (
     relationshipsId: Id,
     relationships: Relationships<Schemas>,
@@ -993,7 +1068,7 @@ export type WithSchemas<Schemas extends OptionalSchemas> = {
     queriesOrQueriesId?: QueriesOrQueriesId<Schemas>,
   ) => Queries<Schemas> | undefined;
 
-  // useProvideQueries
+  /// useProvideQueries
   useProvideQueries: (queriesId: Id, queries: Queries<Schemas>) => void;
 
   /// useQueryIds
@@ -1127,6 +1202,76 @@ export type WithSchemas<Schemas extends OptionalSchemas> = {
     queriesOrQueriesId?: QueriesOrQueriesId<Schemas>,
   ) => void;
 
+  /// useParamValues
+  useParamValues: (
+    queryId: Id,
+    queriesOrQueriesId?: QueriesOrQueriesId<Schemas>,
+  ) => ParamValues;
+
+  /// useParamValuesState
+  useParamValuesState: (
+    queryId: Id,
+    queriesOrQueriesId?: QueriesOrQueriesId<Schemas>,
+  ) => [ParamValues, (paramValues: ParamValues) => void];
+
+  /// useParamValue
+  useParamValue: (
+    queryId: Id,
+    paramId: Id,
+    queriesOrQueriesId?: QueriesOrQueriesId<Schemas>,
+  ) => ParamValue | undefined;
+
+  /// useParamValueState
+  useParamValueState: (
+    queryId: Id,
+    paramId: Id,
+    queriesOrQueriesId?: QueriesOrQueriesId<Schemas>,
+  ) => [ParamValue | undefined, (paramValue: ParamValue) => void];
+
+  /// useParamValuesListener
+  useParamValuesListener: (
+    queryId: IdOrNull,
+    listener: ParamValuesListener<Schemas>,
+    listenerDeps?: React.DependencyList,
+    queriesOrQueriesId?: QueriesOrQueriesId<Schemas>,
+  ) => void;
+
+  /// useParamValueListener
+  useParamValueListener: (
+    queryId: IdOrNull,
+    paramId: IdOrNull,
+    listener: ParamValueListener<Schemas>,
+    listenerDeps?: React.DependencyList,
+    queriesOrQueriesId?: QueriesOrQueriesId<Schemas>,
+  ) => void;
+
+  /// useSetParamValueCallback
+  useSetParamValueCallback: <Parameter>(
+    queryId: Id | GetId<Schemas, Parameter, Id>,
+    paramId: Id | GetId<Schemas, Parameter, Id>,
+    getParamValue: (
+      parameter: Parameter,
+      queries: Queries<Schemas>,
+    ) => ParamValue,
+    getParamValueDeps?: React.DependencyList,
+    queriesOrQueriesId?: QueriesOrQueriesId<Schemas>,
+    then?: (queries: Queries<Schemas>, paramValue: ParamValue) => void,
+    thenDeps?: React.DependencyList,
+  ) => ParameterizedCallback<Parameter>;
+
+  /// useSetParamValuesCallback
+  useSetParamValuesCallback: <Parameter>(
+    queryId: Id | GetId<Schemas, Parameter, Id>,
+    getParamValues: (
+      parameter: Parameter,
+      queries: Queries<Schemas>,
+    ) => ParamValues,
+    getParamValuesDeps?: React.DependencyList,
+    queriesOrQueriesId?: QueriesOrQueriesId<Schemas>,
+    then?: (queries: Queries<Schemas>, paramValues: ParamValues) => void,
+    thenDeps?: React.DependencyList,
+  ) => ParameterizedCallback<Parameter>;
+
   /// useCreateCheckpoints
   useCreateCheckpoints: (
     store: Store<Schemas> | undefined,
@@ -1145,7 +1290,7 @@ export type WithSchemas<Schemas extends OptionalSchemas> = {
     checkpointsOrCheckpointsId?: CheckpointsOrCheckpointsId<Schemas>,
   ) => Checkpoints<Schemas> | undefined;
 
-  // useProvideCheckpoints
+  /// useProvideCheckpoints
   useProvideCheckpoints: (
     checkpointsId: Id,
     checkpoints: Checkpoints<Schemas>,
@@ -1233,7 +1378,7 @@ export type WithSchemas<Schemas extends OptionalSchemas> = {
     thenDeps?: React.DependencyList,
     destroy?: (persister: Persister<Schemas, Persist>) => void,
     destroyDeps?: React.DependencyList,
-  ) => PersisterOrUndefined;
+  ) => PersisterOrUndefined | undefined;
 
   /// usePersisterIds
   usePersisterIds: () => Ids;
@@ -1248,7 +1393,7 @@ export type WithSchemas<Schemas extends OptionalSchemas> = {
     persisterOrPersisterId?: PersisterOrPersisterId<Schemas>,
   ) => Persister<Schemas, Persists.StoreOrMergeableStore> | undefined;
 
-  // useProvidePersister
+  /// useProvidePersister
   useProvidePersister: (
     persisterId: Id,
     persister: AnyPersister<Schemas> | undefined,
@@ -1261,7 +1406,7 @@ export type WithSchemas<Schemas extends OptionalSchemas> = {
 
   /// usePersisterStatusListener
   usePersisterStatusListener: (
-    listener: StatusListener<Schemas, Persists.StoreOrMergeableStore>,
+    listener: StatusListener<Schemas>,
     listenerDeps?: React.DependencyList,
     persisterOrPersisterId?: PersisterOrPersisterId<Schemas>,
   ) => void;
@@ -1277,7 +1422,7 @@ export type WithSchemas<Schemas extends OptionalSchemas> = {
     createDeps?: React.DependencyList,
     destroy?: (synchronizer: Synchronizer<Schemas>) => void,
     destroyDeps?: React.DependencyList,
-  ) => SynchronizerOrUndefined;
+  ) => SynchronizerOrUndefined | undefined;
 
   /// useSynchronizerIds
   useSynchronizerIds: () => Ids;
@@ -1290,7 +1435,7 @@ export type WithSchemas<Schemas extends OptionalSchemas> = {
     synchronizerOrSynchronizerId?: SynchronizerOrSynchronizerId<Schemas>,
   ) => Synchronizer<Schemas> | undefined;
 
-  // useProvideSynchronizer
+  /// useProvideSynchronizer
   useProvideSynchronizer: (
     synchronizerId: Id,
     synchronizer: Synchronizer<Schemas> | undefined,
@@ -1303,7 +1448,7 @@ export type WithSchemas<Schemas extends OptionalSchemas> = {
 
   /// useSynchronizerStatusListener
   useSynchronizerStatusListener: (
-    listener: StatusListener<Schemas, Persists.StoreOrMergeableStore>,
+    listener: StatusListener<Schemas>,
     listenerDeps?: React.DependencyList,
     synchronizerOrSynchronizerId?: SynchronizerOrSynchronizerId<Schemas>,
   ) => void;

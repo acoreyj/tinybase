@@ -1,6 +1,7 @@
+import {beforeEach, describe, expect, test} from 'vitest';
+
 /*  eslint-disable @typescript-eslint/ban-ts-comment */
 import {render} from '@testing-library/react';
-import React from 'react';
 import type {Relationships, Store} from 'tinybase';
 import {
   createCheckpoints,
@@ -60,12 +61,9 @@ const INVALID_CELLS_OR_VALUES: [string, any][] = [
   ['Date', new Date()],
   ['Function', () => 42],
   ['Regex', /1/],
-  ['empty array', []],
-  ['array', [1, 2, 3]],
   ['Number', new Number(1)],
   ['String', new String('1')],
   ['Boolean', new Boolean(true)],
-  ['null', null],
   ['undefined', undefined],
   ['NaN', NaN],
 ];

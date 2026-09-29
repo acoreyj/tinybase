@@ -10,7 +10,7 @@ import type {Store} from '../@types/store/index.d.ts';
 import type {Synchronizer} from '../@types/synchronizers/index.d.ts';
 import {IdObj, objGet, objIds} from '../common/obj.ts';
 import {GLOBAL, isString, isUndefined} from '../common/other.ts';
-import {createContext, useContext, useEffect} from '../common/react.ts';
+import {createContext, useContext, useEffect, useRef} from '../common/react.ts';
 import {TINYBASE} from '../common/strings.ts';
 import type {Offsets} from './Provider.tsx';
 
@@ -58,8 +58,9 @@ export type ContextValue = [
     offset: Offset,
     id: string,
     thing: ThingsByOffset[Offset],
+    owner: object,
   ) => void,
-  delExtraThingById?: (offset: Offsets, id: string) => void,
+  delExtraThingById?: (offset: Offsets, id: string, owner: object) => void,
 ];
 
 const TINYBASE_CONTEXT = TINYBASE + '_uirc';
@@ -90,24 +91,14 @@ export const useThings = <UsedThing extends Thing>(
 ): IdObj<UsedThing> =>
   ({...useContext(Context)[offset * 2 + 1]}) as IdObj<UsedThing>;
 
-export const useThingOrThingById = <
-  Thing extends
-    | Store
-    | Metrics
-    | Indexes
-    | Relationships
-    | Queries
-    | Checkpoints
-    | AnyPersister
-    | Synchronizer,
->(
-  thingOrThingId: Thing | Id | undefined,
+export const useThingOrThingById = <T extends Thing>(
+  thingOrThingId: T | Id | undefined,
   offset: Offsets,
-): Thing | undefined => {
+): T | undefined => {
   const thing = useThing(thingOrThingId as Id, offset);
   return isUndefined(thingOrThingId) || isString(thingOrThingId)
-    ? (thing as Thing | undefined)
-    : (thingOrThingId as Thing);
+    ? (thing as T | undefined)
+    : (thingOrThingId as T);
 };
 
 export const useProvideThing = <Offset extends Offsets>(
@@ -116,10 +107,11 @@ export const useProvideThing = <Offset extends Offsets>(
   offset: Offset,
 ): void => {
   const {16: addExtraThingById, 17: delExtraThingById} = useContext(Context);
+  const owner = useRef<object>({}).current;
   useEffect(() => {
-    addExtraThingById?.(offset, thingId, thing);
-    return () => delExtraThingById?.(offset, thingId);
-  }, [addExtraThingById, thingId, thing, offset, delExtraThingById]);
+    addExtraThingById?.(offset, thingId, thing, owner);
+    return () => delExtraThingById?.(offset, thingId, owner);
+  }, [addExtraThingById, thingId, thing, offset, delExtraThingById, owner]);
 };
 
 export const useThingIds = (offset: Offsets): Ids =>

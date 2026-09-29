@@ -1,6 +1,6 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`Persists to/from customSynchronizer autoLoads 1`] = `
+exports[`Persists to/from betterSqlite3 > autoLoads 1`] = `
 [
   [
     {
@@ -10,20 +10,20 @@ exports[`Persists to/from customSynchronizer autoLoads 1`] = `
             {
               "c1": [
                 1,
-                "1",
-                1680131417,
+                "Nn1JUF0----7JQY8",
+                4065945599,
               ],
             },
             "",
-            2634749936,
+            1279994494,
           ],
         },
         "",
-        2598021553,
+        1293085726,
       ],
     },
     "",
-    2494750488,
+    4033596827,
   ],
   [
     {},
@@ -33,7 +33,7 @@ exports[`Persists to/from customSynchronizer autoLoads 1`] = `
 ]
 `;
 
-exports[`Persists to/from customSynchronizer autoLoads 2`] = `
+exports[`Persists to/from betterSqlite3 > autoLoads 2`] = `
 [
   [
     {
@@ -43,20 +43,20 @@ exports[`Persists to/from customSynchronizer autoLoads 2`] = `
             {
               "c1": [
                 2,
-                "2",
-                1107305117,
+                "Nn1JUF1----7JQY8",
+                2669080357,
               ],
             },
             "",
-            239923340,
+            274319047,
           ],
         },
         "",
-        806147629,
+        4089057354,
       ],
     },
     "",
-    4135100783,
+    3386696034,
   ],
   [
     {},
@@ -66,7 +66,7 @@ exports[`Persists to/from customSynchronizer autoLoads 2`] = `
 ]
 `;
 
-exports[`Persists to/from customSynchronizer autoLoads 3`] = `
+exports[`Persists to/from betterSqlite3 > autoLoads 3`] = `
 [
   [
     {
@@ -76,20 +76,20 @@ exports[`Persists to/from customSynchronizer autoLoads 3`] = `
             {
               "c1": [
                 3,
-                "3",
-                1281296065,
+                "Nn1JUF2----7JQY8",
+                3252714811,
               ],
             },
             "",
-            253170412,
+            1416411412,
           ],
         },
         "",
-        942766199,
+        3704904231,
       ],
     },
     "",
-    1560530767,
+    4008152259,
   ],
   [
     {},
@@ -99,7 +99,7 @@ exports[`Persists to/from customSynchronizer autoLoads 3`] = `
 ]
 `;
 
-exports[`Persists to/from customSynchronizer autoLoads 4`] = `
+exports[`Persists to/from betterSqlite3 > autoLoads 4`] = `
 [
   [
     {
@@ -109,20 +109,20 @@ exports[`Persists to/from customSynchronizer autoLoads 4`] = `
             {
               "c1": [
                 3,
-                "3",
-                1281296065,
+                "Nn1JUF2----7JQY8",
+                3252714811,
               ],
             },
             "",
-            253170412,
+            1416411412,
           ],
         },
         "",
-        942766199,
+        3704904231,
       ],
     },
     "",
-    1560530767,
+    4008152259,
   ],
   [
     {},
@@ -132,7 +132,7 @@ exports[`Persists to/from customSynchronizer autoLoads 4`] = `
 ]
 `;
 
-exports[`Persists to/from customSynchronizer autoSave & autoLoad: roundtrip 1`] = `
+exports[`Persists to/from betterSqlite3 > autoSave & autoLoad: roundtrip 1`] = `
 [
   [
     {
@@ -209,7 +209,640 @@ exports[`Persists to/from customSynchronizer autoSave & autoLoad: roundtrip 1`] 
 ]
 `;
 
-exports[`Persists to/from customSynchronizer autoSave & autoLoad: roundtrip 2`] = `
+exports[`Persists to/from betterSqlite3 > autoSave & autoLoad: roundtrip 2`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                "￼",
+                "Nn1JUF----77JQY8",
+                1267840296,
+              ],
+            },
+            "",
+            2533574593,
+          ],
+          "r2": [
+            {
+              "c2": [
+                "￼",
+                "Nn1JUF----67JQY8",
+                2770824445,
+              ],
+            },
+            "",
+            811264265,
+          ],
+        },
+        "",
+        2755269984,
+      ],
+      "t2": [
+        {
+          "r2": [
+            {
+              "c2": [
+                "￼",
+                "Nn1JUF----57JQY8",
+                755827458,
+              ],
+            },
+            "",
+            3087140291,
+          ],
+        },
+        "",
+        1225184002,
+      ],
+    },
+    "",
+    3340350845,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----37JQY8",
+        3542219356,
+      ],
+      "v2": [
+        "￼",
+        "Nn1JUF----87JQY8",
+        2233415979,
+      ],
+    },
+    "",
+    2110402117,
+  ],
+]
+`;
+
+exports[`Persists to/from betterSqlite3 > autoSave & autoLoad: roundtrip 3`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                "￼",
+                "Nn1JUF----77JQY8",
+                1267840296,
+              ],
+            },
+            "",
+            2533574593,
+          ],
+          "r2": [
+            {
+              "c2": [
+                "￼",
+                "Nn1JUF----67JQY8",
+                2770824445,
+              ],
+            },
+            "",
+            811264265,
+          ],
+        },
+        "",
+        2755269984,
+      ],
+      "t2": [
+        {
+          "r2": [
+            {
+              "c2": [
+                "￼",
+                "Nn1JUF----57JQY8",
+                755827458,
+              ],
+            },
+            "",
+            3087140291,
+          ],
+        },
+        "",
+        1225184002,
+      ],
+    },
+    "",
+    3340350845,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----37JQY8",
+        3542219356,
+      ],
+      "v2": [
+        "￼",
+        "Nn1JUF----87JQY8",
+        2233415979,
+      ],
+    },
+    "",
+    2110402117,
+  ],
+]
+`;
+
+exports[`Persists to/from betterSqlite3 > autoSaves > delCell 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                "￼",
+                "Nn1JUFc----7JQY8",
+                4036784140,
+              ],
+            },
+            "",
+            1580055069,
+          ],
+        },
+        "",
+        3198578267,
+      ],
+    },
+    "",
+    3962176564,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+      "v2": [
+        2,
+        "Nn1JUFJ----7JQY8",
+        3659329950,
+      ],
+    },
+    "",
+    143526703,
+  ],
+]
+`;
+
+exports[`Persists to/from betterSqlite3 > autoSaves > delValue 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                "￼",
+                "Nn1JUFc----7JQY8",
+                4036784140,
+              ],
+            },
+            "",
+            1580055069,
+          ],
+        },
+        "",
+        3198578267,
+      ],
+    },
+    "",
+    3962176564,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+      "v2": [
+        "￼",
+        "Nn1JUFw----7JQY8",
+        1709187352,
+      ],
+    },
+    "",
+    2494864705,
+  ],
+]
+`;
+
+exports[`Persists to/from betterSqlite3 > autoSaves > initial 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+            },
+            "",
+            550994372,
+          ],
+        },
+        "",
+        1072852846,
+      ],
+    },
+    "",
+    1771939739,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+    },
+    "",
+    3877632732,
+  ],
+]
+`;
+
+exports[`Persists to/from betterSqlite3 > autoSaves > setTables 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                2,
+                "Nn1JUF----17JQY8",
+                1804136345,
+              ],
+            },
+            "",
+            3439185877,
+          ],
+        },
+        "",
+        855391547,
+      ],
+    },
+    "",
+    262414121,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+    },
+    "",
+    3877632732,
+  ],
+]
+`;
+
+exports[`Persists to/from betterSqlite3 > autoSaves > setValues 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                2,
+                "Nn1JUF----17JQY8",
+                1804136345,
+              ],
+            },
+            "",
+            3439185877,
+          ],
+        },
+        "",
+        855391547,
+      ],
+    },
+    "",
+    262414121,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+      "v2": [
+        2,
+        "Nn1JUFJ----7JQY8",
+        3659329950,
+      ],
+    },
+    "",
+    143526703,
+  ],
+]
+`;
+
+exports[`Persists to/from betterSqlite3 > loads 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                4065945599,
+              ],
+            },
+            "",
+            1279994494,
+          ],
+        },
+        "",
+        1293085726,
+      ],
+    },
+    "",
+    4033596827,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF-----7JQY8",
+        4065945599,
+      ],
+    },
+    "",
+    2304392760,
+  ],
+]
+`;
+
+exports[`Persists to/from betterSqlite3 > saves 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+            },
+            "",
+            550994372,
+          ],
+        },
+        "",
+        1072852846,
+      ],
+    },
+    "",
+    1771939739,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+    },
+    "",
+    3877632732,
+  ],
+]
+`;
+
+exports[`Persists to/from betterSqlite3 > saves 2`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+            },
+            "",
+            550994372,
+          ],
+        },
+        "",
+        1072852846,
+      ],
+    },
+    "",
+    1771939739,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+    },
+    "",
+    3877632732,
+  ],
+]
+`;
+
+exports[`Persists to/from customSynchronizer > autoLoads 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF0----7JQY8",
+                4008049267,
+              ],
+            },
+            "",
+            3074190582,
+          ],
+        },
+        "",
+        3688486605,
+      ],
+    },
+    "",
+    4288900630,
+  ],
+  [
+    {},
+    "",
+    0,
+  ],
+]
+`;
+
+exports[`Persists to/from customSynchronizer > autoLoads 2`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                2,
+                "Nn1JUF1----7JQY8",
+                830262161,
+              ],
+            },
+            "",
+            1051432883,
+          ],
+        },
+        "",
+        3431674099,
+      ],
+    },
+    "",
+    1559212866,
+  ],
+  [
+    {},
+    "",
+    0,
+  ],
+]
+`;
+
+exports[`Persists to/from customSynchronizer > autoLoads 3`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                3,
+                "Nn1JUF2----7JQY8",
+                854368411,
+              ],
+            },
+            "",
+            1732716910,
+          ],
+        },
+        "",
+        2951847039,
+      ],
+    },
+    "",
+    2525626812,
+  ],
+  [
+    {},
+    "",
+    0,
+  ],
+]
+`;
+
+exports[`Persists to/from customSynchronizer > autoLoads 4`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                3,
+                "Nn1JUF2----7JQY8",
+                854368411,
+              ],
+            },
+            "",
+            1732716910,
+          ],
+        },
+        "",
+        2951847039,
+      ],
+    },
+    "",
+    2525626812,
+  ],
+  [
+    {},
+    "",
+    0,
+  ],
+]
+`;
+
+exports[`Persists to/from customSynchronizer > autoSave & autoLoad: roundtrip 1`] = `
 [
   [
     {
@@ -286,7 +919,7 @@ exports[`Persists to/from customSynchronizer autoSave & autoLoad: roundtrip 2`] 
 ]
 `;
 
-exports[`Persists to/from customSynchronizer autoSave & autoLoad: roundtrip 3`] = `
+exports[`Persists to/from customSynchronizer > autoSave & autoLoad: roundtrip 2`] = `
 [
   [
     {
@@ -363,7 +996,84 @@ exports[`Persists to/from customSynchronizer autoSave & autoLoad: roundtrip 3`] 
 ]
 `;
 
-exports[`Persists to/from customSynchronizer autoSaves: delCell 1`] = `
+exports[`Persists to/from customSynchronizer > autoSave & autoLoad: roundtrip 3`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                undefined,
+                "Nn1JUF----77JQY8",
+                1267840296,
+              ],
+            },
+            "",
+            2533574593,
+          ],
+          "r2": [
+            {
+              "c2": [
+                undefined,
+                "Nn1JUF----67JQY8",
+                2770824445,
+              ],
+            },
+            "",
+            811264265,
+          ],
+        },
+        "",
+        2755269984,
+      ],
+      "t2": [
+        {
+          "r2": [
+            {
+              "c2": [
+                undefined,
+                "Nn1JUF----57JQY8",
+                755827458,
+              ],
+            },
+            "",
+            3087140291,
+          ],
+        },
+        "",
+        1225184002,
+      ],
+    },
+    "",
+    3340350845,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----37JQY8",
+        3542219356,
+      ],
+      "v2": [
+        undefined,
+        "Nn1JUF----87JQY8",
+        2233415979,
+      ],
+    },
+    "",
+    2110402117,
+  ],
+]
+`;
+
+exports[`Persists to/from customSynchronizer > autoSaves > delCell 1`] = `
 [
   [
     {
@@ -412,7 +1122,7 @@ exports[`Persists to/from customSynchronizer autoSaves: delCell 1`] = `
 ]
 `;
 
-exports[`Persists to/from customSynchronizer autoSaves: delValue 1`] = `
+exports[`Persists to/from customSynchronizer > autoSaves > delValue 1`] = `
 [
   [
     {
@@ -461,7 +1171,7 @@ exports[`Persists to/from customSynchronizer autoSaves: delValue 1`] = `
 ]
 `;
 
-exports[`Persists to/from customSynchronizer autoSaves: initial 1`] = `
+exports[`Persists to/from customSynchronizer > autoSaves > initial 1`] = `
 [
   [
     {},
@@ -476,7 +1186,7 @@ exports[`Persists to/from customSynchronizer autoSaves: initial 1`] = `
 ]
 `;
 
-exports[`Persists to/from customSynchronizer autoSaves: setTables 1`] = `
+exports[`Persists to/from customSynchronizer > autoSaves > setTables 1`] = `
 [
   [
     {
@@ -520,7 +1230,7 @@ exports[`Persists to/from customSynchronizer autoSaves: setTables 1`] = `
 ]
 `;
 
-exports[`Persists to/from customSynchronizer autoSaves: setValues 1`] = `
+exports[`Persists to/from customSynchronizer > autoSaves > setValues 1`] = `
 [
   [
     {
@@ -569,7 +1279,7 @@ exports[`Persists to/from customSynchronizer autoSaves: setValues 1`] = `
 ]
 `;
 
-exports[`Persists to/from customSynchronizer loads 1`] = `
+exports[`Persists to/from customSynchronizer > loads 1`] = `
 [
   [
     {
@@ -579,36 +1289,36 @@ exports[`Persists to/from customSynchronizer loads 1`] = `
             {
               "c1": [
                 1,
-                "_",
-                237256183,
+                "Nn1JUF-----7JQY8",
+                1003668370,
               ],
             },
             "",
-            2867482913,
+            550994372,
           ],
         },
         "",
-        744460378,
+        1072852846,
       ],
     },
     "",
-    3362283737,
+    1771939739,
   ],
   [
     {
       "v1": [
         1,
-        "_",
-        237256183,
+        "Nn1JUF-----7JQY8",
+        1003668370,
       ],
     },
     "",
-    2754659917,
+    4180671758,
   ],
 ]
 `;
 
-exports[`Persists to/from customSynchronizer saves 1`] = `
+exports[`Persists to/from customSynchronizer > saves 1`] = `
 [
   [
     {
@@ -647,7 +1357,7 @@ exports[`Persists to/from customSynchronizer saves 1`] = `
 ]
 `;
 
-exports[`Persists to/from customSynchronizer saves 2`] = `
+exports[`Persists to/from customSynchronizer > saves 2`] = `
 [
   [
     {},
@@ -662,7 +1372,17 @@ exports[`Persists to/from customSynchronizer saves 2`] = `
 ]
 `;
 
-exports[`Persists to/from file autoLoads 1`] = `
+exports[`Persists to/from durableObjectStorage > autoSaves > delCell 1`] = `undefined`;
+
+exports[`Persists to/from durableObjectStorage > autoSaves > delValue 1`] = `undefined`;
+
+exports[`Persists to/from durableObjectStorage > autoSaves > initial 1`] = `undefined`;
+
+exports[`Persists to/from durableObjectStorage > autoSaves > setTables 1`] = `undefined`;
+
+exports[`Persists to/from durableObjectStorage > autoSaves > setValues 1`] = `undefined`;
+
+exports[`Persists to/from durableObjectStorage > loads 1`] = `
 [
   [
     {
@@ -672,7 +1392,87 @@ exports[`Persists to/from file autoLoads 1`] = `
             {
               "c1": [
                 1,
-                "1",
+                "Nn1JUF-----7JQY8",
+                4065945599,
+              ],
+            },
+            "",
+            1279994494,
+          ],
+        },
+        "",
+        1293085726,
+      ],
+    },
+    "",
+    4033596827,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF-----7JQY8",
+        4065945599,
+      ],
+    },
+    "",
+    2304392760,
+  ],
+]
+`;
+
+exports[`Persists to/from durableObjectStorage > saves 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+            },
+            "",
+            550994372,
+          ],
+        },
+        "",
+        1072852846,
+      ],
+    },
+    "",
+    1771939739,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+    },
+    "",
+    3877632732,
+  ],
+]
+`;
+
+exports[`Persists to/from durableObjectStorage > saves 2`] = `undefined`;
+
+exports[`Persists to/from file > autoLoads 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF0----7JQY8",
                 4065945599,
               ],
             },
@@ -695,7 +1495,7 @@ exports[`Persists to/from file autoLoads 1`] = `
 ]
 `;
 
-exports[`Persists to/from file autoLoads 2`] = `
+exports[`Persists to/from file > autoLoads 2`] = `
 [
   [
     {
@@ -705,7 +1505,7 @@ exports[`Persists to/from file autoLoads 2`] = `
             {
               "c1": [
                 2,
-                "2",
+                "Nn1JUF1----7JQY8",
                 2669080357,
               ],
             },
@@ -728,7 +1528,7 @@ exports[`Persists to/from file autoLoads 2`] = `
 ]
 `;
 
-exports[`Persists to/from file autoLoads 3`] = `
+exports[`Persists to/from file > autoLoads 3`] = `
 [
   [
     {
@@ -738,7 +1538,7 @@ exports[`Persists to/from file autoLoads 3`] = `
             {
               "c1": [
                 3,
-                "3",
+                "Nn1JUF2----7JQY8",
                 3252714811,
               ],
             },
@@ -761,7 +1561,7 @@ exports[`Persists to/from file autoLoads 3`] = `
 ]
 `;
 
-exports[`Persists to/from file autoLoads 4`] = `
+exports[`Persists to/from file > autoLoads 4`] = `
 [
   [
     {
@@ -771,7 +1571,7 @@ exports[`Persists to/from file autoLoads 4`] = `
             {
               "c1": [
                 3,
-                "3",
+                "Nn1JUF2----7JQY8",
                 3252714811,
               ],
             },
@@ -794,7 +1594,7 @@ exports[`Persists to/from file autoLoads 4`] = `
 ]
 `;
 
-exports[`Persists to/from file autoSave & autoLoad: roundtrip 1`] = `
+exports[`Persists to/from file > autoSave & autoLoad: roundtrip 1`] = `
 [
   [
     {
@@ -871,7 +1671,7 @@ exports[`Persists to/from file autoSave & autoLoad: roundtrip 1`] = `
 ]
 `;
 
-exports[`Persists to/from file autoSave & autoLoad: roundtrip 2`] = `
+exports[`Persists to/from file > autoSave & autoLoad: roundtrip 2`] = `
 [
   [
     {
@@ -948,7 +1748,7 @@ exports[`Persists to/from file autoSave & autoLoad: roundtrip 2`] = `
 ]
 `;
 
-exports[`Persists to/from file autoSave & autoLoad: roundtrip 3`] = `
+exports[`Persists to/from file > autoSave & autoLoad: roundtrip 3`] = `
 [
   [
     {
@@ -1025,73 +1825,7 @@ exports[`Persists to/from file autoSave & autoLoad: roundtrip 3`] = `
 ]
 `;
 
-exports[`Persists to/from file autoSaves without race 1`] = `
-[
-  [
-    {
-      "t1": [
-        {
-          "r1": [
-            {
-              "c1": [
-                1,
-                "Nn1JUF-----7JQY8",
-                1003668370,
-              ],
-            },
-            "",
-            550994372,
-          ],
-        },
-        "",
-        1072852846,
-      ],
-    },
-    "",
-    1771939739,
-  ],
-  [
-    {},
-    "",
-    0,
-  ],
-]
-`;
-
-exports[`Persists to/from file autoSaves without race 2`] = `
-[
-  [
-    {
-      "t1": [
-        {
-          "r1": [
-            {
-              "c1": [
-                3,
-                "Nn1JUF----17JQY8",
-                1803657220,
-              ],
-            },
-            "",
-            3024565116,
-          ],
-        },
-        "",
-        2770201485,
-      ],
-    },
-    "",
-    2160842384,
-  ],
-  [
-    {},
-    "",
-    0,
-  ],
-]
-`;
-
-exports[`Persists to/from file autoSaves: delCell 1`] = `
+exports[`Persists to/from file > autoSaves > delCell 1`] = `
 [
   [
     {
@@ -1140,7 +1874,7 @@ exports[`Persists to/from file autoSaves: delCell 1`] = `
 ]
 `;
 
-exports[`Persists to/from file autoSaves: delValue 1`] = `
+exports[`Persists to/from file > autoSaves > delValue 1`] = `
 [
   [
     {
@@ -1189,7 +1923,7 @@ exports[`Persists to/from file autoSaves: delValue 1`] = `
 ]
 `;
 
-exports[`Persists to/from file autoSaves: initial 1`] = `
+exports[`Persists to/from file > autoSaves > initial 1`] = `
 [
   [
     {
@@ -1228,7 +1962,7 @@ exports[`Persists to/from file autoSaves: initial 1`] = `
 ]
 `;
 
-exports[`Persists to/from file autoSaves: setTables 1`] = `
+exports[`Persists to/from file > autoSaves > setTables 1`] = `
 [
   [
     {
@@ -1272,7 +2006,7 @@ exports[`Persists to/from file autoSaves: setTables 1`] = `
 ]
 `;
 
-exports[`Persists to/from file autoSaves: setValues 1`] = `
+exports[`Persists to/from file > autoSaves > setValues 1`] = `
 [
   [
     {
@@ -1321,7 +2055,7 @@ exports[`Persists to/from file autoSaves: setValues 1`] = `
 ]
 `;
 
-exports[`Persists to/from file loads 1`] = `
+exports[`Persists to/from file > autoSaves without race 1`] = `
 [
   [
     {
@@ -1331,7 +2065,73 @@ exports[`Persists to/from file loads 1`] = `
             {
               "c1": [
                 1,
-                "_",
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+            },
+            "",
+            550994372,
+          ],
+        },
+        "",
+        1072852846,
+      ],
+    },
+    "",
+    1771939739,
+  ],
+  [
+    {},
+    "",
+    0,
+  ],
+]
+`;
+
+exports[`Persists to/from file > autoSaves without race 2`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                3,
+                "Nn1JUF----17JQY8",
+                1803657220,
+              ],
+            },
+            "",
+            3024565116,
+          ],
+        },
+        "",
+        2770201485,
+      ],
+    },
+    "",
+    2160842384,
+  ],
+  [
+    {},
+    "",
+    0,
+  ],
+]
+`;
+
+exports[`Persists to/from file > loads 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
                 4065945599,
               ],
             },
@@ -1350,7 +2150,7 @@ exports[`Persists to/from file loads 1`] = `
     {
       "v1": [
         1,
-        "_",
+        "Nn1JUF-----7JQY8",
         4065945599,
       ],
     },
@@ -1360,7 +2160,7 @@ exports[`Persists to/from file loads 1`] = `
 ]
 `;
 
-exports[`Persists to/from file saves 1`] = `
+exports[`Persists to/from file > saves 1`] = `
 [
   [
     {
@@ -1399,7 +2199,7 @@ exports[`Persists to/from file saves 1`] = `
 ]
 `;
 
-exports[`Persists to/from file saves 2`] = `
+exports[`Persists to/from file > saves 2`] = `
 [
   [
     {
@@ -1438,7 +2238,7 @@ exports[`Persists to/from file saves 2`] = `
 ]
 `;
 
-exports[`Persists to/from localStorage autoLoads 1`] = `
+exports[`Persists to/from indexedDb > autoLoads 1`] = `
 [
   [
     {
@@ -1448,7 +2248,7 @@ exports[`Persists to/from localStorage autoLoads 1`] = `
             {
               "c1": [
                 1,
-                "1",
+                "Nn1JUF0----7JQY8",
                 4065945599,
               ],
             },
@@ -1471,7 +2271,7 @@ exports[`Persists to/from localStorage autoLoads 1`] = `
 ]
 `;
 
-exports[`Persists to/from localStorage autoLoads 2`] = `
+exports[`Persists to/from indexedDb > autoLoads 2`] = `
 [
   [
     {
@@ -1481,7 +2281,7 @@ exports[`Persists to/from localStorage autoLoads 2`] = `
             {
               "c1": [
                 2,
-                "2",
+                "Nn1JUF1----7JQY8",
                 2669080357,
               ],
             },
@@ -1504,7 +2304,7 @@ exports[`Persists to/from localStorage autoLoads 2`] = `
 ]
 `;
 
-exports[`Persists to/from localStorage autoLoads 3`] = `
+exports[`Persists to/from indexedDb > autoLoads 3`] = `
 [
   [
     {
@@ -1514,7 +2314,7 @@ exports[`Persists to/from localStorage autoLoads 3`] = `
             {
               "c1": [
                 3,
-                "3",
+                "Nn1JUF2----7JQY8",
                 3252714811,
               ],
             },
@@ -1537,7 +2337,7 @@ exports[`Persists to/from localStorage autoLoads 3`] = `
 ]
 `;
 
-exports[`Persists to/from localStorage autoLoads 4`] = `
+exports[`Persists to/from indexedDb > autoLoads 4`] = `
 [
   [
     {
@@ -1547,7 +2347,7 @@ exports[`Persists to/from localStorage autoLoads 4`] = `
             {
               "c1": [
                 3,
-                "3",
+                "Nn1JUF2----7JQY8",
                 3252714811,
               ],
             },
@@ -1570,7 +2370,7 @@ exports[`Persists to/from localStorage autoLoads 4`] = `
 ]
 `;
 
-exports[`Persists to/from localStorage autoSave & autoLoad: roundtrip 1`] = `
+exports[`Persists to/from indexedDb > autoSave & autoLoad: roundtrip 1`] = `
 [
   [
     {
@@ -1647,7 +2447,717 @@ exports[`Persists to/from localStorage autoSave & autoLoad: roundtrip 1`] = `
 ]
 `;
 
-exports[`Persists to/from localStorage autoSave & autoLoad: roundtrip 2`] = `
+exports[`Persists to/from indexedDb > autoSave & autoLoad: roundtrip 2`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                undefined,
+                "Nn1JUF----77JQY8",
+                1267840296,
+              ],
+            },
+            "",
+            2533574593,
+          ],
+          "r2": [
+            {
+              "c2": [
+                undefined,
+                "Nn1JUF----67JQY8",
+                2770824445,
+              ],
+            },
+            "",
+            811264265,
+          ],
+        },
+        "",
+        2755269984,
+      ],
+      "t2": [
+        {
+          "r2": [
+            {
+              "c2": [
+                undefined,
+                "Nn1JUF----57JQY8",
+                755827458,
+              ],
+            },
+            "",
+            3087140291,
+          ],
+        },
+        "",
+        1225184002,
+      ],
+    },
+    "",
+    3340350845,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----37JQY8",
+        3542219356,
+      ],
+      "v2": [
+        undefined,
+        "Nn1JUF----87JQY8",
+        2233415979,
+      ],
+    },
+    "",
+    2110402117,
+  ],
+]
+`;
+
+exports[`Persists to/from indexedDb > autoSave & autoLoad: roundtrip 3`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                undefined,
+                "Nn1JUF----77JQY8",
+                1267840296,
+              ],
+            },
+            "",
+            2533574593,
+          ],
+          "r2": [
+            {
+              "c2": [
+                undefined,
+                "Nn1JUF----67JQY8",
+                2770824445,
+              ],
+            },
+            "",
+            811264265,
+          ],
+        },
+        "",
+        2755269984,
+      ],
+      "t2": [
+        {
+          "r2": [
+            {
+              "c2": [
+                undefined,
+                "Nn1JUF----57JQY8",
+                755827458,
+              ],
+            },
+            "",
+            3087140291,
+          ],
+        },
+        "",
+        1225184002,
+      ],
+    },
+    "",
+    3340350845,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----37JQY8",
+        3542219356,
+      ],
+      "v2": [
+        undefined,
+        "Nn1JUF----87JQY8",
+        2233415979,
+      ],
+    },
+    "",
+    2110402117,
+  ],
+]
+`;
+
+exports[`Persists to/from indexedDb > autoSaves > delCell 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                undefined,
+                "Nn1JUFL----7JQY8",
+                2686591279,
+              ],
+            },
+            "",
+            2856769483,
+          ],
+        },
+        "",
+        4180104966,
+      ],
+    },
+    "",
+    1339558233,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+      "v2": [
+        2,
+        "Nn1JUFA----7JQY8",
+        3627925537,
+      ],
+    },
+    "",
+    2344814499,
+  ],
+]
+`;
+
+exports[`Persists to/from indexedDb > autoSaves > delValue 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                undefined,
+                "Nn1JUFL----7JQY8",
+                2686591279,
+              ],
+            },
+            "",
+            2856769483,
+          ],
+        },
+        "",
+        4180104966,
+      ],
+    },
+    "",
+    1339558233,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+      "v2": [
+        undefined,
+        "Nn1JUFW----7JQY8",
+        1088092600,
+      ],
+    },
+    "",
+    4093653312,
+  ],
+]
+`;
+
+exports[`Persists to/from indexedDb > autoSaves > initial 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+            },
+            "",
+            550994372,
+          ],
+        },
+        "",
+        1072852846,
+      ],
+    },
+    "",
+    1771939739,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+    },
+    "",
+    3877632732,
+  ],
+]
+`;
+
+exports[`Persists to/from indexedDb > autoSaves > setTables 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                2,
+                "Nn1JUF----17JQY8",
+                1804136345,
+              ],
+            },
+            "",
+            3439185877,
+          ],
+        },
+        "",
+        855391547,
+      ],
+    },
+    "",
+    262414121,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+    },
+    "",
+    3877632732,
+  ],
+]
+`;
+
+exports[`Persists to/from indexedDb > autoSaves > setValues 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                2,
+                "Nn1JUF----17JQY8",
+                1804136345,
+              ],
+            },
+            "",
+            3439185877,
+          ],
+        },
+        "",
+        855391547,
+      ],
+    },
+    "",
+    262414121,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+      "v2": [
+        2,
+        "Nn1JUFA----7JQY8",
+        3627925537,
+      ],
+    },
+    "",
+    2344814499,
+  ],
+]
+`;
+
+exports[`Persists to/from indexedDb > loads 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                4065945599,
+              ],
+            },
+            "",
+            1279994494,
+          ],
+        },
+        "",
+        1293085726,
+      ],
+    },
+    "",
+    4033596827,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF-----7JQY8",
+        4065945599,
+      ],
+    },
+    "",
+    2304392760,
+  ],
+]
+`;
+
+exports[`Persists to/from indexedDb > saves 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+            },
+            "",
+            550994372,
+          ],
+        },
+        "",
+        1072852846,
+      ],
+    },
+    "",
+    1771939739,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+    },
+    "",
+    3877632732,
+  ],
+]
+`;
+
+exports[`Persists to/from indexedDb > saves 2`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+            },
+            "",
+            550994372,
+          ],
+        },
+        "",
+        1072852846,
+      ],
+    },
+    "",
+    1771939739,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+    },
+    "",
+    3877632732,
+  ],
+]
+`;
+
+exports[`Persists to/from localStorage > autoLoads 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF0----7JQY8",
+                4065945599,
+              ],
+            },
+            "",
+            1279994494,
+          ],
+        },
+        "",
+        1293085726,
+      ],
+    },
+    "",
+    4033596827,
+  ],
+  [
+    {},
+    "",
+    0,
+  ],
+]
+`;
+
+exports[`Persists to/from localStorage > autoLoads 2`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                2,
+                "Nn1JUF1----7JQY8",
+                2669080357,
+              ],
+            },
+            "",
+            274319047,
+          ],
+        },
+        "",
+        4089057354,
+      ],
+    },
+    "",
+    3386696034,
+  ],
+  [
+    {},
+    "",
+    0,
+  ],
+]
+`;
+
+exports[`Persists to/from localStorage > autoLoads 3`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                3,
+                "Nn1JUF2----7JQY8",
+                3252714811,
+              ],
+            },
+            "",
+            1416411412,
+          ],
+        },
+        "",
+        3704904231,
+      ],
+    },
+    "",
+    4008152259,
+  ],
+  [
+    {},
+    "",
+    0,
+  ],
+]
+`;
+
+exports[`Persists to/from localStorage > autoLoads 4`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                3,
+                "Nn1JUF2----7JQY8",
+                3252714811,
+              ],
+            },
+            "",
+            1416411412,
+          ],
+        },
+        "",
+        3704904231,
+      ],
+    },
+    "",
+    4008152259,
+  ],
+  [
+    {},
+    "",
+    0,
+  ],
+]
+`;
+
+exports[`Persists to/from localStorage > autoSave & autoLoad: roundtrip 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                undefined,
+                "Nn1JUF----77JQY8",
+                1267840296,
+              ],
+            },
+            "",
+            2533574593,
+          ],
+          "r2": [
+            {
+              "c2": [
+                undefined,
+                "Nn1JUF----67JQY8",
+                2770824445,
+              ],
+            },
+            "",
+            811264265,
+          ],
+        },
+        "",
+        2755269984,
+      ],
+      "t2": [
+        {
+          "r2": [
+            {
+              "c2": [
+                undefined,
+                "Nn1JUF----57JQY8",
+                755827458,
+              ],
+            },
+            "",
+            3087140291,
+          ],
+        },
+        "",
+        1225184002,
+      ],
+    },
+    "",
+    3340350845,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----37JQY8",
+        3542219356,
+      ],
+      "v2": [
+        undefined,
+        "Nn1JUF----87JQY8",
+        2233415979,
+      ],
+    },
+    "",
+    2110402117,
+  ],
+]
+`;
+
+exports[`Persists to/from localStorage > autoSave & autoLoad: roundtrip 2`] = `
 [
   [
     {
@@ -1724,7 +3234,7 @@ exports[`Persists to/from localStorage autoSave & autoLoad: roundtrip 2`] = `
 ]
 `;
 
-exports[`Persists to/from localStorage autoSave & autoLoad: roundtrip 3`] = `
+exports[`Persists to/from localStorage > autoSave & autoLoad: roundtrip 3`] = `
 [
   [
     {
@@ -1801,7 +3311,7 @@ exports[`Persists to/from localStorage autoSave & autoLoad: roundtrip 3`] = `
 ]
 `;
 
-exports[`Persists to/from localStorage autoSaves: delCell 1`] = `
+exports[`Persists to/from localStorage > autoSaves > delCell 1`] = `
 [
   [
     {
@@ -1850,7 +3360,7 @@ exports[`Persists to/from localStorage autoSaves: delCell 1`] = `
 ]
 `;
 
-exports[`Persists to/from localStorage autoSaves: delValue 1`] = `
+exports[`Persists to/from localStorage > autoSaves > delValue 1`] = `
 [
   [
     {
@@ -1899,7 +3409,7 @@ exports[`Persists to/from localStorage autoSaves: delValue 1`] = `
 ]
 `;
 
-exports[`Persists to/from localStorage autoSaves: initial 1`] = `
+exports[`Persists to/from localStorage > autoSaves > initial 1`] = `
 [
   [
     {
@@ -1938,7 +3448,7 @@ exports[`Persists to/from localStorage autoSaves: initial 1`] = `
 ]
 `;
 
-exports[`Persists to/from localStorage autoSaves: setTables 1`] = `
+exports[`Persists to/from localStorage > autoSaves > setTables 1`] = `
 [
   [
     {
@@ -1982,7 +3492,7 @@ exports[`Persists to/from localStorage autoSaves: setTables 1`] = `
 ]
 `;
 
-exports[`Persists to/from localStorage autoSaves: setValues 1`] = `
+exports[`Persists to/from localStorage > autoSaves > setValues 1`] = `
 [
   [
     {
@@ -2031,7 +3541,7 @@ exports[`Persists to/from localStorage autoSaves: setValues 1`] = `
 ]
 `;
 
-exports[`Persists to/from localStorage loads 1`] = `
+exports[`Persists to/from localStorage > loads 1`] = `
 [
   [
     {
@@ -2041,7 +3551,7 @@ exports[`Persists to/from localStorage loads 1`] = `
             {
               "c1": [
                 1,
-                "_",
+                "Nn1JUF-----7JQY8",
                 4065945599,
               ],
             },
@@ -2060,7 +3570,7 @@ exports[`Persists to/from localStorage loads 1`] = `
     {
       "v1": [
         1,
-        "_",
+        "Nn1JUF-----7JQY8",
         4065945599,
       ],
     },
@@ -2070,7 +3580,7 @@ exports[`Persists to/from localStorage loads 1`] = `
 ]
 `;
 
-exports[`Persists to/from localStorage saves 1`] = `
+exports[`Persists to/from localStorage > saves 1`] = `
 [
   [
     {
@@ -2109,7 +3619,7 @@ exports[`Persists to/from localStorage saves 1`] = `
 ]
 `;
 
-exports[`Persists to/from localStorage saves 2`] = `
+exports[`Persists to/from localStorage > saves 2`] = `
 [
   [
     {
@@ -2148,7 +3658,7 @@ exports[`Persists to/from localStorage saves 2`] = `
 ]
 `;
 
-exports[`Persists to/from localSynchronizer autoLoads 1`] = `
+exports[`Persists to/from localSynchronizer > autoLoads 1`] = `
 [
   [
     {
@@ -2158,20 +3668,20 @@ exports[`Persists to/from localSynchronizer autoLoads 1`] = `
             {
               "c1": [
                 1,
-                "1",
-                1680131417,
+                "Nn1JUF0----7JQY8",
+                4008049267,
               ],
             },
             "",
-            2634749936,
+            3074190582,
           ],
         },
         "",
-        2598021553,
+        3688486605,
       ],
     },
     "",
-    2494750488,
+    4288900630,
   ],
   [
     {},
@@ -2181,7 +3691,7 @@ exports[`Persists to/from localSynchronizer autoLoads 1`] = `
 ]
 `;
 
-exports[`Persists to/from localSynchronizer autoLoads 2`] = `
+exports[`Persists to/from localSynchronizer > autoLoads 2`] = `
 [
   [
     {
@@ -2191,20 +3701,20 @@ exports[`Persists to/from localSynchronizer autoLoads 2`] = `
             {
               "c1": [
                 2,
-                "2",
-                1107305117,
+                "Nn1JUF1----7JQY8",
+                830262161,
               ],
             },
             "",
-            239923340,
+            1051432883,
           ],
         },
         "",
-        806147629,
+        3431674099,
       ],
     },
     "",
-    4135100783,
+    1559212866,
   ],
   [
     {},
@@ -2214,7 +3724,7 @@ exports[`Persists to/from localSynchronizer autoLoads 2`] = `
 ]
 `;
 
-exports[`Persists to/from localSynchronizer autoLoads 3`] = `
+exports[`Persists to/from localSynchronizer > autoLoads 3`] = `
 [
   [
     {
@@ -2224,20 +3734,20 @@ exports[`Persists to/from localSynchronizer autoLoads 3`] = `
             {
               "c1": [
                 3,
-                "3",
-                1281296065,
+                "Nn1JUF2----7JQY8",
+                854368411,
               ],
             },
             "",
-            253170412,
+            1732716910,
           ],
         },
         "",
-        942766199,
+        2951847039,
       ],
     },
     "",
-    1560530767,
+    2525626812,
   ],
   [
     {},
@@ -2247,7 +3757,7 @@ exports[`Persists to/from localSynchronizer autoLoads 3`] = `
 ]
 `;
 
-exports[`Persists to/from localSynchronizer autoLoads 4`] = `
+exports[`Persists to/from localSynchronizer > autoLoads 4`] = `
 [
   [
     {
@@ -2257,20 +3767,20 @@ exports[`Persists to/from localSynchronizer autoLoads 4`] = `
             {
               "c1": [
                 3,
-                "3",
-                1281296065,
+                "Nn1JUF2----7JQY8",
+                854368411,
               ],
             },
             "",
-            253170412,
+            1732716910,
           ],
         },
         "",
-        942766199,
+        2951847039,
       ],
     },
     "",
-    1560530767,
+    2525626812,
   ],
   [
     {},
@@ -2280,7 +3790,7 @@ exports[`Persists to/from localSynchronizer autoLoads 4`] = `
 ]
 `;
 
-exports[`Persists to/from localSynchronizer autoSave & autoLoad: roundtrip 1`] = `
+exports[`Persists to/from localSynchronizer > autoSave & autoLoad: roundtrip 1`] = `
 [
   [
     {
@@ -2357,7 +3867,7 @@ exports[`Persists to/from localSynchronizer autoSave & autoLoad: roundtrip 1`] =
 ]
 `;
 
-exports[`Persists to/from localSynchronizer autoSave & autoLoad: roundtrip 2`] = `
+exports[`Persists to/from localSynchronizer > autoSave & autoLoad: roundtrip 2`] = `
 [
   [
     {
@@ -2434,7 +3944,7 @@ exports[`Persists to/from localSynchronizer autoSave & autoLoad: roundtrip 2`] =
 ]
 `;
 
-exports[`Persists to/from localSynchronizer autoSave & autoLoad: roundtrip 3`] = `
+exports[`Persists to/from localSynchronizer > autoSave & autoLoad: roundtrip 3`] = `
 [
   [
     {
@@ -2511,7 +4021,7 @@ exports[`Persists to/from localSynchronizer autoSave & autoLoad: roundtrip 3`] =
 ]
 `;
 
-exports[`Persists to/from localSynchronizer autoSaves: delCell 1`] = `
+exports[`Persists to/from localSynchronizer > autoSaves > delCell 1`] = `
 [
   [
     {
@@ -2560,7 +4070,7 @@ exports[`Persists to/from localSynchronizer autoSaves: delCell 1`] = `
 ]
 `;
 
-exports[`Persists to/from localSynchronizer autoSaves: delValue 1`] = `
+exports[`Persists to/from localSynchronizer > autoSaves > delValue 1`] = `
 [
   [
     {
@@ -2609,7 +4119,7 @@ exports[`Persists to/from localSynchronizer autoSaves: delValue 1`] = `
 ]
 `;
 
-exports[`Persists to/from localSynchronizer autoSaves: initial 1`] = `
+exports[`Persists to/from localSynchronizer > autoSaves > initial 1`] = `
 [
   [
     {},
@@ -2624,7 +4134,7 @@ exports[`Persists to/from localSynchronizer autoSaves: initial 1`] = `
 ]
 `;
 
-exports[`Persists to/from localSynchronizer autoSaves: setTables 1`] = `
+exports[`Persists to/from localSynchronizer > autoSaves > setTables 1`] = `
 [
   [
     {
@@ -2668,7 +4178,7 @@ exports[`Persists to/from localSynchronizer autoSaves: setTables 1`] = `
 ]
 `;
 
-exports[`Persists to/from localSynchronizer autoSaves: setValues 1`] = `
+exports[`Persists to/from localSynchronizer > autoSaves > setValues 1`] = `
 [
   [
     {
@@ -2717,7 +4227,7 @@ exports[`Persists to/from localSynchronizer autoSaves: setValues 1`] = `
 ]
 `;
 
-exports[`Persists to/from localSynchronizer loads 1`] = `
+exports[`Persists to/from localSynchronizer > loads 1`] = `
 [
   [
     {
@@ -2727,36 +4237,36 @@ exports[`Persists to/from localSynchronizer loads 1`] = `
             {
               "c1": [
                 1,
-                "_",
-                237256183,
+                "Nn1JUF-----7JQY8",
+                1003668370,
               ],
             },
             "",
-            2867482913,
+            550994372,
           ],
         },
         "",
-        744460378,
+        1072852846,
       ],
     },
     "",
-    3362283737,
+    1771939739,
   ],
   [
     {
       "v1": [
         1,
-        "_",
-        237256183,
+        "Nn1JUF-----7JQY8",
+        1003668370,
       ],
     },
     "",
-    2754659917,
+    4180671758,
   ],
 ]
 `;
 
-exports[`Persists to/from localSynchronizer saves 1`] = `
+exports[`Persists to/from localSynchronizer > saves 1`] = `
 [
   [
     {
@@ -2795,7 +4305,7 @@ exports[`Persists to/from localSynchronizer saves 1`] = `
 ]
 `;
 
-exports[`Persists to/from localSynchronizer saves 2`] = `
+exports[`Persists to/from localSynchronizer > saves 2`] = `
 [
   [
     {},
@@ -2810,7 +4320,7 @@ exports[`Persists to/from localSynchronizer saves 2`] = `
 ]
 `;
 
-exports[`Persists to/from mockMergeableChangesListener autoLoads 1`] = `
+exports[`Persists to/from mockMergeableChangesListener > autoLoads 1`] = `
 [
   [
     {
@@ -2820,7 +4330,7 @@ exports[`Persists to/from mockMergeableChangesListener autoLoads 1`] = `
             {
               "c1": [
                 1,
-                "1",
+                "Nn1JUF0----7JQY8",
                 4065945599,
               ],
             },
@@ -2843,7 +4353,7 @@ exports[`Persists to/from mockMergeableChangesListener autoLoads 1`] = `
 ]
 `;
 
-exports[`Persists to/from mockMergeableChangesListener autoLoads 2`] = `
+exports[`Persists to/from mockMergeableChangesListener > autoLoads 2`] = `
 [
   [
     {
@@ -2853,20 +4363,20 @@ exports[`Persists to/from mockMergeableChangesListener autoLoads 2`] = `
             {
               "c1": [
                 2,
-                "2",
-                1107305117,
+                "Nn1JUF1----7JQY8",
+                830262161,
               ],
             },
             "",
-            2170608844,
+            2978462707,
           ],
         },
         "",
-        3629606658,
+        2645741624,
       ],
     },
     "",
-    212435999,
+    3362573349,
   ],
   [
     {},
@@ -2876,7 +4386,7 @@ exports[`Persists to/from mockMergeableChangesListener autoLoads 2`] = `
 ]
 `;
 
-exports[`Persists to/from mockMergeableChangesListener autoLoads 3`] = `
+exports[`Persists to/from mockMergeableChangesListener > autoLoads 3`] = `
 [
   [
     {
@@ -2886,20 +4396,20 @@ exports[`Persists to/from mockMergeableChangesListener autoLoads 3`] = `
             {
               "c1": [
                 3,
-                "3",
-                1281296065,
+                "Nn1JUF2----7JQY8",
+                854368411,
               ],
             },
             "",
-            2151366316,
+            3899327790,
           ],
         },
         "",
-        1761360728,
+        2523636125,
       ],
     },
     "",
-    2724753575,
+    3561966969,
   ],
   [
     {},
@@ -2909,7 +4419,7 @@ exports[`Persists to/from mockMergeableChangesListener autoLoads 3`] = `
 ]
 `;
 
-exports[`Persists to/from mockMergeableChangesListener autoLoads 4`] = `
+exports[`Persists to/from mockMergeableChangesListener > autoLoads 4`] = `
 [
   [
     {
@@ -2919,20 +4429,20 @@ exports[`Persists to/from mockMergeableChangesListener autoLoads 4`] = `
             {
               "c1": [
                 3,
-                "3",
-                1281296065,
+                "Nn1JUF2----7JQY8",
+                854368411,
               ],
             },
             "",
-            2151366316,
+            3899327790,
           ],
         },
         "",
-        1761360728,
+        2523636125,
       ],
     },
     "",
-    2724753575,
+    3561966969,
   ],
   [
     {},
@@ -2942,7 +4452,7 @@ exports[`Persists to/from mockMergeableChangesListener autoLoads 4`] = `
 ]
 `;
 
-exports[`Persists to/from mockMergeableChangesListener autoSave & autoLoad: roundtrip 1`] = `
+exports[`Persists to/from mockMergeableChangesListener > autoSave & autoLoad: roundtrip 1`] = `
 [
   [
     {
@@ -3019,7 +4529,7 @@ exports[`Persists to/from mockMergeableChangesListener autoSave & autoLoad: roun
 ]
 `;
 
-exports[`Persists to/from mockMergeableChangesListener autoSave & autoLoad: roundtrip 2`] = `
+exports[`Persists to/from mockMergeableChangesListener > autoSave & autoLoad: roundtrip 2`] = `
 [
   [
     {
@@ -3096,7 +4606,7 @@ exports[`Persists to/from mockMergeableChangesListener autoSave & autoLoad: roun
 ]
 `;
 
-exports[`Persists to/from mockMergeableChangesListener autoSave & autoLoad: roundtrip 3`] = `
+exports[`Persists to/from mockMergeableChangesListener > autoSave & autoLoad: roundtrip 3`] = `
 [
   [
     {
@@ -3173,7 +4683,7 @@ exports[`Persists to/from mockMergeableChangesListener autoSave & autoLoad: roun
 ]
 `;
 
-exports[`Persists to/from mockMergeableChangesListener autoSaves: delCell 1`] = `
+exports[`Persists to/from mockMergeableChangesListener > autoSaves > delCell 1`] = `
 [
   [
     {
@@ -3222,7 +4732,7 @@ exports[`Persists to/from mockMergeableChangesListener autoSaves: delCell 1`] = 
 ]
 `;
 
-exports[`Persists to/from mockMergeableChangesListener autoSaves: delCell changes 1`] = `
+exports[`Persists to/from mockMergeableChangesListener > autoSaves > delCell changes 1`] = `
 [
   [
     {
@@ -3256,7 +4766,7 @@ exports[`Persists to/from mockMergeableChangesListener autoSaves: delCell change
 ]
 `;
 
-exports[`Persists to/from mockMergeableChangesListener autoSaves: delValue 1`] = `
+exports[`Persists to/from mockMergeableChangesListener > autoSaves > delValue 1`] = `
 [
   [
     {
@@ -3305,7 +4815,7 @@ exports[`Persists to/from mockMergeableChangesListener autoSaves: delValue 1`] =
 ]
 `;
 
-exports[`Persists to/from mockMergeableChangesListener autoSaves: delValue changes 1`] = `
+exports[`Persists to/from mockMergeableChangesListener > autoSaves > delValue changes 1`] = `
 [
   [
     {},
@@ -3327,7 +4837,7 @@ exports[`Persists to/from mockMergeableChangesListener autoSaves: delValue chang
 ]
 `;
 
-exports[`Persists to/from mockMergeableChangesListener autoSaves: initial 1`] = `
+exports[`Persists to/from mockMergeableChangesListener > autoSaves > initial 1`] = `
 [
   [
     {
@@ -3366,7 +4876,7 @@ exports[`Persists to/from mockMergeableChangesListener autoSaves: initial 1`] = 
 ]
 `;
 
-exports[`Persists to/from mockMergeableChangesListener autoSaves: setTables 1`] = `
+exports[`Persists to/from mockMergeableChangesListener > autoSaves > setTables 1`] = `
 [
   [
     {
@@ -3410,7 +4920,7 @@ exports[`Persists to/from mockMergeableChangesListener autoSaves: setTables 1`] 
 ]
 `;
 
-exports[`Persists to/from mockMergeableChangesListener autoSaves: setTables changes 1`] = `
+exports[`Persists to/from mockMergeableChangesListener > autoSaves > setTables changes 1`] = `
 [
   [
     {
@@ -3444,7 +4954,7 @@ exports[`Persists to/from mockMergeableChangesListener autoSaves: setTables chan
 ]
 `;
 
-exports[`Persists to/from mockMergeableChangesListener autoSaves: setValues 1`] = `
+exports[`Persists to/from mockMergeableChangesListener > autoSaves > setValues 1`] = `
 [
   [
     {
@@ -3493,7 +5003,7 @@ exports[`Persists to/from mockMergeableChangesListener autoSaves: setValues 1`] 
 ]
 `;
 
-exports[`Persists to/from mockMergeableChangesListener autoSaves: setValues changes 1`] = `
+exports[`Persists to/from mockMergeableChangesListener > autoSaves > setValues changes 1`] = `
 [
   [
     {},
@@ -3515,7 +5025,7 @@ exports[`Persists to/from mockMergeableChangesListener autoSaves: setValues chan
 ]
 `;
 
-exports[`Persists to/from mockMergeableChangesListener loads 1`] = `
+exports[`Persists to/from mockMergeableChangesListener > loads 1`] = `
 [
   [
     {
@@ -3525,7 +5035,7 @@ exports[`Persists to/from mockMergeableChangesListener loads 1`] = `
             {
               "c1": [
                 1,
-                "_",
+                "Nn1JUF-----7JQY8",
                 4065945599,
               ],
             },
@@ -3544,7 +5054,7 @@ exports[`Persists to/from mockMergeableChangesListener loads 1`] = `
     {
       "v1": [
         1,
-        "_",
+        "Nn1JUF-----7JQY8",
         4065945599,
       ],
     },
@@ -3554,7 +5064,7 @@ exports[`Persists to/from mockMergeableChangesListener loads 1`] = `
 ]
 `;
 
-exports[`Persists to/from mockMergeableChangesListener saves 1`] = `
+exports[`Persists to/from mockMergeableChangesListener > saves 1`] = `
 [
   [
     {
@@ -3593,7 +5103,7 @@ exports[`Persists to/from mockMergeableChangesListener saves 1`] = `
 ]
 `;
 
-exports[`Persists to/from mockMergeableChangesListener saves 2`] = `
+exports[`Persists to/from mockMergeableChangesListener > saves 2`] = `
 [
   [
     {
@@ -3632,7 +5142,7 @@ exports[`Persists to/from mockMergeableChangesListener saves 2`] = `
 ]
 `;
 
-exports[`Persists to/from mockMergeableContentListener autoLoads 1`] = `
+exports[`Persists to/from mockMergeableContentListener > autoLoads 1`] = `
 [
   [
     {
@@ -3642,7 +5152,7 @@ exports[`Persists to/from mockMergeableContentListener autoLoads 1`] = `
             {
               "c1": [
                 1,
-                "1",
+                "Nn1JUF0----7JQY8",
                 4065945599,
               ],
             },
@@ -3665,7 +5175,7 @@ exports[`Persists to/from mockMergeableContentListener autoLoads 1`] = `
 ]
 `;
 
-exports[`Persists to/from mockMergeableContentListener autoLoads 2`] = `
+exports[`Persists to/from mockMergeableContentListener > autoLoads 2`] = `
 [
   [
     {
@@ -3675,7 +5185,7 @@ exports[`Persists to/from mockMergeableContentListener autoLoads 2`] = `
             {
               "c1": [
                 2,
-                "2",
+                "Nn1JUF1----7JQY8",
                 2669080357,
               ],
             },
@@ -3698,7 +5208,7 @@ exports[`Persists to/from mockMergeableContentListener autoLoads 2`] = `
 ]
 `;
 
-exports[`Persists to/from mockMergeableContentListener autoLoads 3`] = `
+exports[`Persists to/from mockMergeableContentListener > autoLoads 3`] = `
 [
   [
     {
@@ -3708,7 +5218,7 @@ exports[`Persists to/from mockMergeableContentListener autoLoads 3`] = `
             {
               "c1": [
                 3,
-                "3",
+                "Nn1JUF2----7JQY8",
                 3252714811,
               ],
             },
@@ -3731,7 +5241,7 @@ exports[`Persists to/from mockMergeableContentListener autoLoads 3`] = `
 ]
 `;
 
-exports[`Persists to/from mockMergeableContentListener autoLoads 4`] = `
+exports[`Persists to/from mockMergeableContentListener > autoLoads 4`] = `
 [
   [
     {
@@ -3741,7 +5251,7 @@ exports[`Persists to/from mockMergeableContentListener autoLoads 4`] = `
             {
               "c1": [
                 3,
-                "3",
+                "Nn1JUF2----7JQY8",
                 3252714811,
               ],
             },
@@ -3764,7 +5274,7 @@ exports[`Persists to/from mockMergeableContentListener autoLoads 4`] = `
 ]
 `;
 
-exports[`Persists to/from mockMergeableContentListener autoSave & autoLoad: roundtrip 1`] = `
+exports[`Persists to/from mockMergeableContentListener > autoSave & autoLoad: roundtrip 1`] = `
 [
   [
     {
@@ -3841,7 +5351,7 @@ exports[`Persists to/from mockMergeableContentListener autoSave & autoLoad: roun
 ]
 `;
 
-exports[`Persists to/from mockMergeableContentListener autoSave & autoLoad: roundtrip 2`] = `
+exports[`Persists to/from mockMergeableContentListener > autoSave & autoLoad: roundtrip 2`] = `
 [
   [
     {
@@ -3918,7 +5428,7 @@ exports[`Persists to/from mockMergeableContentListener autoSave & autoLoad: roun
 ]
 `;
 
-exports[`Persists to/from mockMergeableContentListener autoSave & autoLoad: roundtrip 3`] = `
+exports[`Persists to/from mockMergeableContentListener > autoSave & autoLoad: roundtrip 3`] = `
 [
   [
     {
@@ -3995,7 +5505,7 @@ exports[`Persists to/from mockMergeableContentListener autoSave & autoLoad: roun
 ]
 `;
 
-exports[`Persists to/from mockMergeableContentListener autoSaves: delCell 1`] = `
+exports[`Persists to/from mockMergeableContentListener > autoSaves > delCell 1`] = `
 [
   [
     {
@@ -4044,7 +5554,7 @@ exports[`Persists to/from mockMergeableContentListener autoSaves: delCell 1`] = 
 ]
 `;
 
-exports[`Persists to/from mockMergeableContentListener autoSaves: delCell changes 1`] = `
+exports[`Persists to/from mockMergeableContentListener > autoSaves > delCell changes 1`] = `
 [
   [
     {
@@ -4078,7 +5588,7 @@ exports[`Persists to/from mockMergeableContentListener autoSaves: delCell change
 ]
 `;
 
-exports[`Persists to/from mockMergeableContentListener autoSaves: delValue 1`] = `
+exports[`Persists to/from mockMergeableContentListener > autoSaves > delValue 1`] = `
 [
   [
     {
@@ -4127,7 +5637,7 @@ exports[`Persists to/from mockMergeableContentListener autoSaves: delValue 1`] =
 ]
 `;
 
-exports[`Persists to/from mockMergeableContentListener autoSaves: delValue changes 1`] = `
+exports[`Persists to/from mockMergeableContentListener > autoSaves > delValue changes 1`] = `
 [
   [
     {},
@@ -4149,7 +5659,7 @@ exports[`Persists to/from mockMergeableContentListener autoSaves: delValue chang
 ]
 `;
 
-exports[`Persists to/from mockMergeableContentListener autoSaves: initial 1`] = `
+exports[`Persists to/from mockMergeableContentListener > autoSaves > initial 1`] = `
 [
   [
     {
@@ -4188,7 +5698,7 @@ exports[`Persists to/from mockMergeableContentListener autoSaves: initial 1`] = 
 ]
 `;
 
-exports[`Persists to/from mockMergeableContentListener autoSaves: setTables 1`] = `
+exports[`Persists to/from mockMergeableContentListener > autoSaves > setTables 1`] = `
 [
   [
     {
@@ -4232,7 +5742,7 @@ exports[`Persists to/from mockMergeableContentListener autoSaves: setTables 1`] 
 ]
 `;
 
-exports[`Persists to/from mockMergeableContentListener autoSaves: setTables changes 1`] = `
+exports[`Persists to/from mockMergeableContentListener > autoSaves > setTables changes 1`] = `
 [
   [
     {
@@ -4266,7 +5776,7 @@ exports[`Persists to/from mockMergeableContentListener autoSaves: setTables chan
 ]
 `;
 
-exports[`Persists to/from mockMergeableContentListener autoSaves: setValues 1`] = `
+exports[`Persists to/from mockMergeableContentListener > autoSaves > setValues 1`] = `
 [
   [
     {
@@ -4315,7 +5825,7 @@ exports[`Persists to/from mockMergeableContentListener autoSaves: setValues 1`] 
 ]
 `;
 
-exports[`Persists to/from mockMergeableContentListener autoSaves: setValues changes 1`] = `
+exports[`Persists to/from mockMergeableContentListener > autoSaves > setValues changes 1`] = `
 [
   [
     {},
@@ -4337,7 +5847,7 @@ exports[`Persists to/from mockMergeableContentListener autoSaves: setValues chan
 ]
 `;
 
-exports[`Persists to/from mockMergeableContentListener loads 1`] = `
+exports[`Persists to/from mockMergeableContentListener > loads 1`] = `
 [
   [
     {
@@ -4347,7 +5857,7 @@ exports[`Persists to/from mockMergeableContentListener loads 1`] = `
             {
               "c1": [
                 1,
-                "_",
+                "Nn1JUF-----7JQY8",
                 4065945599,
               ],
             },
@@ -4366,7 +5876,7 @@ exports[`Persists to/from mockMergeableContentListener loads 1`] = `
     {
       "v1": [
         1,
-        "_",
+        "Nn1JUF-----7JQY8",
         4065945599,
       ],
     },
@@ -4376,7 +5886,7 @@ exports[`Persists to/from mockMergeableContentListener loads 1`] = `
 ]
 `;
 
-exports[`Persists to/from mockMergeableContentListener saves 1`] = `
+exports[`Persists to/from mockMergeableContentListener > saves 1`] = `
 [
   [
     {
@@ -4415,7 +5925,7 @@ exports[`Persists to/from mockMergeableContentListener saves 1`] = `
 ]
 `;
 
-exports[`Persists to/from mockMergeableContentListener saves 2`] = `
+exports[`Persists to/from mockMergeableContentListener > saves 2`] = `
 [
   [
     {
@@ -4454,7 +5964,7 @@ exports[`Persists to/from mockMergeableContentListener saves 2`] = `
 ]
 `;
 
-exports[`Persists to/from mockMergeableNoContentListener autoLoads 1`] = `
+exports[`Persists to/from mockMergeableNoContentListener > autoLoads 1`] = `
 [
   [
     {
@@ -4464,7 +5974,7 @@ exports[`Persists to/from mockMergeableNoContentListener autoLoads 1`] = `
             {
               "c1": [
                 1,
-                "1",
+                "Nn1JUF0----7JQY8",
                 4065945599,
               ],
             },
@@ -4487,7 +5997,7 @@ exports[`Persists to/from mockMergeableNoContentListener autoLoads 1`] = `
 ]
 `;
 
-exports[`Persists to/from mockMergeableNoContentListener autoLoads 2`] = `
+exports[`Persists to/from mockMergeableNoContentListener > autoLoads 2`] = `
 [
   [
     {
@@ -4497,7 +6007,7 @@ exports[`Persists to/from mockMergeableNoContentListener autoLoads 2`] = `
             {
               "c1": [
                 2,
-                "2",
+                "Nn1JUF1----7JQY8",
                 2669080357,
               ],
             },
@@ -4520,7 +6030,7 @@ exports[`Persists to/from mockMergeableNoContentListener autoLoads 2`] = `
 ]
 `;
 
-exports[`Persists to/from mockMergeableNoContentListener autoLoads 3`] = `
+exports[`Persists to/from mockMergeableNoContentListener > autoLoads 3`] = `
 [
   [
     {
@@ -4530,7 +6040,7 @@ exports[`Persists to/from mockMergeableNoContentListener autoLoads 3`] = `
             {
               "c1": [
                 3,
-                "3",
+                "Nn1JUF2----7JQY8",
                 3252714811,
               ],
             },
@@ -4553,7 +6063,7 @@ exports[`Persists to/from mockMergeableNoContentListener autoLoads 3`] = `
 ]
 `;
 
-exports[`Persists to/from mockMergeableNoContentListener autoLoads 4`] = `
+exports[`Persists to/from mockMergeableNoContentListener > autoLoads 4`] = `
 [
   [
     {
@@ -4563,7 +6073,7 @@ exports[`Persists to/from mockMergeableNoContentListener autoLoads 4`] = `
             {
               "c1": [
                 3,
-                "3",
+                "Nn1JUF2----7JQY8",
                 3252714811,
               ],
             },
@@ -4586,7 +6096,7 @@ exports[`Persists to/from mockMergeableNoContentListener autoLoads 4`] = `
 ]
 `;
 
-exports[`Persists to/from mockMergeableNoContentListener autoSave & autoLoad: roundtrip 1`] = `
+exports[`Persists to/from mockMergeableNoContentListener > autoSave & autoLoad: roundtrip 1`] = `
 [
   [
     {
@@ -4663,7 +6173,7 @@ exports[`Persists to/from mockMergeableNoContentListener autoSave & autoLoad: ro
 ]
 `;
 
-exports[`Persists to/from mockMergeableNoContentListener autoSave & autoLoad: roundtrip 2`] = `
+exports[`Persists to/from mockMergeableNoContentListener > autoSave & autoLoad: roundtrip 2`] = `
 [
   [
     {
@@ -4740,7 +6250,7 @@ exports[`Persists to/from mockMergeableNoContentListener autoSave & autoLoad: ro
 ]
 `;
 
-exports[`Persists to/from mockMergeableNoContentListener autoSave & autoLoad: roundtrip 3`] = `
+exports[`Persists to/from mockMergeableNoContentListener > autoSave & autoLoad: roundtrip 3`] = `
 [
   [
     {
@@ -4817,7 +6327,7 @@ exports[`Persists to/from mockMergeableNoContentListener autoSave & autoLoad: ro
 ]
 `;
 
-exports[`Persists to/from mockMergeableNoContentListener autoSaves: delCell 1`] = `
+exports[`Persists to/from mockMergeableNoContentListener > autoSaves > delCell 1`] = `
 [
   [
     {
@@ -4866,7 +6376,7 @@ exports[`Persists to/from mockMergeableNoContentListener autoSaves: delCell 1`] 
 ]
 `;
 
-exports[`Persists to/from mockMergeableNoContentListener autoSaves: delCell changes 1`] = `
+exports[`Persists to/from mockMergeableNoContentListener > autoSaves > delCell changes 1`] = `
 [
   [
     {
@@ -4900,7 +6410,7 @@ exports[`Persists to/from mockMergeableNoContentListener autoSaves: delCell chan
 ]
 `;
 
-exports[`Persists to/from mockMergeableNoContentListener autoSaves: delValue 1`] = `
+exports[`Persists to/from mockMergeableNoContentListener > autoSaves > delValue 1`] = `
 [
   [
     {
@@ -4949,7 +6459,7 @@ exports[`Persists to/from mockMergeableNoContentListener autoSaves: delValue 1`]
 ]
 `;
 
-exports[`Persists to/from mockMergeableNoContentListener autoSaves: delValue changes 1`] = `
+exports[`Persists to/from mockMergeableNoContentListener > autoSaves > delValue changes 1`] = `
 [
   [
     {},
@@ -4971,7 +6481,7 @@ exports[`Persists to/from mockMergeableNoContentListener autoSaves: delValue cha
 ]
 `;
 
-exports[`Persists to/from mockMergeableNoContentListener autoSaves: initial 1`] = `
+exports[`Persists to/from mockMergeableNoContentListener > autoSaves > initial 1`] = `
 [
   [
     {
@@ -5010,7 +6520,7 @@ exports[`Persists to/from mockMergeableNoContentListener autoSaves: initial 1`] 
 ]
 `;
 
-exports[`Persists to/from mockMergeableNoContentListener autoSaves: setTables 1`] = `
+exports[`Persists to/from mockMergeableNoContentListener > autoSaves > setTables 1`] = `
 [
   [
     {
@@ -5054,7 +6564,7 @@ exports[`Persists to/from mockMergeableNoContentListener autoSaves: setTables 1`
 ]
 `;
 
-exports[`Persists to/from mockMergeableNoContentListener autoSaves: setTables changes 1`] = `
+exports[`Persists to/from mockMergeableNoContentListener > autoSaves > setTables changes 1`] = `
 [
   [
     {
@@ -5088,7 +6598,7 @@ exports[`Persists to/from mockMergeableNoContentListener autoSaves: setTables ch
 ]
 `;
 
-exports[`Persists to/from mockMergeableNoContentListener autoSaves: setValues 1`] = `
+exports[`Persists to/from mockMergeableNoContentListener > autoSaves > setValues 1`] = `
 [
   [
     {
@@ -5137,7 +6647,7 @@ exports[`Persists to/from mockMergeableNoContentListener autoSaves: setValues 1`
 ]
 `;
 
-exports[`Persists to/from mockMergeableNoContentListener autoSaves: setValues changes 1`] = `
+exports[`Persists to/from mockMergeableNoContentListener > autoSaves > setValues changes 1`] = `
 [
   [
     {},
@@ -5159,7 +6669,7 @@ exports[`Persists to/from mockMergeableNoContentListener autoSaves: setValues ch
 ]
 `;
 
-exports[`Persists to/from mockMergeableNoContentListener loads 1`] = `
+exports[`Persists to/from mockMergeableNoContentListener > loads 1`] = `
 [
   [
     {
@@ -5169,7 +6679,7 @@ exports[`Persists to/from mockMergeableNoContentListener loads 1`] = `
             {
               "c1": [
                 1,
-                "_",
+                "Nn1JUF-----7JQY8",
                 4065945599,
               ],
             },
@@ -5188,7 +6698,7 @@ exports[`Persists to/from mockMergeableNoContentListener loads 1`] = `
     {
       "v1": [
         1,
-        "_",
+        "Nn1JUF-----7JQY8",
         4065945599,
       ],
     },
@@ -5198,7 +6708,7 @@ exports[`Persists to/from mockMergeableNoContentListener loads 1`] = `
 ]
 `;
 
-exports[`Persists to/from mockMergeableNoContentListener saves 1`] = `
+exports[`Persists to/from mockMergeableNoContentListener > saves 1`] = `
 [
   [
     {
@@ -5237,7 +6747,7 @@ exports[`Persists to/from mockMergeableNoContentListener saves 1`] = `
 ]
 `;
 
-exports[`Persists to/from mockMergeableNoContentListener saves 2`] = `
+exports[`Persists to/from mockMergeableNoContentListener > saves 2`] = `
 [
   [
     {
@@ -5276,7 +6786,7 @@ exports[`Persists to/from mockMergeableNoContentListener saves 2`] = `
 ]
 `;
 
-exports[`Persists to/from pglite autoLoads 1`] = `
+exports[`Persists to/from mssql > autoLoads 1`] = `
 [
   [
     {
@@ -5286,7 +6796,7 @@ exports[`Persists to/from pglite autoLoads 1`] = `
             {
               "c1": [
                 1,
-                "1",
+                "Nn1JUF0----7JQY8",
                 4065945599,
               ],
             },
@@ -5309,7 +6819,7 @@ exports[`Persists to/from pglite autoLoads 1`] = `
 ]
 `;
 
-exports[`Persists to/from pglite autoLoads 2`] = `
+exports[`Persists to/from mssql > autoLoads 2`] = `
 [
   [
     {
@@ -5319,7 +6829,7 @@ exports[`Persists to/from pglite autoLoads 2`] = `
             {
               "c1": [
                 2,
-                "2",
+                "Nn1JUF1----7JQY8",
                 2669080357,
               ],
             },
@@ -5342,7 +6852,7 @@ exports[`Persists to/from pglite autoLoads 2`] = `
 ]
 `;
 
-exports[`Persists to/from pglite autoLoads 3`] = `
+exports[`Persists to/from mssql > autoLoads 3`] = `
 [
   [
     {
@@ -5352,7 +6862,7 @@ exports[`Persists to/from pglite autoLoads 3`] = `
             {
               "c1": [
                 3,
-                "3",
+                "Nn1JUF2----7JQY8",
                 3252714811,
               ],
             },
@@ -5375,7 +6885,7 @@ exports[`Persists to/from pglite autoLoads 3`] = `
 ]
 `;
 
-exports[`Persists to/from pglite autoLoads 4`] = `
+exports[`Persists to/from mssql > autoLoads 4`] = `
 [
   [
     {
@@ -5385,7 +6895,7 @@ exports[`Persists to/from pglite autoLoads 4`] = `
             {
               "c1": [
                 3,
-                "3",
+                "Nn1JUF2----7JQY8",
                 3252714811,
               ],
             },
@@ -5408,7 +6918,7 @@ exports[`Persists to/from pglite autoLoads 4`] = `
 ]
 `;
 
-exports[`Persists to/from pglite autoSave & autoLoad: roundtrip 1`] = `
+exports[`Persists to/from mssql > autoSave & autoLoad: roundtrip 1`] = `
 [
   [
     {
@@ -5485,7 +6995,7 @@ exports[`Persists to/from pglite autoSave & autoLoad: roundtrip 1`] = `
 ]
 `;
 
-exports[`Persists to/from pglite autoSave & autoLoad: roundtrip 2`] = `
+exports[`Persists to/from mssql > autoSave & autoLoad: roundtrip 2`] = `
 [
   [
     {
@@ -5562,7 +7072,7 @@ exports[`Persists to/from pglite autoSave & autoLoad: roundtrip 2`] = `
 ]
 `;
 
-exports[`Persists to/from pglite autoSave & autoLoad: roundtrip 3`] = `
+exports[`Persists to/from mssql > autoSave & autoLoad: roundtrip 3`] = `
 [
   [
     {
@@ -5639,717 +7149,7 @@ exports[`Persists to/from pglite autoSave & autoLoad: roundtrip 3`] = `
 ]
 `;
 
-exports[`Persists to/from pglite autoSaves: delCell 1`] = `
-[
-  [
-    {
-      "t1": [
-        {
-          "r1": [
-            {
-              "c1": [
-                1,
-                "Nn1JUF-----7JQY8",
-                1003668370,
-              ],
-              "c2": [
-                "￼",
-                "Nn1JUF3----7JQY8",
-                1964059388,
-              ],
-            },
-            "",
-            756126043,
-          ],
-        },
-        "",
-        3943446976,
-      ],
-    },
-    "",
-    3161300725,
-  ],
-  [
-    {
-      "v1": [
-        1,
-        "Nn1JUF----07JQY8",
-        1130939691,
-      ],
-      "v2": [
-        2,
-        "Nn1JUF1----7JQY8",
-        830262161,
-      ],
-    },
-    "",
-    4272434271,
-  ],
-]
-`;
-
-exports[`Persists to/from pglite autoSaves: delValue 1`] = `
-[
-  [
-    {
-      "t1": [
-        {
-          "r1": [
-            {
-              "c1": [
-                1,
-                "Nn1JUF-----7JQY8",
-                1003668370,
-              ],
-              "c2": [
-                "￼",
-                "Nn1JUF3----7JQY8",
-                1964059388,
-              ],
-            },
-            "",
-            756126043,
-          ],
-        },
-        "",
-        3943446976,
-      ],
-    },
-    "",
-    3161300725,
-  ],
-  [
-    {
-      "v1": [
-        1,
-        "Nn1JUF----07JQY8",
-        1130939691,
-      ],
-      "v2": [
-        "￼",
-        "Nn1JUF5----7JQY8",
-        1157804434,
-      ],
-    },
-    "",
-    1587362687,
-  ],
-]
-`;
-
-exports[`Persists to/from pglite autoSaves: initial 1`] = `
-[
-  [
-    {
-      "t1": [
-        {
-          "r1": [
-            {
-              "c1": [
-                1,
-                "Nn1JUF-----7JQY8",
-                1003668370,
-              ],
-            },
-            "",
-            550994372,
-          ],
-        },
-        "",
-        1072852846,
-      ],
-    },
-    "",
-    1771939739,
-  ],
-  [
-    {
-      "v1": [
-        1,
-        "Nn1JUF----07JQY8",
-        1130939691,
-      ],
-    },
-    "",
-    3877632732,
-  ],
-]
-`;
-
-exports[`Persists to/from pglite autoSaves: setTables 1`] = `
-[
-  [
-    {
-      "t1": [
-        {
-          "r1": [
-            {
-              "c1": [
-                1,
-                "Nn1JUF-----7JQY8",
-                1003668370,
-              ],
-              "c2": [
-                2,
-                "Nn1JUF----17JQY8",
-                1804136345,
-              ],
-            },
-            "",
-            3439185877,
-          ],
-        },
-        "",
-        855391547,
-      ],
-    },
-    "",
-    262414121,
-  ],
-  [
-    {
-      "v1": [
-        1,
-        "Nn1JUF----07JQY8",
-        1130939691,
-      ],
-    },
-    "",
-    3877632732,
-  ],
-]
-`;
-
-exports[`Persists to/from pglite autoSaves: setValues 1`] = `
-[
-  [
-    {
-      "t1": [
-        {
-          "r1": [
-            {
-              "c1": [
-                1,
-                "Nn1JUF-----7JQY8",
-                1003668370,
-              ],
-              "c2": [
-                2,
-                "Nn1JUF----17JQY8",
-                1804136345,
-              ],
-            },
-            "",
-            3439185877,
-          ],
-        },
-        "",
-        855391547,
-      ],
-    },
-    "",
-    262414121,
-  ],
-  [
-    {
-      "v1": [
-        1,
-        "Nn1JUF----07JQY8",
-        1130939691,
-      ],
-      "v2": [
-        2,
-        "Nn1JUF1----7JQY8",
-        830262161,
-      ],
-    },
-    "",
-    4272434271,
-  ],
-]
-`;
-
-exports[`Persists to/from pglite loads 1`] = `
-[
-  [
-    {
-      "t1": [
-        {
-          "r1": [
-            {
-              "c1": [
-                1,
-                "_",
-                4065945599,
-              ],
-            },
-            "",
-            1279994494,
-          ],
-        },
-        "",
-        1293085726,
-      ],
-    },
-    "",
-    4033596827,
-  ],
-  [
-    {
-      "v1": [
-        1,
-        "_",
-        4065945599,
-      ],
-    },
-    "",
-    2304392760,
-  ],
-]
-`;
-
-exports[`Persists to/from pglite saves 1`] = `
-[
-  [
-    {
-      "t1": [
-        {
-          "r1": [
-            {
-              "c1": [
-                1,
-                "Nn1JUF-----7JQY8",
-                1003668370,
-              ],
-            },
-            "",
-            550994372,
-          ],
-        },
-        "",
-        1072852846,
-      ],
-    },
-    "",
-    1771939739,
-  ],
-  [
-    {
-      "v1": [
-        1,
-        "Nn1JUF----07JQY8",
-        1130939691,
-      ],
-    },
-    "",
-    3877632732,
-  ],
-]
-`;
-
-exports[`Persists to/from pglite saves 2`] = `
-[
-  [
-    {
-      "t1": [
-        {
-          "r1": [
-            {
-              "c1": [
-                1,
-                "Nn1JUF-----7JQY8",
-                1003668370,
-              ],
-            },
-            "",
-            550994372,
-          ],
-        },
-        "",
-        1072852846,
-      ],
-    },
-    "",
-    1771939739,
-  ],
-  [
-    {
-      "v1": [
-        1,
-        "Nn1JUF----07JQY8",
-        1130939691,
-      ],
-    },
-    "",
-    3877632732,
-  ],
-]
-`;
-
-exports[`Persists to/from postgres autoLoads 1`] = `
-[
-  [
-    {
-      "t1": [
-        {
-          "r1": [
-            {
-              "c1": [
-                1,
-                "1",
-                4065945599,
-              ],
-            },
-            "",
-            1279994494,
-          ],
-        },
-        "",
-        1293085726,
-      ],
-    },
-    "",
-    4033596827,
-  ],
-  [
-    {},
-    "",
-    0,
-  ],
-]
-`;
-
-exports[`Persists to/from postgres autoLoads 2`] = `
-[
-  [
-    {
-      "t1": [
-        {
-          "r1": [
-            {
-              "c1": [
-                2,
-                "2",
-                2669080357,
-              ],
-            },
-            "",
-            274319047,
-          ],
-        },
-        "",
-        4089057354,
-      ],
-    },
-    "",
-    3386696034,
-  ],
-  [
-    {},
-    "",
-    0,
-  ],
-]
-`;
-
-exports[`Persists to/from postgres autoLoads 3`] = `
-[
-  [
-    {
-      "t1": [
-        {
-          "r1": [
-            {
-              "c1": [
-                3,
-                "3",
-                3252714811,
-              ],
-            },
-            "",
-            1416411412,
-          ],
-        },
-        "",
-        3704904231,
-      ],
-    },
-    "",
-    4008152259,
-  ],
-  [
-    {},
-    "",
-    0,
-  ],
-]
-`;
-
-exports[`Persists to/from postgres autoLoads 4`] = `
-[
-  [
-    {
-      "t1": [
-        {
-          "r1": [
-            {
-              "c1": [
-                3,
-                "3",
-                3252714811,
-              ],
-            },
-            "",
-            1416411412,
-          ],
-        },
-        "",
-        3704904231,
-      ],
-    },
-    "",
-    4008152259,
-  ],
-  [
-    {},
-    "",
-    0,
-  ],
-]
-`;
-
-exports[`Persists to/from postgres autoSave & autoLoad: roundtrip 1`] = `
-[
-  [
-    {
-      "t1": [
-        {
-          "r1": [
-            {
-              "c1": [
-                1,
-                "Nn1JUF-----7JQY8",
-                1003668370,
-              ],
-              "c2": [
-                undefined,
-                "Nn1JUF----77JQY8",
-                1267840296,
-              ],
-            },
-            "",
-            2533574593,
-          ],
-          "r2": [
-            {
-              "c2": [
-                undefined,
-                "Nn1JUF----67JQY8",
-                2770824445,
-              ],
-            },
-            "",
-            811264265,
-          ],
-        },
-        "",
-        2755269984,
-      ],
-      "t2": [
-        {
-          "r2": [
-            {
-              "c2": [
-                undefined,
-                "Nn1JUF----57JQY8",
-                755827458,
-              ],
-            },
-            "",
-            3087140291,
-          ],
-        },
-        "",
-        1225184002,
-      ],
-    },
-    "",
-    3340350845,
-  ],
-  [
-    {
-      "v1": [
-        1,
-        "Nn1JUF----37JQY8",
-        3542219356,
-      ],
-      "v2": [
-        undefined,
-        "Nn1JUF----87JQY8",
-        2233415979,
-      ],
-    },
-    "",
-    2110402117,
-  ],
-]
-`;
-
-exports[`Persists to/from postgres autoSave & autoLoad: roundtrip 2`] = `
-[
-  [
-    {
-      "t1": [
-        {
-          "r1": [
-            {
-              "c1": [
-                1,
-                "Nn1JUF-----7JQY8",
-                1003668370,
-              ],
-              "c2": [
-                "￼",
-                "Nn1JUF----77JQY8",
-                1267840296,
-              ],
-            },
-            "",
-            2533574593,
-          ],
-          "r2": [
-            {
-              "c2": [
-                "￼",
-                "Nn1JUF----67JQY8",
-                2770824445,
-              ],
-            },
-            "",
-            811264265,
-          ],
-        },
-        "",
-        2755269984,
-      ],
-      "t2": [
-        {
-          "r2": [
-            {
-              "c2": [
-                "￼",
-                "Nn1JUF----57JQY8",
-                755827458,
-              ],
-            },
-            "",
-            3087140291,
-          ],
-        },
-        "",
-        1225184002,
-      ],
-    },
-    "",
-    3340350845,
-  ],
-  [
-    {
-      "v1": [
-        1,
-        "Nn1JUF----37JQY8",
-        3542219356,
-      ],
-      "v2": [
-        "￼",
-        "Nn1JUF----87JQY8",
-        2233415979,
-      ],
-    },
-    "",
-    2110402117,
-  ],
-]
-`;
-
-exports[`Persists to/from postgres autoSave & autoLoad: roundtrip 3`] = `
-[
-  [
-    {
-      "t1": [
-        {
-          "r1": [
-            {
-              "c1": [
-                1,
-                "Nn1JUF-----7JQY8",
-                1003668370,
-              ],
-              "c2": [
-                "￼",
-                "Nn1JUF----77JQY8",
-                1267840296,
-              ],
-            },
-            "",
-            2533574593,
-          ],
-          "r2": [
-            {
-              "c2": [
-                "￼",
-                "Nn1JUF----67JQY8",
-                2770824445,
-              ],
-            },
-            "",
-            811264265,
-          ],
-        },
-        "",
-        2755269984,
-      ],
-      "t2": [
-        {
-          "r2": [
-            {
-              "c2": [
-                "￼",
-                "Nn1JUF----57JQY8",
-                755827458,
-              ],
-            },
-            "",
-            3087140291,
-          ],
-        },
-        "",
-        1225184002,
-      ],
-    },
-    "",
-    3340350845,
-  ],
-  [
-    {
-      "v1": [
-        1,
-        "Nn1JUF----37JQY8",
-        3542219356,
-      ],
-      "v2": [
-        "￼",
-        "Nn1JUF----87JQY8",
-        2233415979,
-      ],
-    },
-    "",
-    2110402117,
-  ],
-]
-`;
-
-exports[`Persists to/from postgres autoSaves: delCell 1`] = `
+exports[`Persists to/from mssql > autoSaves > delCell 1`] = `
 [
   [
     {
@@ -6398,7 +7198,7 @@ exports[`Persists to/from postgres autoSaves: delCell 1`] = `
 ]
 `;
 
-exports[`Persists to/from postgres autoSaves: delValue 1`] = `
+exports[`Persists to/from mssql > autoSaves > delValue 1`] = `
 [
   [
     {
@@ -6447,7 +7247,7 @@ exports[`Persists to/from postgres autoSaves: delValue 1`] = `
 ]
 `;
 
-exports[`Persists to/from postgres autoSaves: initial 1`] = `
+exports[`Persists to/from mssql > autoSaves > initial 1`] = `
 [
   [
     {
@@ -6486,7 +7286,7 @@ exports[`Persists to/from postgres autoSaves: initial 1`] = `
 ]
 `;
 
-exports[`Persists to/from postgres autoSaves: setTables 1`] = `
+exports[`Persists to/from mssql > autoSaves > setTables 1`] = `
 [
   [
     {
@@ -6530,7 +7330,7 @@ exports[`Persists to/from postgres autoSaves: setTables 1`] = `
 ]
 `;
 
-exports[`Persists to/from postgres autoSaves: setValues 1`] = `
+exports[`Persists to/from mssql > autoSaves > setValues 1`] = `
 [
   [
     {
@@ -6579,7 +7379,7 @@ exports[`Persists to/from postgres autoSaves: setValues 1`] = `
 ]
 `;
 
-exports[`Persists to/from postgres loads 1`] = `
+exports[`Persists to/from mssql > loads 1`] = `
 [
   [
     {
@@ -6589,7 +7389,7 @@ exports[`Persists to/from postgres loads 1`] = `
             {
               "c1": [
                 1,
-                "_",
+                "Nn1JUF-----7JQY8",
                 4065945599,
               ],
             },
@@ -6608,7 +7408,7 @@ exports[`Persists to/from postgres loads 1`] = `
     {
       "v1": [
         1,
-        "_",
+        "Nn1JUF-----7JQY8",
         4065945599,
       ],
     },
@@ -6618,7 +7418,7 @@ exports[`Persists to/from postgres loads 1`] = `
 ]
 `;
 
-exports[`Persists to/from postgres saves 1`] = `
+exports[`Persists to/from mssql > saves 1`] = `
 [
   [
     {
@@ -6657,7 +7457,7 @@ exports[`Persists to/from postgres saves 1`] = `
 ]
 `;
 
-exports[`Persists to/from postgres saves 2`] = `
+exports[`Persists to/from mssql > saves 2`] = `
 [
   [
     {
@@ -6696,7 +7496,7 @@ exports[`Persists to/from postgres saves 2`] = `
 ]
 `;
 
-exports[`Persists to/from sessionStorage autoLoads 1`] = `
+exports[`Persists to/from opfs > autoSaves > delCell 1`] = `
 [
   [
     {
@@ -6706,7 +7506,354 @@ exports[`Persists to/from sessionStorage autoLoads 1`] = `
             {
               "c1": [
                 1,
-                "1",
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                "￼",
+                "Nn1JULF----7JQY8",
+                648462603,
+              ],
+            },
+            "",
+            3357699233,
+          ],
+        },
+        "",
+        2815185716,
+      ],
+    },
+    "",
+    3170789466,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+      "v2": [
+        2,
+        "Nn1JUI7----7JQY8",
+        3249802078,
+      ],
+    },
+    "",
+    3437734041,
+  ],
+]
+`;
+
+exports[`Persists to/from opfs > autoSaves > delValue 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                "￼",
+                "Nn1JULF----7JQY8",
+                648462603,
+              ],
+            },
+            "",
+            3357699233,
+          ],
+        },
+        "",
+        2815185716,
+      ],
+    },
+    "",
+    3170789466,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+      "v2": [
+        "￼",
+        "Nn1JUON----7JQY8",
+        3937611782,
+      ],
+    },
+    "",
+    4130093655,
+  ],
+]
+`;
+
+exports[`Persists to/from opfs > autoSaves > initial 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+            },
+            "",
+            550994372,
+          ],
+        },
+        "",
+        1072852846,
+      ],
+    },
+    "",
+    1771939739,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+    },
+    "",
+    3877632732,
+  ],
+]
+`;
+
+exports[`Persists to/from opfs > autoSaves > setTables 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                2,
+                "Nn1JUF----17JQY8",
+                1804136345,
+              ],
+            },
+            "",
+            3439185877,
+          ],
+        },
+        "",
+        855391547,
+      ],
+    },
+    "",
+    262414121,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+    },
+    "",
+    3877632732,
+  ],
+]
+`;
+
+exports[`Persists to/from opfs > autoSaves > setValues 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                2,
+                "Nn1JUF----17JQY8",
+                1804136345,
+              ],
+            },
+            "",
+            3439185877,
+          ],
+        },
+        "",
+        855391547,
+      ],
+    },
+    "",
+    262414121,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+      "v2": [
+        2,
+        "Nn1JUI7----7JQY8",
+        3249802078,
+      ],
+    },
+    "",
+    3437734041,
+  ],
+]
+`;
+
+exports[`Persists to/from opfs > loads 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                4065945599,
+              ],
+            },
+            "",
+            1279994494,
+          ],
+        },
+        "",
+        1293085726,
+      ],
+    },
+    "",
+    4033596827,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF-----7JQY8",
+        4065945599,
+      ],
+    },
+    "",
+    2304392760,
+  ],
+]
+`;
+
+exports[`Persists to/from opfs > saves 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+            },
+            "",
+            550994372,
+          ],
+        },
+        "",
+        1072852846,
+      ],
+    },
+    "",
+    1771939739,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+    },
+    "",
+    3877632732,
+  ],
+]
+`;
+
+exports[`Persists to/from opfs > saves 2`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+            },
+            "",
+            550994372,
+          ],
+        },
+        "",
+        1072852846,
+      ],
+    },
+    "",
+    1771939739,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+    },
+    "",
+    3877632732,
+  ],
+]
+`;
+
+exports[`Persists to/from pg > autoLoads 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF0----7JQY8",
                 4065945599,
               ],
             },
@@ -6729,7 +7876,7 @@ exports[`Persists to/from sessionStorage autoLoads 1`] = `
 ]
 `;
 
-exports[`Persists to/from sessionStorage autoLoads 2`] = `
+exports[`Persists to/from pg > autoLoads 2`] = `
 [
   [
     {
@@ -6739,7 +7886,7 @@ exports[`Persists to/from sessionStorage autoLoads 2`] = `
             {
               "c1": [
                 2,
-                "2",
+                "Nn1JUF1----7JQY8",
                 2669080357,
               ],
             },
@@ -6762,7 +7909,7 @@ exports[`Persists to/from sessionStorage autoLoads 2`] = `
 ]
 `;
 
-exports[`Persists to/from sessionStorage autoLoads 3`] = `
+exports[`Persists to/from pg > autoLoads 3`] = `
 [
   [
     {
@@ -6772,7 +7919,7 @@ exports[`Persists to/from sessionStorage autoLoads 3`] = `
             {
               "c1": [
                 3,
-                "3",
+                "Nn1JUF2----7JQY8",
                 3252714811,
               ],
             },
@@ -6795,7 +7942,7 @@ exports[`Persists to/from sessionStorage autoLoads 3`] = `
 ]
 `;
 
-exports[`Persists to/from sessionStorage autoLoads 4`] = `
+exports[`Persists to/from pg > autoLoads 4`] = `
 [
   [
     {
@@ -6805,7 +7952,7 @@ exports[`Persists to/from sessionStorage autoLoads 4`] = `
             {
               "c1": [
                 3,
-                "3",
+                "Nn1JUF2----7JQY8",
                 3252714811,
               ],
             },
@@ -6828,7 +7975,7 @@ exports[`Persists to/from sessionStorage autoLoads 4`] = `
 ]
 `;
 
-exports[`Persists to/from sessionStorage autoSave & autoLoad: roundtrip 1`] = `
+exports[`Persists to/from pg > autoSave & autoLoad: roundtrip 1`] = `
 [
   [
     {
@@ -6905,7 +8052,7 @@ exports[`Persists to/from sessionStorage autoSave & autoLoad: roundtrip 1`] = `
 ]
 `;
 
-exports[`Persists to/from sessionStorage autoSave & autoLoad: roundtrip 2`] = `
+exports[`Persists to/from pg > autoSave & autoLoad: roundtrip 2`] = `
 [
   [
     {
@@ -6982,7 +8129,7 @@ exports[`Persists to/from sessionStorage autoSave & autoLoad: roundtrip 2`] = `
 ]
 `;
 
-exports[`Persists to/from sessionStorage autoSave & autoLoad: roundtrip 3`] = `
+exports[`Persists to/from pg > autoSave & autoLoad: roundtrip 3`] = `
 [
   [
     {
@@ -7059,717 +8206,7 @@ exports[`Persists to/from sessionStorage autoSave & autoLoad: roundtrip 3`] = `
 ]
 `;
 
-exports[`Persists to/from sessionStorage autoSaves: delCell 1`] = `
-[
-  [
-    {
-      "t1": [
-        {
-          "r1": [
-            {
-              "c1": [
-                1,
-                "Nn1JUF-----7JQY8",
-                1003668370,
-              ],
-              "c2": [
-                "￼",
-                "Nn1JUGZ----7JQY8",
-                177659754,
-              ],
-            },
-            "",
-            2776878705,
-          ],
-        },
-        "",
-        3882992231,
-      ],
-    },
-    "",
-    4035352191,
-  ],
-  [
-    {
-      "v1": [
-        1,
-        "Nn1JUF----07JQY8",
-        1130939691,
-      ],
-      "v2": [
-        2,
-        "Nn1JUFm----7JQY8",
-        578793541,
-      ],
-    },
-    "",
-    3964753691,
-  ],
-]
-`;
-
-exports[`Persists to/from sessionStorage autoSaves: delValue 1`] = `
-[
-  [
-    {
-      "t1": [
-        {
-          "r1": [
-            {
-              "c1": [
-                1,
-                "Nn1JUF-----7JQY8",
-                1003668370,
-              ],
-              "c2": [
-                "￼",
-                "Nn1JUGZ----7JQY8",
-                177659754,
-              ],
-            },
-            "",
-            2776878705,
-          ],
-        },
-        "",
-        3882992231,
-      ],
-    },
-    "",
-    4035352191,
-  ],
-  [
-    {
-      "v1": [
-        1,
-        "Nn1JUF----07JQY8",
-        1130939691,
-      ],
-      "v2": [
-        "￼",
-        "Nn1JUHL----7JQY8",
-        4056403117,
-      ],
-    },
-    "",
-    3575489765,
-  ],
-]
-`;
-
-exports[`Persists to/from sessionStorage autoSaves: initial 1`] = `
-[
-  [
-    {
-      "t1": [
-        {
-          "r1": [
-            {
-              "c1": [
-                1,
-                "Nn1JUF-----7JQY8",
-                1003668370,
-              ],
-            },
-            "",
-            550994372,
-          ],
-        },
-        "",
-        1072852846,
-      ],
-    },
-    "",
-    1771939739,
-  ],
-  [
-    {
-      "v1": [
-        1,
-        "Nn1JUF----07JQY8",
-        1130939691,
-      ],
-    },
-    "",
-    3877632732,
-  ],
-]
-`;
-
-exports[`Persists to/from sessionStorage autoSaves: setTables 1`] = `
-[
-  [
-    {
-      "t1": [
-        {
-          "r1": [
-            {
-              "c1": [
-                1,
-                "Nn1JUF-----7JQY8",
-                1003668370,
-              ],
-              "c2": [
-                2,
-                "Nn1JUF----17JQY8",
-                1804136345,
-              ],
-            },
-            "",
-            3439185877,
-          ],
-        },
-        "",
-        855391547,
-      ],
-    },
-    "",
-    262414121,
-  ],
-  [
-    {
-      "v1": [
-        1,
-        "Nn1JUF----07JQY8",
-        1130939691,
-      ],
-    },
-    "",
-    3877632732,
-  ],
-]
-`;
-
-exports[`Persists to/from sessionStorage autoSaves: setValues 1`] = `
-[
-  [
-    {
-      "t1": [
-        {
-          "r1": [
-            {
-              "c1": [
-                1,
-                "Nn1JUF-----7JQY8",
-                1003668370,
-              ],
-              "c2": [
-                2,
-                "Nn1JUF----17JQY8",
-                1804136345,
-              ],
-            },
-            "",
-            3439185877,
-          ],
-        },
-        "",
-        855391547,
-      ],
-    },
-    "",
-    262414121,
-  ],
-  [
-    {
-      "v1": [
-        1,
-        "Nn1JUF----07JQY8",
-        1130939691,
-      ],
-      "v2": [
-        2,
-        "Nn1JUFm----7JQY8",
-        578793541,
-      ],
-    },
-    "",
-    3964753691,
-  ],
-]
-`;
-
-exports[`Persists to/from sessionStorage loads 1`] = `
-[
-  [
-    {
-      "t1": [
-        {
-          "r1": [
-            {
-              "c1": [
-                1,
-                "_",
-                4065945599,
-              ],
-            },
-            "",
-            1279994494,
-          ],
-        },
-        "",
-        1293085726,
-      ],
-    },
-    "",
-    4033596827,
-  ],
-  [
-    {
-      "v1": [
-        1,
-        "_",
-        4065945599,
-      ],
-    },
-    "",
-    2304392760,
-  ],
-]
-`;
-
-exports[`Persists to/from sessionStorage saves 1`] = `
-[
-  [
-    {
-      "t1": [
-        {
-          "r1": [
-            {
-              "c1": [
-                1,
-                "Nn1JUF-----7JQY8",
-                1003668370,
-              ],
-            },
-            "",
-            550994372,
-          ],
-        },
-        "",
-        1072852846,
-      ],
-    },
-    "",
-    1771939739,
-  ],
-  [
-    {
-      "v1": [
-        1,
-        "Nn1JUF----07JQY8",
-        1130939691,
-      ],
-    },
-    "",
-    3877632732,
-  ],
-]
-`;
-
-exports[`Persists to/from sessionStorage saves 2`] = `
-[
-  [
-    {
-      "t1": [
-        {
-          "r1": [
-            {
-              "c1": [
-                1,
-                "Nn1JUF-----7JQY8",
-                1003668370,
-              ],
-            },
-            "",
-            550994372,
-          ],
-        },
-        "",
-        1072852846,
-      ],
-    },
-    "",
-    1771939739,
-  ],
-  [
-    {
-      "v1": [
-        1,
-        "Nn1JUF----07JQY8",
-        1130939691,
-      ],
-    },
-    "",
-    3877632732,
-  ],
-]
-`;
-
-exports[`Persists to/from sqlite3 autoLoads 1`] = `
-[
-  [
-    {
-      "t1": [
-        {
-          "r1": [
-            {
-              "c1": [
-                1,
-                "1",
-                4065945599,
-              ],
-            },
-            "",
-            1279994494,
-          ],
-        },
-        "",
-        1293085726,
-      ],
-    },
-    "",
-    4033596827,
-  ],
-  [
-    {},
-    "",
-    0,
-  ],
-]
-`;
-
-exports[`Persists to/from sqlite3 autoLoads 2`] = `
-[
-  [
-    {
-      "t1": [
-        {
-          "r1": [
-            {
-              "c1": [
-                2,
-                "2",
-                2669080357,
-              ],
-            },
-            "",
-            274319047,
-          ],
-        },
-        "",
-        4089057354,
-      ],
-    },
-    "",
-    3386696034,
-  ],
-  [
-    {},
-    "",
-    0,
-  ],
-]
-`;
-
-exports[`Persists to/from sqlite3 autoLoads 3`] = `
-[
-  [
-    {
-      "t1": [
-        {
-          "r1": [
-            {
-              "c1": [
-                3,
-                "3",
-                3252714811,
-              ],
-            },
-            "",
-            1416411412,
-          ],
-        },
-        "",
-        3704904231,
-      ],
-    },
-    "",
-    4008152259,
-  ],
-  [
-    {},
-    "",
-    0,
-  ],
-]
-`;
-
-exports[`Persists to/from sqlite3 autoLoads 4`] = `
-[
-  [
-    {
-      "t1": [
-        {
-          "r1": [
-            {
-              "c1": [
-                3,
-                "3",
-                3252714811,
-              ],
-            },
-            "",
-            1416411412,
-          ],
-        },
-        "",
-        3704904231,
-      ],
-    },
-    "",
-    4008152259,
-  ],
-  [
-    {},
-    "",
-    0,
-  ],
-]
-`;
-
-exports[`Persists to/from sqlite3 autoSave & autoLoad: roundtrip 1`] = `
-[
-  [
-    {
-      "t1": [
-        {
-          "r1": [
-            {
-              "c1": [
-                1,
-                "Nn1JUF-----7JQY8",
-                1003668370,
-              ],
-              "c2": [
-                undefined,
-                "Nn1JUF----77JQY8",
-                1267840296,
-              ],
-            },
-            "",
-            2533574593,
-          ],
-          "r2": [
-            {
-              "c2": [
-                undefined,
-                "Nn1JUF----67JQY8",
-                2770824445,
-              ],
-            },
-            "",
-            811264265,
-          ],
-        },
-        "",
-        2755269984,
-      ],
-      "t2": [
-        {
-          "r2": [
-            {
-              "c2": [
-                undefined,
-                "Nn1JUF----57JQY8",
-                755827458,
-              ],
-            },
-            "",
-            3087140291,
-          ],
-        },
-        "",
-        1225184002,
-      ],
-    },
-    "",
-    3340350845,
-  ],
-  [
-    {
-      "v1": [
-        1,
-        "Nn1JUF----37JQY8",
-        3542219356,
-      ],
-      "v2": [
-        undefined,
-        "Nn1JUF----87JQY8",
-        2233415979,
-      ],
-    },
-    "",
-    2110402117,
-  ],
-]
-`;
-
-exports[`Persists to/from sqlite3 autoSave & autoLoad: roundtrip 2`] = `
-[
-  [
-    {
-      "t1": [
-        {
-          "r1": [
-            {
-              "c1": [
-                1,
-                "Nn1JUF-----7JQY8",
-                1003668370,
-              ],
-              "c2": [
-                "￼",
-                "Nn1JUF----77JQY8",
-                1267840296,
-              ],
-            },
-            "",
-            2533574593,
-          ],
-          "r2": [
-            {
-              "c2": [
-                "￼",
-                "Nn1JUF----67JQY8",
-                2770824445,
-              ],
-            },
-            "",
-            811264265,
-          ],
-        },
-        "",
-        2755269984,
-      ],
-      "t2": [
-        {
-          "r2": [
-            {
-              "c2": [
-                "￼",
-                "Nn1JUF----57JQY8",
-                755827458,
-              ],
-            },
-            "",
-            3087140291,
-          ],
-        },
-        "",
-        1225184002,
-      ],
-    },
-    "",
-    3340350845,
-  ],
-  [
-    {
-      "v1": [
-        1,
-        "Nn1JUF----37JQY8",
-        3542219356,
-      ],
-      "v2": [
-        "￼",
-        "Nn1JUF----87JQY8",
-        2233415979,
-      ],
-    },
-    "",
-    2110402117,
-  ],
-]
-`;
-
-exports[`Persists to/from sqlite3 autoSave & autoLoad: roundtrip 3`] = `
-[
-  [
-    {
-      "t1": [
-        {
-          "r1": [
-            {
-              "c1": [
-                1,
-                "Nn1JUF-----7JQY8",
-                1003668370,
-              ],
-              "c2": [
-                "￼",
-                "Nn1JUF----77JQY8",
-                1267840296,
-              ],
-            },
-            "",
-            2533574593,
-          ],
-          "r2": [
-            {
-              "c2": [
-                "￼",
-                "Nn1JUF----67JQY8",
-                2770824445,
-              ],
-            },
-            "",
-            811264265,
-          ],
-        },
-        "",
-        2755269984,
-      ],
-      "t2": [
-        {
-          "r2": [
-            {
-              "c2": [
-                "￼",
-                "Nn1JUF----57JQY8",
-                755827458,
-              ],
-            },
-            "",
-            3087140291,
-          ],
-        },
-        "",
-        1225184002,
-      ],
-    },
-    "",
-    3340350845,
-  ],
-  [
-    {
-      "v1": [
-        1,
-        "Nn1JUF----37JQY8",
-        3542219356,
-      ],
-      "v2": [
-        "￼",
-        "Nn1JUF----87JQY8",
-        2233415979,
-      ],
-    },
-    "",
-    2110402117,
-  ],
-]
-`;
-
-exports[`Persists to/from sqlite3 autoSaves: delCell 1`] = `
+exports[`Persists to/from pg > autoSaves > delCell 1`] = `
 [
   [
     {
@@ -7818,7 +8255,7 @@ exports[`Persists to/from sqlite3 autoSaves: delCell 1`] = `
 ]
 `;
 
-exports[`Persists to/from sqlite3 autoSaves: delValue 1`] = `
+exports[`Persists to/from pg > autoSaves > delValue 1`] = `
 [
   [
     {
@@ -7867,7 +8304,7 @@ exports[`Persists to/from sqlite3 autoSaves: delValue 1`] = `
 ]
 `;
 
-exports[`Persists to/from sqlite3 autoSaves: initial 1`] = `
+exports[`Persists to/from pg > autoSaves > initial 1`] = `
 [
   [
     {
@@ -7906,7 +8343,7 @@ exports[`Persists to/from sqlite3 autoSaves: initial 1`] = `
 ]
 `;
 
-exports[`Persists to/from sqlite3 autoSaves: setTables 1`] = `
+exports[`Persists to/from pg > autoSaves > setTables 1`] = `
 [
   [
     {
@@ -7950,7 +8387,7 @@ exports[`Persists to/from sqlite3 autoSaves: setTables 1`] = `
 ]
 `;
 
-exports[`Persists to/from sqlite3 autoSaves: setValues 1`] = `
+exports[`Persists to/from pg > autoSaves > setValues 1`] = `
 [
   [
     {
@@ -7999,7 +8436,7 @@ exports[`Persists to/from sqlite3 autoSaves: setValues 1`] = `
 ]
 `;
 
-exports[`Persists to/from sqlite3 loads 1`] = `
+exports[`Persists to/from pg > loads 1`] = `
 [
   [
     {
@@ -8009,7 +8446,7 @@ exports[`Persists to/from sqlite3 loads 1`] = `
             {
               "c1": [
                 1,
-                "_",
+                "Nn1JUF-----7JQY8",
                 4065945599,
               ],
             },
@@ -8028,7 +8465,7 @@ exports[`Persists to/from sqlite3 loads 1`] = `
     {
       "v1": [
         1,
-        "_",
+        "Nn1JUF-----7JQY8",
         4065945599,
       ],
     },
@@ -8038,7 +8475,7 @@ exports[`Persists to/from sqlite3 loads 1`] = `
 ]
 `;
 
-exports[`Persists to/from sqlite3 saves 1`] = `
+exports[`Persists to/from pg > saves 1`] = `
 [
   [
     {
@@ -8077,7 +8514,7 @@ exports[`Persists to/from sqlite3 saves 1`] = `
 ]
 `;
 
-exports[`Persists to/from sqlite3 saves 2`] = `
+exports[`Persists to/from pg > saves 2`] = `
 [
   [
     {
@@ -8116,7 +8553,7 @@ exports[`Persists to/from sqlite3 saves 2`] = `
 ]
 `;
 
-exports[`Persists to/from sqliteWasm autoLoads 1`] = `
+exports[`Persists to/from pglite > autoLoads 1`] = `
 [
   [
     {
@@ -8126,7 +8563,7 @@ exports[`Persists to/from sqliteWasm autoLoads 1`] = `
             {
               "c1": [
                 1,
-                "1",
+                "Nn1JUF0----7JQY8",
                 4065945599,
               ],
             },
@@ -8149,7 +8586,7 @@ exports[`Persists to/from sqliteWasm autoLoads 1`] = `
 ]
 `;
 
-exports[`Persists to/from sqliteWasm autoLoads 2`] = `
+exports[`Persists to/from pglite > autoLoads 2`] = `
 [
   [
     {
@@ -8159,7 +8596,7 @@ exports[`Persists to/from sqliteWasm autoLoads 2`] = `
             {
               "c1": [
                 2,
-                "2",
+                "Nn1JUF1----7JQY8",
                 2669080357,
               ],
             },
@@ -8182,7 +8619,7 @@ exports[`Persists to/from sqliteWasm autoLoads 2`] = `
 ]
 `;
 
-exports[`Persists to/from sqliteWasm autoLoads 3`] = `
+exports[`Persists to/from pglite > autoLoads 3`] = `
 [
   [
     {
@@ -8192,7 +8629,7 @@ exports[`Persists to/from sqliteWasm autoLoads 3`] = `
             {
               "c1": [
                 3,
-                "3",
+                "Nn1JUF2----7JQY8",
                 3252714811,
               ],
             },
@@ -8215,7 +8652,7 @@ exports[`Persists to/from sqliteWasm autoLoads 3`] = `
 ]
 `;
 
-exports[`Persists to/from sqliteWasm autoLoads 4`] = `
+exports[`Persists to/from pglite > autoLoads 4`] = `
 [
   [
     {
@@ -8225,7 +8662,7 @@ exports[`Persists to/from sqliteWasm autoLoads 4`] = `
             {
               "c1": [
                 3,
-                "3",
+                "Nn1JUF2----7JQY8",
                 3252714811,
               ],
             },
@@ -8248,7 +8685,7 @@ exports[`Persists to/from sqliteWasm autoLoads 4`] = `
 ]
 `;
 
-exports[`Persists to/from sqliteWasm autoSave & autoLoad: roundtrip 1`] = `
+exports[`Persists to/from pglite > autoSave & autoLoad: roundtrip 1`] = `
 [
   [
     {
@@ -8325,7 +8762,7 @@ exports[`Persists to/from sqliteWasm autoSave & autoLoad: roundtrip 1`] = `
 ]
 `;
 
-exports[`Persists to/from sqliteWasm autoSave & autoLoad: roundtrip 2`] = `
+exports[`Persists to/from pglite > autoSave & autoLoad: roundtrip 2`] = `
 [
   [
     {
@@ -8402,7 +8839,7 @@ exports[`Persists to/from sqliteWasm autoSave & autoLoad: roundtrip 2`] = `
 ]
 `;
 
-exports[`Persists to/from sqliteWasm autoSave & autoLoad: roundtrip 3`] = `
+exports[`Persists to/from pglite > autoSave & autoLoad: roundtrip 3`] = `
 [
   [
     {
@@ -8479,7 +8916,7 @@ exports[`Persists to/from sqliteWasm autoSave & autoLoad: roundtrip 3`] = `
 ]
 `;
 
-exports[`Persists to/from sqliteWasm autoSaves: delCell 1`] = `
+exports[`Persists to/from pglite > autoSaves > delCell 1`] = `
 [
   [
     {
@@ -8528,7 +8965,7 @@ exports[`Persists to/from sqliteWasm autoSaves: delCell 1`] = `
 ]
 `;
 
-exports[`Persists to/from sqliteWasm autoSaves: delValue 1`] = `
+exports[`Persists to/from pglite > autoSaves > delValue 1`] = `
 [
   [
     {
@@ -8577,7 +9014,7 @@ exports[`Persists to/from sqliteWasm autoSaves: delValue 1`] = `
 ]
 `;
 
-exports[`Persists to/from sqliteWasm autoSaves: initial 1`] = `
+exports[`Persists to/from pglite > autoSaves > initial 1`] = `
 [
   [
     {
@@ -8616,7 +9053,7 @@ exports[`Persists to/from sqliteWasm autoSaves: initial 1`] = `
 ]
 `;
 
-exports[`Persists to/from sqliteWasm autoSaves: setTables 1`] = `
+exports[`Persists to/from pglite > autoSaves > setTables 1`] = `
 [
   [
     {
@@ -8660,7 +9097,7 @@ exports[`Persists to/from sqliteWasm autoSaves: setTables 1`] = `
 ]
 `;
 
-exports[`Persists to/from sqliteWasm autoSaves: setValues 1`] = `
+exports[`Persists to/from pglite > autoSaves > setValues 1`] = `
 [
   [
     {
@@ -8709,7 +9146,7 @@ exports[`Persists to/from sqliteWasm autoSaves: setValues 1`] = `
 ]
 `;
 
-exports[`Persists to/from sqliteWasm loads 1`] = `
+exports[`Persists to/from pglite > loads 1`] = `
 [
   [
     {
@@ -8719,7 +9156,7 @@ exports[`Persists to/from sqliteWasm loads 1`] = `
             {
               "c1": [
                 1,
-                "_",
+                "Nn1JUF-----7JQY8",
                 4065945599,
               ],
             },
@@ -8738,7 +9175,7 @@ exports[`Persists to/from sqliteWasm loads 1`] = `
     {
       "v1": [
         1,
-        "_",
+        "Nn1JUF-----7JQY8",
         4065945599,
       ],
     },
@@ -8748,7 +9185,7 @@ exports[`Persists to/from sqliteWasm loads 1`] = `
 ]
 `;
 
-exports[`Persists to/from sqliteWasm saves 1`] = `
+exports[`Persists to/from pglite > saves 1`] = `
 [
   [
     {
@@ -8787,7 +9224,7 @@ exports[`Persists to/from sqliteWasm saves 1`] = `
 ]
 `;
 
-exports[`Persists to/from sqliteWasm saves 2`] = `
+exports[`Persists to/from pglite > saves 2`] = `
 [
   [
     {
@@ -8826,13 +9263,2853 @@ exports[`Persists to/from sqliteWasm saves 2`] = `
 ]
 `;
 
-exports[`Supported, MergeableStore Changes in setPersisted 1`] = `
+exports[`Persists to/from postgres > autoLoads 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF0----7JQY8",
+                4065945599,
+              ],
+            },
+            "",
+            1279994494,
+          ],
+        },
+        "",
+        1293085726,
+      ],
+    },
+    "",
+    4033596827,
+  ],
+  [
+    {},
+    "",
+    0,
+  ],
+]
+`;
+
+exports[`Persists to/from postgres > autoLoads 2`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                2,
+                "Nn1JUF1----7JQY8",
+                2669080357,
+              ],
+            },
+            "",
+            274319047,
+          ],
+        },
+        "",
+        4089057354,
+      ],
+    },
+    "",
+    3386696034,
+  ],
+  [
+    {},
+    "",
+    0,
+  ],
+]
+`;
+
+exports[`Persists to/from postgres > autoLoads 3`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                3,
+                "Nn1JUF2----7JQY8",
+                3252714811,
+              ],
+            },
+            "",
+            1416411412,
+          ],
+        },
+        "",
+        3704904231,
+      ],
+    },
+    "",
+    4008152259,
+  ],
+  [
+    {},
+    "",
+    0,
+  ],
+]
+`;
+
+exports[`Persists to/from postgres > autoLoads 4`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                3,
+                "Nn1JUF2----7JQY8",
+                3252714811,
+              ],
+            },
+            "",
+            1416411412,
+          ],
+        },
+        "",
+        3704904231,
+      ],
+    },
+    "",
+    4008152259,
+  ],
+  [
+    {},
+    "",
+    0,
+  ],
+]
+`;
+
+exports[`Persists to/from postgres > autoSave & autoLoad: roundtrip 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                undefined,
+                "Nn1JUF----77JQY8",
+                1267840296,
+              ],
+            },
+            "",
+            2533574593,
+          ],
+          "r2": [
+            {
+              "c2": [
+                undefined,
+                "Nn1JUF----67JQY8",
+                2770824445,
+              ],
+            },
+            "",
+            811264265,
+          ],
+        },
+        "",
+        2755269984,
+      ],
+      "t2": [
+        {
+          "r2": [
+            {
+              "c2": [
+                undefined,
+                "Nn1JUF----57JQY8",
+                755827458,
+              ],
+            },
+            "",
+            3087140291,
+          ],
+        },
+        "",
+        1225184002,
+      ],
+    },
+    "",
+    3340350845,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----37JQY8",
+        3542219356,
+      ],
+      "v2": [
+        undefined,
+        "Nn1JUF----87JQY8",
+        2233415979,
+      ],
+    },
+    "",
+    2110402117,
+  ],
+]
+`;
+
+exports[`Persists to/from postgres > autoSave & autoLoad: roundtrip 2`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                "￼",
+                "Nn1JUF----77JQY8",
+                1267840296,
+              ],
+            },
+            "",
+            2533574593,
+          ],
+          "r2": [
+            {
+              "c2": [
+                "￼",
+                "Nn1JUF----67JQY8",
+                2770824445,
+              ],
+            },
+            "",
+            811264265,
+          ],
+        },
+        "",
+        2755269984,
+      ],
+      "t2": [
+        {
+          "r2": [
+            {
+              "c2": [
+                "￼",
+                "Nn1JUF----57JQY8",
+                755827458,
+              ],
+            },
+            "",
+            3087140291,
+          ],
+        },
+        "",
+        1225184002,
+      ],
+    },
+    "",
+    3340350845,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----37JQY8",
+        3542219356,
+      ],
+      "v2": [
+        "￼",
+        "Nn1JUF----87JQY8",
+        2233415979,
+      ],
+    },
+    "",
+    2110402117,
+  ],
+]
+`;
+
+exports[`Persists to/from postgres > autoSave & autoLoad: roundtrip 3`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                "￼",
+                "Nn1JUF----77JQY8",
+                1267840296,
+              ],
+            },
+            "",
+            2533574593,
+          ],
+          "r2": [
+            {
+              "c2": [
+                "￼",
+                "Nn1JUF----67JQY8",
+                2770824445,
+              ],
+            },
+            "",
+            811264265,
+          ],
+        },
+        "",
+        2755269984,
+      ],
+      "t2": [
+        {
+          "r2": [
+            {
+              "c2": [
+                "￼",
+                "Nn1JUF----57JQY8",
+                755827458,
+              ],
+            },
+            "",
+            3087140291,
+          ],
+        },
+        "",
+        1225184002,
+      ],
+    },
+    "",
+    3340350845,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----37JQY8",
+        3542219356,
+      ],
+      "v2": [
+        "￼",
+        "Nn1JUF----87JQY8",
+        2233415979,
+      ],
+    },
+    "",
+    2110402117,
+  ],
+]
+`;
+
+exports[`Persists to/from postgres > autoSaves > delCell 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                "￼",
+                "Nn1JUFc----7JQY8",
+                4036784140,
+              ],
+            },
+            "",
+            1580055069,
+          ],
+        },
+        "",
+        3198578267,
+      ],
+    },
+    "",
+    3962176564,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+      "v2": [
+        2,
+        "Nn1JUFJ----7JQY8",
+        3659329950,
+      ],
+    },
+    "",
+    143526703,
+  ],
+]
+`;
+
+exports[`Persists to/from postgres > autoSaves > delValue 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                "￼",
+                "Nn1JUFc----7JQY8",
+                4036784140,
+              ],
+            },
+            "",
+            1580055069,
+          ],
+        },
+        "",
+        3198578267,
+      ],
+    },
+    "",
+    3962176564,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+      "v2": [
+        "￼",
+        "Nn1JUFw----7JQY8",
+        1709187352,
+      ],
+    },
+    "",
+    2494864705,
+  ],
+]
+`;
+
+exports[`Persists to/from postgres > autoSaves > initial 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+            },
+            "",
+            550994372,
+          ],
+        },
+        "",
+        1072852846,
+      ],
+    },
+    "",
+    1771939739,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+    },
+    "",
+    3877632732,
+  ],
+]
+`;
+
+exports[`Persists to/from postgres > autoSaves > setTables 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                2,
+                "Nn1JUF----17JQY8",
+                1804136345,
+              ],
+            },
+            "",
+            3439185877,
+          ],
+        },
+        "",
+        855391547,
+      ],
+    },
+    "",
+    262414121,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+    },
+    "",
+    3877632732,
+  ],
+]
+`;
+
+exports[`Persists to/from postgres > autoSaves > setValues 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                2,
+                "Nn1JUF----17JQY8",
+                1804136345,
+              ],
+            },
+            "",
+            3439185877,
+          ],
+        },
+        "",
+        855391547,
+      ],
+    },
+    "",
+    262414121,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+      "v2": [
+        2,
+        "Nn1JUFJ----7JQY8",
+        3659329950,
+      ],
+    },
+    "",
+    143526703,
+  ],
+]
+`;
+
+exports[`Persists to/from postgres > loads 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                4065945599,
+              ],
+            },
+            "",
+            1279994494,
+          ],
+        },
+        "",
+        1293085726,
+      ],
+    },
+    "",
+    4033596827,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF-----7JQY8",
+        4065945599,
+      ],
+    },
+    "",
+    2304392760,
+  ],
+]
+`;
+
+exports[`Persists to/from postgres > saves 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+            },
+            "",
+            550994372,
+          ],
+        },
+        "",
+        1072852846,
+      ],
+    },
+    "",
+    1771939739,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+    },
+    "",
+    3877632732,
+  ],
+]
+`;
+
+exports[`Persists to/from postgres > saves 2`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+            },
+            "",
+            550994372,
+          ],
+        },
+        "",
+        1072852846,
+      ],
+    },
+    "",
+    1771939739,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+    },
+    "",
+    3877632732,
+  ],
+]
+`;
+
+exports[`Persists to/from sessionStorage > autoLoads 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF0----7JQY8",
+                4065945599,
+              ],
+            },
+            "",
+            1279994494,
+          ],
+        },
+        "",
+        1293085726,
+      ],
+    },
+    "",
+    4033596827,
+  ],
+  [
+    {},
+    "",
+    0,
+  ],
+]
+`;
+
+exports[`Persists to/from sessionStorage > autoLoads 2`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                2,
+                "Nn1JUF1----7JQY8",
+                2669080357,
+              ],
+            },
+            "",
+            274319047,
+          ],
+        },
+        "",
+        4089057354,
+      ],
+    },
+    "",
+    3386696034,
+  ],
+  [
+    {},
+    "",
+    0,
+  ],
+]
+`;
+
+exports[`Persists to/from sessionStorage > autoLoads 3`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                3,
+                "Nn1JUF2----7JQY8",
+                3252714811,
+              ],
+            },
+            "",
+            1416411412,
+          ],
+        },
+        "",
+        3704904231,
+      ],
+    },
+    "",
+    4008152259,
+  ],
+  [
+    {},
+    "",
+    0,
+  ],
+]
+`;
+
+exports[`Persists to/from sessionStorage > autoLoads 4`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                3,
+                "Nn1JUF2----7JQY8",
+                3252714811,
+              ],
+            },
+            "",
+            1416411412,
+          ],
+        },
+        "",
+        3704904231,
+      ],
+    },
+    "",
+    4008152259,
+  ],
+  [
+    {},
+    "",
+    0,
+  ],
+]
+`;
+
+exports[`Persists to/from sessionStorage > autoSave & autoLoad: roundtrip 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                undefined,
+                "Nn1JUF----77JQY8",
+                1267840296,
+              ],
+            },
+            "",
+            2533574593,
+          ],
+          "r2": [
+            {
+              "c2": [
+                undefined,
+                "Nn1JUF----67JQY8",
+                2770824445,
+              ],
+            },
+            "",
+            811264265,
+          ],
+        },
+        "",
+        2755269984,
+      ],
+      "t2": [
+        {
+          "r2": [
+            {
+              "c2": [
+                undefined,
+                "Nn1JUF----57JQY8",
+                755827458,
+              ],
+            },
+            "",
+            3087140291,
+          ],
+        },
+        "",
+        1225184002,
+      ],
+    },
+    "",
+    3340350845,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----37JQY8",
+        3542219356,
+      ],
+      "v2": [
+        undefined,
+        "Nn1JUF----87JQY8",
+        2233415979,
+      ],
+    },
+    "",
+    2110402117,
+  ],
+]
+`;
+
+exports[`Persists to/from sessionStorage > autoSave & autoLoad: roundtrip 2`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                "￼",
+                "Nn1JUF----77JQY8",
+                1267840296,
+              ],
+            },
+            "",
+            2533574593,
+          ],
+          "r2": [
+            {
+              "c2": [
+                "￼",
+                "Nn1JUF----67JQY8",
+                2770824445,
+              ],
+            },
+            "",
+            811264265,
+          ],
+        },
+        "",
+        2755269984,
+      ],
+      "t2": [
+        {
+          "r2": [
+            {
+              "c2": [
+                "￼",
+                "Nn1JUF----57JQY8",
+                755827458,
+              ],
+            },
+            "",
+            3087140291,
+          ],
+        },
+        "",
+        1225184002,
+      ],
+    },
+    "",
+    3340350845,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----37JQY8",
+        3542219356,
+      ],
+      "v2": [
+        "￼",
+        "Nn1JUF----87JQY8",
+        2233415979,
+      ],
+    },
+    "",
+    2110402117,
+  ],
+]
+`;
+
+exports[`Persists to/from sessionStorage > autoSave & autoLoad: roundtrip 3`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                "￼",
+                "Nn1JUF----77JQY8",
+                1267840296,
+              ],
+            },
+            "",
+            2533574593,
+          ],
+          "r2": [
+            {
+              "c2": [
+                "￼",
+                "Nn1JUF----67JQY8",
+                2770824445,
+              ],
+            },
+            "",
+            811264265,
+          ],
+        },
+        "",
+        2755269984,
+      ],
+      "t2": [
+        {
+          "r2": [
+            {
+              "c2": [
+                "￼",
+                "Nn1JUF----57JQY8",
+                755827458,
+              ],
+            },
+            "",
+            3087140291,
+          ],
+        },
+        "",
+        1225184002,
+      ],
+    },
+    "",
+    3340350845,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----37JQY8",
+        3542219356,
+      ],
+      "v2": [
+        "￼",
+        "Nn1JUF----87JQY8",
+        2233415979,
+      ],
+    },
+    "",
+    2110402117,
+  ],
+]
+`;
+
+exports[`Persists to/from sessionStorage > autoSaves > delCell 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                "￼",
+                "Nn1JUGZ----7JQY8",
+                177659754,
+              ],
+            },
+            "",
+            2776878705,
+          ],
+        },
+        "",
+        3882992231,
+      ],
+    },
+    "",
+    4035352191,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+      "v2": [
+        2,
+        "Nn1JUFm----7JQY8",
+        578793541,
+      ],
+    },
+    "",
+    3964753691,
+  ],
+]
+`;
+
+exports[`Persists to/from sessionStorage > autoSaves > delValue 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                "￼",
+                "Nn1JUGZ----7JQY8",
+                177659754,
+              ],
+            },
+            "",
+            2776878705,
+          ],
+        },
+        "",
+        3882992231,
+      ],
+    },
+    "",
+    4035352191,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+      "v2": [
+        "￼",
+        "Nn1JUHL----7JQY8",
+        4056403117,
+      ],
+    },
+    "",
+    3575489765,
+  ],
+]
+`;
+
+exports[`Persists to/from sessionStorage > autoSaves > initial 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+            },
+            "",
+            550994372,
+          ],
+        },
+        "",
+        1072852846,
+      ],
+    },
+    "",
+    1771939739,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+    },
+    "",
+    3877632732,
+  ],
+]
+`;
+
+exports[`Persists to/from sessionStorage > autoSaves > setTables 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                2,
+                "Nn1JUF----17JQY8",
+                1804136345,
+              ],
+            },
+            "",
+            3439185877,
+          ],
+        },
+        "",
+        855391547,
+      ],
+    },
+    "",
+    262414121,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+    },
+    "",
+    3877632732,
+  ],
+]
+`;
+
+exports[`Persists to/from sessionStorage > autoSaves > setValues 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                2,
+                "Nn1JUF----17JQY8",
+                1804136345,
+              ],
+            },
+            "",
+            3439185877,
+          ],
+        },
+        "",
+        855391547,
+      ],
+    },
+    "",
+    262414121,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+      "v2": [
+        2,
+        "Nn1JUFm----7JQY8",
+        578793541,
+      ],
+    },
+    "",
+    3964753691,
+  ],
+]
+`;
+
+exports[`Persists to/from sessionStorage > loads 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                4065945599,
+              ],
+            },
+            "",
+            1279994494,
+          ],
+        },
+        "",
+        1293085726,
+      ],
+    },
+    "",
+    4033596827,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF-----7JQY8",
+        4065945599,
+      ],
+    },
+    "",
+    2304392760,
+  ],
+]
+`;
+
+exports[`Persists to/from sessionStorage > saves 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+            },
+            "",
+            550994372,
+          ],
+        },
+        "",
+        1072852846,
+      ],
+    },
+    "",
+    1771939739,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+    },
+    "",
+    3877632732,
+  ],
+]
+`;
+
+exports[`Persists to/from sessionStorage > saves 2`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+            },
+            "",
+            550994372,
+          ],
+        },
+        "",
+        1072852846,
+      ],
+    },
+    "",
+    1771939739,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+    },
+    "",
+    3877632732,
+  ],
+]
+`;
+
+exports[`Persists to/from sqliteNode > autoLoads 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF0----7JQY8",
+                4065945599,
+              ],
+            },
+            "",
+            1279994494,
+          ],
+        },
+        "",
+        1293085726,
+      ],
+    },
+    "",
+    4033596827,
+  ],
+  [
+    {},
+    "",
+    0,
+  ],
+]
+`;
+
+exports[`Persists to/from sqliteNode > autoLoads 2`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                2,
+                "Nn1JUF1----7JQY8",
+                2669080357,
+              ],
+            },
+            "",
+            274319047,
+          ],
+        },
+        "",
+        4089057354,
+      ],
+    },
+    "",
+    3386696034,
+  ],
+  [
+    {},
+    "",
+    0,
+  ],
+]
+`;
+
+exports[`Persists to/from sqliteNode > autoLoads 3`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                3,
+                "Nn1JUF2----7JQY8",
+                3252714811,
+              ],
+            },
+            "",
+            1416411412,
+          ],
+        },
+        "",
+        3704904231,
+      ],
+    },
+    "",
+    4008152259,
+  ],
+  [
+    {},
+    "",
+    0,
+  ],
+]
+`;
+
+exports[`Persists to/from sqliteNode > autoLoads 4`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                3,
+                "Nn1JUF2----7JQY8",
+                3252714811,
+              ],
+            },
+            "",
+            1416411412,
+          ],
+        },
+        "",
+        3704904231,
+      ],
+    },
+    "",
+    4008152259,
+  ],
+  [
+    {},
+    "",
+    0,
+  ],
+]
+`;
+
+exports[`Persists to/from sqliteNode > autoSave & autoLoad: roundtrip 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                undefined,
+                "Nn1JUF----77JQY8",
+                1267840296,
+              ],
+            },
+            "",
+            2533574593,
+          ],
+          "r2": [
+            {
+              "c2": [
+                undefined,
+                "Nn1JUF----67JQY8",
+                2770824445,
+              ],
+            },
+            "",
+            811264265,
+          ],
+        },
+        "",
+        2755269984,
+      ],
+      "t2": [
+        {
+          "r2": [
+            {
+              "c2": [
+                undefined,
+                "Nn1JUF----57JQY8",
+                755827458,
+              ],
+            },
+            "",
+            3087140291,
+          ],
+        },
+        "",
+        1225184002,
+      ],
+    },
+    "",
+    3340350845,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----37JQY8",
+        3542219356,
+      ],
+      "v2": [
+        undefined,
+        "Nn1JUF----87JQY8",
+        2233415979,
+      ],
+    },
+    "",
+    2110402117,
+  ],
+]
+`;
+
+exports[`Persists to/from sqliteNode > autoSave & autoLoad: roundtrip 2`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                "￼",
+                "Nn1JUF----77JQY8",
+                1267840296,
+              ],
+            },
+            "",
+            2533574593,
+          ],
+          "r2": [
+            {
+              "c2": [
+                "￼",
+                "Nn1JUF----67JQY8",
+                2770824445,
+              ],
+            },
+            "",
+            811264265,
+          ],
+        },
+        "",
+        2755269984,
+      ],
+      "t2": [
+        {
+          "r2": [
+            {
+              "c2": [
+                "￼",
+                "Nn1JUF----57JQY8",
+                755827458,
+              ],
+            },
+            "",
+            3087140291,
+          ],
+        },
+        "",
+        1225184002,
+      ],
+    },
+    "",
+    3340350845,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----37JQY8",
+        3542219356,
+      ],
+      "v2": [
+        "￼",
+        "Nn1JUF----87JQY8",
+        2233415979,
+      ],
+    },
+    "",
+    2110402117,
+  ],
+]
+`;
+
+exports[`Persists to/from sqliteNode > autoSave & autoLoad: roundtrip 3`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                "￼",
+                "Nn1JUF----77JQY8",
+                1267840296,
+              ],
+            },
+            "",
+            2533574593,
+          ],
+          "r2": [
+            {
+              "c2": [
+                "￼",
+                "Nn1JUF----67JQY8",
+                2770824445,
+              ],
+            },
+            "",
+            811264265,
+          ],
+        },
+        "",
+        2755269984,
+      ],
+      "t2": [
+        {
+          "r2": [
+            {
+              "c2": [
+                "￼",
+                "Nn1JUF----57JQY8",
+                755827458,
+              ],
+            },
+            "",
+            3087140291,
+          ],
+        },
+        "",
+        1225184002,
+      ],
+    },
+    "",
+    3340350845,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----37JQY8",
+        3542219356,
+      ],
+      "v2": [
+        "￼",
+        "Nn1JUF----87JQY8",
+        2233415979,
+      ],
+    },
+    "",
+    2110402117,
+  ],
+]
+`;
+
+exports[`Persists to/from sqliteNode > autoSaves > delCell 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                "￼",
+                "Nn1JUFc----7JQY8",
+                4036784140,
+              ],
+            },
+            "",
+            1580055069,
+          ],
+        },
+        "",
+        3198578267,
+      ],
+    },
+    "",
+    3962176564,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+      "v2": [
+        2,
+        "Nn1JUFJ----7JQY8",
+        3659329950,
+      ],
+    },
+    "",
+    143526703,
+  ],
+]
+`;
+
+exports[`Persists to/from sqliteNode > autoSaves > delValue 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                "￼",
+                "Nn1JUFc----7JQY8",
+                4036784140,
+              ],
+            },
+            "",
+            1580055069,
+          ],
+        },
+        "",
+        3198578267,
+      ],
+    },
+    "",
+    3962176564,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+      "v2": [
+        "￼",
+        "Nn1JUFw----7JQY8",
+        1709187352,
+      ],
+    },
+    "",
+    2494864705,
+  ],
+]
+`;
+
+exports[`Persists to/from sqliteNode > autoSaves > initial 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+            },
+            "",
+            550994372,
+          ],
+        },
+        "",
+        1072852846,
+      ],
+    },
+    "",
+    1771939739,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+    },
+    "",
+    3877632732,
+  ],
+]
+`;
+
+exports[`Persists to/from sqliteNode > autoSaves > setTables 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                2,
+                "Nn1JUF----17JQY8",
+                1804136345,
+              ],
+            },
+            "",
+            3439185877,
+          ],
+        },
+        "",
+        855391547,
+      ],
+    },
+    "",
+    262414121,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+    },
+    "",
+    3877632732,
+  ],
+]
+`;
+
+exports[`Persists to/from sqliteNode > autoSaves > setValues 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                2,
+                "Nn1JUF----17JQY8",
+                1804136345,
+              ],
+            },
+            "",
+            3439185877,
+          ],
+        },
+        "",
+        855391547,
+      ],
+    },
+    "",
+    262414121,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+      "v2": [
+        2,
+        "Nn1JUFJ----7JQY8",
+        3659329950,
+      ],
+    },
+    "",
+    143526703,
+  ],
+]
+`;
+
+exports[`Persists to/from sqliteNode > loads 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                4065945599,
+              ],
+            },
+            "",
+            1279994494,
+          ],
+        },
+        "",
+        1293085726,
+      ],
+    },
+    "",
+    4033596827,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF-----7JQY8",
+        4065945599,
+      ],
+    },
+    "",
+    2304392760,
+  ],
+]
+`;
+
+exports[`Persists to/from sqliteNode > saves 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+            },
+            "",
+            550994372,
+          ],
+        },
+        "",
+        1072852846,
+      ],
+    },
+    "",
+    1771939739,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+    },
+    "",
+    3877632732,
+  ],
+]
+`;
+
+exports[`Persists to/from sqliteNode > saves 2`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+            },
+            "",
+            550994372,
+          ],
+        },
+        "",
+        1072852846,
+      ],
+    },
+    "",
+    1771939739,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+    },
+    "",
+    3877632732,
+  ],
+]
+`;
+
+exports[`Persists to/from sqliteWasm > autoLoads 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF0----7JQY8",
+                4065945599,
+              ],
+            },
+            "",
+            1279994494,
+          ],
+        },
+        "",
+        1293085726,
+      ],
+    },
+    "",
+    4033596827,
+  ],
+  [
+    {},
+    "",
+    0,
+  ],
+]
+`;
+
+exports[`Persists to/from sqliteWasm > autoLoads 2`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                2,
+                "Nn1JUF1----7JQY8",
+                2669080357,
+              ],
+            },
+            "",
+            274319047,
+          ],
+        },
+        "",
+        4089057354,
+      ],
+    },
+    "",
+    3386696034,
+  ],
+  [
+    {},
+    "",
+    0,
+  ],
+]
+`;
+
+exports[`Persists to/from sqliteWasm > autoLoads 3`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                3,
+                "Nn1JUF2----7JQY8",
+                3252714811,
+              ],
+            },
+            "",
+            1416411412,
+          ],
+        },
+        "",
+        3704904231,
+      ],
+    },
+    "",
+    4008152259,
+  ],
+  [
+    {},
+    "",
+    0,
+  ],
+]
+`;
+
+exports[`Persists to/from sqliteWasm > autoLoads 4`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                3,
+                "Nn1JUF2----7JQY8",
+                3252714811,
+              ],
+            },
+            "",
+            1416411412,
+          ],
+        },
+        "",
+        3704904231,
+      ],
+    },
+    "",
+    4008152259,
+  ],
+  [
+    {},
+    "",
+    0,
+  ],
+]
+`;
+
+exports[`Persists to/from sqliteWasm > autoSave & autoLoad: roundtrip 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                undefined,
+                "Nn1JUF----77JQY8",
+                1267840296,
+              ],
+            },
+            "",
+            2533574593,
+          ],
+          "r2": [
+            {
+              "c2": [
+                undefined,
+                "Nn1JUF----67JQY8",
+                2770824445,
+              ],
+            },
+            "",
+            811264265,
+          ],
+        },
+        "",
+        2755269984,
+      ],
+      "t2": [
+        {
+          "r2": [
+            {
+              "c2": [
+                undefined,
+                "Nn1JUF----57JQY8",
+                755827458,
+              ],
+            },
+            "",
+            3087140291,
+          ],
+        },
+        "",
+        1225184002,
+      ],
+    },
+    "",
+    3340350845,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----37JQY8",
+        3542219356,
+      ],
+      "v2": [
+        undefined,
+        "Nn1JUF----87JQY8",
+        2233415979,
+      ],
+    },
+    "",
+    2110402117,
+  ],
+]
+`;
+
+exports[`Persists to/from sqliteWasm > autoSave & autoLoad: roundtrip 2`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                "￼",
+                "Nn1JUF----77JQY8",
+                1267840296,
+              ],
+            },
+            "",
+            2533574593,
+          ],
+          "r2": [
+            {
+              "c2": [
+                "￼",
+                "Nn1JUF----67JQY8",
+                2770824445,
+              ],
+            },
+            "",
+            811264265,
+          ],
+        },
+        "",
+        2755269984,
+      ],
+      "t2": [
+        {
+          "r2": [
+            {
+              "c2": [
+                "￼",
+                "Nn1JUF----57JQY8",
+                755827458,
+              ],
+            },
+            "",
+            3087140291,
+          ],
+        },
+        "",
+        1225184002,
+      ],
+    },
+    "",
+    3340350845,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----37JQY8",
+        3542219356,
+      ],
+      "v2": [
+        "￼",
+        "Nn1JUF----87JQY8",
+        2233415979,
+      ],
+    },
+    "",
+    2110402117,
+  ],
+]
+`;
+
+exports[`Persists to/from sqliteWasm > autoSave & autoLoad: roundtrip 3`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                "￼",
+                "Nn1JUF----77JQY8",
+                1267840296,
+              ],
+            },
+            "",
+            2533574593,
+          ],
+          "r2": [
+            {
+              "c2": [
+                "￼",
+                "Nn1JUF----67JQY8",
+                2770824445,
+              ],
+            },
+            "",
+            811264265,
+          ],
+        },
+        "",
+        2755269984,
+      ],
+      "t2": [
+        {
+          "r2": [
+            {
+              "c2": [
+                "￼",
+                "Nn1JUF----57JQY8",
+                755827458,
+              ],
+            },
+            "",
+            3087140291,
+          ],
+        },
+        "",
+        1225184002,
+      ],
+    },
+    "",
+    3340350845,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----37JQY8",
+        3542219356,
+      ],
+      "v2": [
+        "￼",
+        "Nn1JUF----87JQY8",
+        2233415979,
+      ],
+    },
+    "",
+    2110402117,
+  ],
+]
+`;
+
+exports[`Persists to/from sqliteWasm > autoSaves > delCell 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                "￼",
+                "Nn1JUF3----7JQY8",
+                1964059388,
+              ],
+            },
+            "",
+            756126043,
+          ],
+        },
+        "",
+        3943446976,
+      ],
+    },
+    "",
+    3161300725,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+      "v2": [
+        2,
+        "Nn1JUF1----7JQY8",
+        830262161,
+      ],
+    },
+    "",
+    4272434271,
+  ],
+]
+`;
+
+exports[`Persists to/from sqliteWasm > autoSaves > delValue 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                "￼",
+                "Nn1JUF3----7JQY8",
+                1964059388,
+              ],
+            },
+            "",
+            756126043,
+          ],
+        },
+        "",
+        3943446976,
+      ],
+    },
+    "",
+    3161300725,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+      "v2": [
+        "￼",
+        "Nn1JUF5----7JQY8",
+        1157804434,
+      ],
+    },
+    "",
+    1587362687,
+  ],
+]
+`;
+
+exports[`Persists to/from sqliteWasm > autoSaves > initial 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+            },
+            "",
+            550994372,
+          ],
+        },
+        "",
+        1072852846,
+      ],
+    },
+    "",
+    1771939739,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+    },
+    "",
+    3877632732,
+  ],
+]
+`;
+
+exports[`Persists to/from sqliteWasm > autoSaves > setTables 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                2,
+                "Nn1JUF----17JQY8",
+                1804136345,
+              ],
+            },
+            "",
+            3439185877,
+          ],
+        },
+        "",
+        855391547,
+      ],
+    },
+    "",
+    262414121,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+    },
+    "",
+    3877632732,
+  ],
+]
+`;
+
+exports[`Persists to/from sqliteWasm > autoSaves > setValues 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+              "c2": [
+                2,
+                "Nn1JUF----17JQY8",
+                1804136345,
+              ],
+            },
+            "",
+            3439185877,
+          ],
+        },
+        "",
+        855391547,
+      ],
+    },
+    "",
+    262414121,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+      "v2": [
+        2,
+        "Nn1JUF1----7JQY8",
+        830262161,
+      ],
+    },
+    "",
+    4272434271,
+  ],
+]
+`;
+
+exports[`Persists to/from sqliteWasm > loads 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                4065945599,
+              ],
+            },
+            "",
+            1279994494,
+          ],
+        },
+        "",
+        1293085726,
+      ],
+    },
+    "",
+    4033596827,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF-----7JQY8",
+        4065945599,
+      ],
+    },
+    "",
+    2304392760,
+  ],
+]
+`;
+
+exports[`Persists to/from sqliteWasm > saves 1`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+            },
+            "",
+            550994372,
+          ],
+        },
+        "",
+        1072852846,
+      ],
+    },
+    "",
+    1771939739,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+    },
+    "",
+    3877632732,
+  ],
+]
+`;
+
+exports[`Persists to/from sqliteWasm > saves 2`] = `
+[
+  [
+    {
+      "t1": [
+        {
+          "r1": [
+            {
+              "c1": [
+                1,
+                "Nn1JUF-----7JQY8",
+                1003668370,
+              ],
+            },
+            "",
+            550994372,
+          ],
+        },
+        "",
+        1072852846,
+      ],
+    },
+    "",
+    1771939739,
+  ],
+  [
+    {
+      "v1": [
+        1,
+        "Nn1JUF----07JQY8",
+        1130939691,
+      ],
+    },
+    "",
+    3877632732,
+  ],
+]
+`;
+
+exports[`Supported, MergeableStore > Changes in setPersisted 1`] = `
 [
   "[[{"t1":[{"r1":[{"c1":[1,"Nn1JUF-----7JQY8",1003668370]},"",550994372]},"",1072852846]},"",1771939739],[{},"",0],1]",
   "[[{},"",1771939739],[{"v1":[1,"Nn1JUF----07JQY8",1130939691]},"",3877632732],1]",
 ]
 `;
 
-exports[`Supported, MergeableStore Content in setPersisted 1`] = `"[[{"t1":[{"r1":[{"c1":[1,"_",4065945599]},"",1279994494]},"",1293085726]},"",4033596827],[{"v1":[1,"_",4065945599]},"",2304392760]]"`;
+exports[`Supported, MergeableStore > Content in setPersisted 1`] = `"[[{"t1":[{"r1":[{"c1":[1,"Nn1JUF-----7JQY8",4065945599]},"",1279994494]},"",1293085726]},"",4033596827],[{"v1":[1,"Nn1JUF-----7JQY8",4065945599]},"",2304392760]]"`;
 
-exports[`Supported, MergeableStore loading from legacy 1`] = `"[[{"t1":[{"r1":[{"c1":[1,"Nn1JUF-----7JQY8",1003668370]},"",550994372]},"",1072852846]},"",1771939739],[{"v1":[1,"Nn1JUF----07JQY8",1130939691]},"",3877632732]]"`;
+exports[`Supported, MergeableStore > loading from legacy 1`] = `"[[{"t1":[{"r1":[{"c1":[1,"Nn1JUF-----7JQY8",1003668370]},"",550994372]},"",1072852846]},"",1771939739],[{"v1":[1,"Nn1JUF----07JQY8",1130939691]},"",3877632732]]"`;

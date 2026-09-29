@@ -1,5 +1,6 @@
 // All other imports are lazy so that single tasks start up fast.
 import {
+  cpSync,
   existsSync,
   promises,
   readFileSync,
@@ -22,19 +23,22 @@ const ALL_MODULES = [
   'mergeable-store-enhanced',
   'expanded-schema',
   'metrics',
+  'middleware',
   'persisters',
   'persisters/persister-automerge',
+  'persisters/persister-better-sqlite3',
   'persisters/persister-browser',
-  'persisters/persister-cr-sqlite-wasm',
+  'persisters/persister-capacitor-sqlite',
   'persisters/persister-durable-object-storage',
   'persisters/persister-durable-object-sql-storage',
-  'persisters/persister-electric-sql',
   'persisters/persister-expo-sqlite',
   'persisters/persister-file',
   'persisters/persister-indexed-db',
   'persisters/persister-libsql',
+  'persisters/persister-mssql',
   'persisters/persister-partykit-client',
   'persisters/persister-partykit-server',
+  'persisters/persister-pg',
   'persisters/persister-pglite',
   'persisters/persister-postgres',
   'persisters/persister-powersync',
@@ -42,11 +46,20 @@ const ALL_MODULES = [
   'persisters/persister-react-native-sqlite',
   'persisters/persister-remote',
   'persisters/persister-sqlite-bun',
+  'persisters/persister-sqlite-node',
   'persisters/persister-sqlite-wasm',
-  'persisters/persister-sqlite3',
+  'persisters/persister-supabase',
+  'persisters/persister-tinyjoin',
   'persisters/persister-yjs',
   'queries',
   'relationships',
+  'schematizers',
+  'schematizers/schematizer-arktype',
+  'schematizers/schematizer-effect',
+  'schematizers/schematizer-typebox',
+  'schematizers/schematizer-valibot',
+  'schematizers/schematizer-yup',
+  'schematizers/schematizer-zod',
   'store',
   'synchronizers',
   'synchronizers/synchronizer-broadcast-channel',
@@ -57,14 +70,23 @@ const ALL_MODULES = [
   'synchronizers/synchronizer-ws-server-simple',
   'synchronizers/synchronizer-ws-server',
   'ui-react-dom',
+  'ui-react-dom-charts',
   'ui-react-inspector',
   'ui-react',
+  'ui-solid-dom',
+  'ui-solid-inspector',
+  'ui-solid',
+  'ui-svelte-dom',
+  'ui-svelte-inspector',
+  'ui-svelte',
 ];
 const ALL_DEFINITIONS = [
   ...ALL_MODULES,
   '_internal/store',
   '_internal/queries',
+  '_internal/ui',
   '_internal/ui-react',
+  '_internal/ui-solid',
 ];
 
 const DIST_DIR = 'dist';
@@ -73,6 +95,29 @@ const TMP_DIR = 'tmp';
 const LINT_BLOCKS = /```[jt]sx?( [^\n]+)?(\n.*?)```/gms;
 const TYPES_DOC_CODE_BLOCKS = /\/\/\/\s*(\S*)(.*?)(?=(\s*\/\/)|(\n\n)|(\n$))/gs;
 const TYPES_DOC_BLOCKS = /(\/\*\*.*?\*\/)\s*\/\/\/\s*(\S*)/gs;
+const moduleIsSolid = (module) =>
+  module == 'ui-solid' ||
+  module == 'ui-solid-dom' ||
+  module == 'ui-solid-inspector';
+const moduleIsSvelte = (module) =>
+  module == 'ui-svelte' ||
+  module == 'ui-svelte-dom' ||
+  module == 'ui-svelte-inspector';
+const moduleIsClientOnly = (module) =>
+  module == 'ui-solid-dom' ||
+  module == 'ui-solid-inspector' ||
+  module == 'ui-svelte-dom' ||
+  module == 'ui-svelte-inspector';
+const getUiModule = (module) =>
+  moduleIsSvelte(module)
+    ? 'ui-svelte'
+    : moduleIsSolid(module)
+      ? 'ui-solid'
+      : 'ui-react';
+const getUiModuleReplacements = (uiModule) => ({
+  ['../' + uiModule + '/index.ts']: '../' + uiModule,
+  ['../' + uiModule + '/index.tsx']: '../' + uiModule,
+});
 
 const getGlobalName = (module) =>
   'TinyBase' +
@@ -93,26 +138,18 @@ const allModules = (cb) => allOf(ALL_MODULES, cb);
 const allDefinitions = (cb) => allOf(ALL_DEFINITIONS, cb);
 
 const clearDir = async (dir = DIST_DIR) => {
-  try {
-    await removeDir(dir);
-  } catch {}
+  await removeDir(dir);
   await makeDir(dir);
 };
 
-const makeDir = async (dir) => {
-  try {
-    await promises.mkdir(dir);
-  } catch {}
-};
+const makeDir = (dir) => promises.mkdir(dir, {recursive: true});
 
 const ensureDir = async (fileOrDirectory) => {
   await promises.mkdir(dirname(fileOrDirectory), {recursive: true});
   return fileOrDirectory;
 };
 
-const removeDir = async (dir) => {
-  await promises.rm(dir, {recursive: true});
-};
+const removeDir = (dir) => promises.rm(dir, {force: true, recursive: true});
 
 const forEachDeepFile = (dir, callback, extension = '') =>
   forEachDirAndFile(
@@ -132,10 +169,15 @@ const forEachDirAndFile = (dir, dirCallback, fileCallback, extension = '') =>
     }
   });
 
-const copyWithReplace = async (src, [from, to], dst = src) => {
-  const file = await promises.readFile(src, UTF8);
-  await promises.writeFile(dst, file.replace(from, to), UTF8);
-};
+const copyWithReplace = async (src, replacements, dst = src) =>
+  await promises.writeFile(
+    dst,
+    replacements.reduce(
+      (file, [from, to]) => file.replaceAll(from, to),
+      await promises.readFile(src, UTF8),
+    ),
+    UTF8,
+  );
 
 const gzipFile = async (fileName) =>
   await promises.writeFile(
@@ -180,12 +222,11 @@ const copyPackageFiles = async (forProd = false) => {
           typesPath + 'ts',
         ];
 
-        json.exports['.' + codePathWithSchemas] = {
-          default: {
-            types: typesPath + 'ts',
-            default: '.' + codePathWithoutSchemas + '/index.js',
-          },
-        };
+        const types = typesPath + 'ts';
+        const code = '.' + codePathWithoutSchemas + '/index.js';
+        json.exports['.' + codePathWithSchemas] = moduleIsClientOnly(module)
+          ? {types, browser: code}
+          : {default: {types, default: code}};
       });
     });
   });
@@ -199,12 +240,29 @@ const copyPackageFiles = async (forProd = false) => {
   await promises.copyFile('LICENSE', join(DIST_DIR, 'LICENSE'));
   await promises.copyFile('readme.md', join(DIST_DIR, 'readme.md'));
   await promises.copyFile('releases.md', join(DIST_DIR, 'releases.md'));
+  await promises.copyFile('site/guides/19_agents.md', 'agents.md');
+  await promises.copyFile('agents.md', join(DIST_DIR, 'agents.md'));
+
+  // The plugin manifest tracks the package version, so that Claude Code can
+  // detect updates to the skills that the plugin exposes.
+  const pluginJsonFile = join('.claude-plugin', 'plugin.json');
+  const pluginJson = JSON.parse(await promises.readFile(pluginJsonFile, UTF8));
+  pluginJson.version = json.version;
+  await promises.writeFile(
+    pluginJsonFile,
+    JSON.stringify(pluginJson, undefined, 2) + '\n',
+    UTF8,
+  );
+
+  cpSync('skills', join(DIST_DIR, 'skills'), {recursive: true});
 };
 
-let labelBlocks;
-const getLabelBlocks = async () => {
-  if (labelBlocks == null) {
-    labelBlocks = new Map();
+// The promise is memoized rather than the Map, since callers run concurrently
+// and would otherwise be handed the Map before it has been filled.
+let labelBlocksPromise;
+const getLabelBlocks = () =>
+  (labelBlocksPromise ??= (async () => {
+    const labelBlocks = new Map();
     await allModules(async (module) => {
       [
         ...(
@@ -217,12 +275,15 @@ const getLabelBlocks = async () => {
         labelBlocks.set(label, block);
       });
     });
-  }
-  return labelBlocks;
-};
+    return labelBlocks;
+  })());
 
 const copyDefinition = async (dir, module) => {
   const labelBlocks = await getLabelBlocks();
+  const {version} = JSON.parse(readFileSync('./package.json', UTF8));
+  const siteRoot = version.includes('beta')
+    ? 'https://beta.tinybase.org'
+    : 'https://tinybase.org';
   // Add easier-to-read with-schemas blocks
   const codeBlocks = new Map();
   [
@@ -241,37 +302,42 @@ const copyDefinition = async (dir, module) => {
       );
     }
   });
+  const absolutizeDocMedia = (block) =>
+    block.replace(/\]\((?:\s*\*\s*)?\/shots\//g, `](${siteRoot}/shots/`);
+
   const fileRewrite = (block, addOverrideSnippet) =>
-    block.replace(TYPES_DOC_CODE_BLOCKS, (_, label, code) => {
-      if (labelBlocks.has(label)) {
-        const codeOverride = codeBlocks.get(label);
-        let block = labelBlocks.get(label);
-        if (
-          addOverrideSnippet &&
-          codeBlocks.has(label) &&
-          code.includes('<') &&
-          code.includes('Schema') &&
-          !codeOverride.endsWith('{')
-        ) {
-          const prefix = block.match(/^\s+\*$/m)?.[0];
-          if (prefix) {
-            const line = '\n' + prefix;
-            block = block.replace(
-              /^\s+\*$/m,
-              `${prefix}${line}` +
-                ' This has schema-based typing.' +
-                ' The following is a simplified representation:' +
-                `${line}${line} \`\`\`ts override` +
-                codeOverride.trimEnd() +
-                `${line} \`\`\`${line}`,
-            );
+    absolutizeDocMedia(
+      block.replace(TYPES_DOC_CODE_BLOCKS, (_, label, code) => {
+        if (labelBlocks.has(label)) {
+          const codeOverride = codeBlocks.get(label);
+          let block = labelBlocks.get(label);
+          if (
+            addOverrideSnippet &&
+            codeBlocks.has(label) &&
+            code.includes('<') &&
+            code.includes('Schema') &&
+            !codeOverride.endsWith('{')
+          ) {
+            const prefix = block.match(/^\s+\*$/m)?.[0];
+            if (prefix) {
+              const line = '\n' + prefix;
+              block = block.replace(
+                /^\s+\*$/m,
+                `${prefix}${line}` +
+                  ' This has schema-based typing.' +
+                  ' The following is a simplified representation:' +
+                  `${line}${line} \`\`\`ts override` +
+                  codeOverride.trimEnd() +
+                  `${line} \`\`\`${line}`,
+              );
+            }
+            code = code.replace(/^\s*?\/\/\/.*?\n/gm, '');
           }
-          code = code.replace(/^\s*?\/\/\/.*?\n/gm, '');
+          return block + code;
         }
-        return block + code;
-      }
-      throw `Missing docs label ${label} in ${module}`;
-    });
+        throw `Missing docs label ${label} in ${module}`;
+      }),
+    );
 
   await allOf(['', '/with-schemas'], async (extraDir) => {
     const definitionFile = await ensureDir(
@@ -295,16 +361,26 @@ const copyDefinitions = async (dir) => {
   await allDefinitions((module) => copyDefinition(dir, module));
 };
 
-const execute = async (cmd) => {
-  const {exec} = await import('child_process');
-  const {promisify} = await import('util');
-  try {
-    await promisify(exec)(cmd);
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.error(e);
-    throw e.stdout;
-  }
+const execute = async (cmd, showOutput = false) => {
+  const {spawn} = await import('child_process');
+  return new Promise((resolve, reject) => {
+    const [command, ...args] = cmd.split(' ');
+    const child = spawn(command, args, showOutput ? {stdio: 'inherit'} : {});
+    let output = '';
+    if (!showOutput) {
+      child.stdout.on('data', (data) => (output += data.toString()));
+      child.stderr.on('data', (data) => (output += data.toString()));
+    }
+    child.on('close', (code) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        // eslint-disable-next-line no-console
+        console.error(`Command failed with code ${code}: ${cmd}\n${output}`);
+        reject();
+      }
+    });
+  });
 };
 
 const lintCheckFiles = async (dir) => {
@@ -312,22 +388,16 @@ const lintCheckFiles = async (dir) => {
   const prettierConfig = await getPrettierConfig();
 
   const filePaths = [];
-  ['.ts', '.tsx', '.js', '.d.ts'].forEach((extension) =>
+  ['.ts', '.tsx', '.js', '.d.ts', '.svelte'].forEach((extension) =>
     forEachDeepFile(dir, (filePath) => filePaths.push(filePath), extension),
   );
   await allOf(filePaths, async (filePath) => {
+    const fileConfig = filePath.endsWith('.svelte')
+      ? {...prettierConfig, filepath: filePath, parser: undefined}
+      : {...prettierConfig, filepath: filePath};
     const code = await promises.readFile(filePath, UTF8);
-    if (
-      !(await prettier.check(code, {...prettierConfig, filepath: filePath}))
-    ) {
-      writeFileSync(
-        filePath,
-        await prettier.format(
-          code,
-          {...prettierConfig, filepath: filePath},
-          UTF8,
-        ),
-      );
+    if (!(await prettier.check(code, fileConfig))) {
+      writeFileSync(filePath, await prettier.format(code, fileConfig), UTF8);
     }
   });
 
@@ -353,6 +423,7 @@ const lintCheckDocs = async (dir) => {
   const esLint = new ESLint({
     overrideConfig: {
       rules: {
+        'import/no-unresolved': 0,
         'no-console': 0,
         'react/prop-types': 0,
         'react-hooks/rules-of-hooks': 0,
@@ -415,7 +486,7 @@ const lintCheckDocs = async (dir) => {
 };
 
 const spellCheck = (dir, deep = false) =>
-  execute(`cspell "${dir}/*${deep ? '*' : ''}"`);
+  execute(`npx cspell ${dir}/*${deep ? '*' : ''}`);
 
 const getTsOptions = async (dir) => {
   const {default: tsc} = await import('typescript');
@@ -457,7 +528,7 @@ const tsCheck = async (dir) => {
     analyzeTsConfig(`${path.resolve(dir)}/tsconfig.json`, [
       '--excludeDeclarationFiles',
       '--excludePathsFromReport=' +
-        'jest/reporter.js;jest/environment.js;build.ts;ui-react/common.ts;' +
+        'build.ts;ui-react/common.ts;' +
         ALL_MODULES.map((module) => `${module}.ts`).join(';'),
     ]).unusedExports,
   )
@@ -471,14 +542,70 @@ const tsCheck = async (dir) => {
   }
 };
 
+const checkExportParity = async (dir = DIST_DIR) => {
+  const {default: tsc} = await import('typescript');
+  const modules = ALL_MODULES.map((module) => [
+    module || 'tinybase',
+    resolve(dir, module, 'index.js'),
+    resolve(dir, '@types', module, 'index.d.ts'),
+  ]);
+  const program = tsc.createProgram(
+    modules.flatMap(([, runtime, declarations]) => [runtime, declarations]),
+    {
+      allowJs: true,
+      checkJs: false,
+      module: tsc.ModuleKind.NodeNext,
+      moduleResolution: tsc.ModuleResolutionKind.NodeNext,
+      skipLibCheck: true,
+    },
+  );
+  const checker = program.getTypeChecker();
+  const getExports = (file, valuesOnly) =>
+    checker
+      .getExportsOfModule(
+        checker.getSymbolAtLocation(program.getSourceFile(file)),
+      )
+      .filter((symbol) => {
+        while (symbol.flags & tsc.SymbolFlags.Alias) {
+          symbol = checker.getAliasedSymbol(symbol);
+        }
+        return !valuesOnly || symbol.flags & tsc.SymbolFlags.Value;
+      })
+      .map(({name}) => name)
+      .sort();
+  const differences = modules.flatMap(([module, runtime, declarations]) => {
+    const runtimeExports = getExports(runtime);
+    const declarationExports = getExports(declarations, true);
+    const extra = runtimeExports.filter(
+      (name) => !declarationExports.includes(name),
+    );
+    const missing = declarationExports.filter(
+      (name) => !runtimeExports.includes(name),
+    );
+    return extra.length || missing.length ? [{module, extra, missing}] : [];
+  });
+  if (differences.length) {
+    throw `Runtime and declaration exports differ:\n${JSON.stringify(
+      differences,
+      undefined,
+      2,
+    )}`;
+  }
+};
+
 const compileModule = async (module, dir = DIST_DIR, min = false) => {
   const {default: esbuild} = await import('rollup-plugin-esbuild');
   const {rollup} = await import('rollup');
+  const {babel} = await import('@rollup/plugin-babel');
   const {default: replace} = await import('@rollup/plugin-replace');
   const {default: prettierPlugin} = await import('rollup-plugin-prettier');
   const {default: shebang} = await import('rollup-plugin-preserve-shebang');
   const {default: image} = await import('@rollup/plugin-image');
   const {default: terser} = await import('@rollup/plugin-terser');
+  const sveltePlugin = moduleIsSvelte(module)
+    ? (await import('rollup-plugin-svelte')).default
+    : null;
+  const uiModule = getUiModule(module);
 
   let inputFile = `src/${module}/index.ts`;
   if (!existsSync(inputFile)) {
@@ -498,28 +625,52 @@ const compileModule = async (module, dir = DIST_DIR, min = false) => {
       'react',
       'react-dom',
       'react/jsx-runtime',
+      'solid-js',
+      'solid-js/web',
+      'solid-js/jsx-runtime',
       'url',
       'yjs',
-      ...(module == 'omni' ? [] : ['tinybase/store', '../ui-react']),
+      ...(module == 'omni'
+        ? []
+        : ['tinybase/store', '../ui-react', '../ui-solid', '../' + uiModule]),
+      ...(moduleIsSvelte(module) ? [/^svelte/] : []),
     ],
     input: inputFile,
     plugins: [
       esbuild({
         target: 'esnext',
         legalComments: 'inline',
-        jsx: 'automatic',
+        logOverride: {'unsupported-jsx-comment': 'silent'},
+        tsconfig: moduleIsSolid(module) ? false : undefined,
+        jsx: moduleIsSolid(module) ? 'preserve' : 'automatic',
       }),
+      moduleIsSolid(module)
+        ? babel({
+            babelHelpers: 'bundled',
+            extensions: ['.tsx'],
+            include: 'src/**/*.tsx',
+            presets: [['solid', {delegateEvents: false}]],
+          })
+        : null,
       replace({
         '/*!': '\n/*',
         delimiters: ['', ''],
         preventAssignment: true,
-        ...(module == 'omni' ? {} : {'../ui-react/index.ts': '../ui-react'}),
+        ...(module == 'omni' ? {} : getUiModuleReplacements(uiModule)),
       }),
       shebang(),
       image(),
       min
         ? [terser({toplevel: true, compress: {unsafe: true, passes: 3}})]
         : prettierPlugin(await getPrettierConfig()),
+      ...(sveltePlugin
+        ? [
+            sveltePlugin({
+              extensions: ['.svelte', '.svelte.ts'],
+              compilerOptions: {runes: true},
+            }),
+          ]
+        : []),
     ],
     onwarn: (warning, warn) => {
       if (warning.code !== 'MISSING_NODE_BUILTINS') {
@@ -539,7 +690,12 @@ const compileModule = async (module, dir = DIST_DIR, min = false) => {
     name: getGlobalName(module),
   };
 
-  await (await rollup(inputConfig)).write(outputConfig);
+  const bundle = await rollup(inputConfig);
+  try {
+    await bundle.write(outputConfig);
+  } finally {
+    await bundle.close();
+  }
 
   // kill me now
   const outputFile = join(moduleDir, index);
@@ -551,87 +707,63 @@ const compileModule = async (module, dir = DIST_DIR, min = false) => {
   outputFiles.push(outputFileWithSchemas);
   await copyWithReplace(
     outputFile,
-    ['../ui-react', '../../ui-react/with-schemas/' + index],
+    [['../' + uiModule, '../../' + uiModule + '/with-schemas/' + index]],
     outputFileWithSchemas,
   );
 
   await copyWithReplace(
     outputFile,
-    ['../ui-react', '../ui-react/' + index],
+    [
+      ['../ui-react', '../ui-react/' + index],
+      ['../ui-solid', '../ui-solid/' + index],
+      ['../ui-svelte', '../ui-svelte/' + index],
+      [/(\w+) = \$\.noop/g, '/* istanbul ignore next */ $1 = $.noop'],
+    ],
     outputFile,
   );
 
   if (min) {
-    allOf(outputFiles, (outputFile) => gzipFile(outputFile));
+    await allOf(outputFiles, (outputFile) => gzipFile(outputFile));
   }
 };
 
-// coverageMode = 0: none; 1: screen; 2: json; 3: html
-const test = async (
-  dirs,
-  {coverageMode, countAsserts, puppeteer, serialTests} = {},
-) => {
-  const {default: jest} = await import('jest');
-  await makeDir(TMP_DIR);
-  const {
-    results: {success},
-  } = await jest.runCLI(
+const test = async (dirs, coverage, project) => {
+  const {startVitest} = await import('vitest/node');
+
+  await clearDir(TMP_DIR);
+  const vitest = await startVitest(
+    'test',
+    [...dirs],
     {
-      roots: dirs,
-      setupFilesAfterEnv: ['./test/jest/setup'],
-      ...(puppeteer
-        ? {
-            setupFilesAfterEnv: ['expect-puppeteer'],
-            preset: 'jest-puppeteer',
-            detectOpenHandles: true,
-            maxWorkers: 2,
-          }
-        : {testEnvironment: './test/jest/environment'}),
-      ...(coverageMode > 0
-        ? {
-            collectCoverage: true,
-            coverageProvider: 'babel',
-            collectCoverageFrom: [
-              `${DIST_DIR}/index.js`,
-              `${DIST_DIR}/ui-react/index.js`,
-              // Other modules cannot be fully exercised in isolation.
-            ],
-            coverageReporters: ['text-summary']
-              .concat(coverageMode > 1 ? ['json-summary'] : [])
-              .concat(coverageMode > 2 ? ['lcov'] : []),
-            coverageDirectory: 'tmp',
-          }
-        : {}),
-      ...(countAsserts
-        ? {
-            testEnvironment: './test/jest/environment',
-            reporters: ['default', './test/jest/reporter'],
-            runInBand: true,
-          }
-        : {}),
-      ...(serialTests ? {runInBand: true} : {}),
+      watch: false,
+      coverage: {enabled: coverage},
+      ...(project ? {project} : {}),
     },
-    [''],
+    {},
+    {watch: false},
   );
-  if (!success) {
+  await vitest.close();
+
+  if (
+    vitest.state.getCountOfFailedTests() > 0 ||
+    vitest.state.getUnhandledErrors().length > 0
+  ) {
     await removeDir(TMP_DIR);
+
     throw 'Test failed';
   }
-  if (coverageMode == 2) {
+
+  if (coverage) {
     await promises.writeFile(
       'coverage.json',
       JSON.stringify({
-        ...(countAsserts
-          ? JSON.parse(await promises.readFile('./tmp/counts.json'))
-          : {}),
-        ...JSON.parse(await promises.readFile('./tmp/coverage-summary.json'))
-          .total,
+        ...JSON.parse(await promises.readFile('./tmp/counts.json')),
+        ...JSON.parse(
+          await promises.readFile('./tmp/coverage/coverage-summary.json'),
+        ).total,
       }),
       UTF8,
     );
-  }
-  if (coverageMode < 3) {
-    await removeDir(TMP_DIR);
   }
 };
 
@@ -644,31 +776,42 @@ const compileModulesForProd = async () => {
     await compileModule(module, `${DIST_DIR}/`);
     await compileModule(module, `${DIST_DIR}/min`, true);
   });
+  await checkExportParity();
 };
 
 const compileDocsAndAssets = async (api = true, pages = true) => {
   const {default: esbuild} = await import('esbuild');
 
+  if (api) {
+    await copyDefinitions(DIST_DIR);
+  }
   await makeDir(TMP_DIR);
   await esbuild.build({
     entryPoints: ['site/build.ts'],
-    external: ['tinydocs', 'react', '@prettier/sync'],
+    external: ['tinydocs', 'react', '@prettier/sync', '@babel/core'],
     target: 'esnext',
     bundle: true,
     outfile: './tmp/build.js',
     format: 'esm',
     platform: 'node',
   });
-
-  // eslint-disable-next-line import/no-unresolved
   const {build} = await import('./tmp/build.js');
   await build(esbuild, DOCS_DIR, api, pages);
   await removeDir(TMP_DIR);
 };
 
-const npmInstall = () => execute('npm install --legacy-peer-deps');
+const npmInstall = () => execute('npm ci --legacy-peer-deps');
 
-const npmPublish = () => execute('npm publish');
+const npmPublish = async () => {
+  const {version} = JSON.parse(
+    await promises.readFile(join(DIST_DIR, 'package.json'), UTF8),
+  );
+  const tag = version.match(/^[^-+]+-([0-9A-Za-z-]+)(?:[.+]|$)/)?.[1];
+  await execute(
+    `npm publish ./${DIST_DIR}` + (tag ? ` --tag ${tag}` : ''),
+    true,
+  );
+};
 
 const {parallel, series} = gulp;
 
@@ -683,10 +826,19 @@ export const compileForTest = async () => {
   await allModules(async (module) => {
     await compileModule(module, DIST_DIR);
   });
+  await checkExportParity();
 };
 
 export const compileForTestInspectorOnly = async () => {
+  await compileModule('ui-react', DIST_DIR);
+  await compileModule('ui-react-dom', DIST_DIR);
   await compileModule('ui-react-inspector', DIST_DIR);
+  await compileModule('ui-solid', DIST_DIR);
+  await compileModule('ui-solid-dom', DIST_DIR);
+  await compileModule('ui-solid-inspector', DIST_DIR);
+  await compileModule('ui-svelte', DIST_DIR);
+  await compileModule('ui-svelte-dom', DIST_DIR);
+  await compileModule('ui-svelte-inspector', DIST_DIR);
 };
 
 export const lintFiles = async () => {
@@ -708,39 +860,52 @@ export const ts = async () => {
   await tsCheck('src');
   await tsCheck('test');
   await tsCheck('site');
+  await execute(
+    'npx svelte-check --workspace src/ui-svelte ' +
+      '--tsconfig svelte.tsconfig.json',
+  );
+  await execute(
+    'npx svelte-check --workspace test/unit/core/ui-svelte ' +
+      '--tsconfig svelte.tsconfig.json',
+  );
 };
 
 export const compileForProd = () => compileModulesForProd();
 
 export const testUnit = async () => {
-  await test(['test/unit'], {coverageMode: 1, serialTests: true});
+  await test(['test/unit'], true);
 };
+
+export const compileAndTestUnit = series(compileForTest, testUnit);
 
 export const testBun = () =>
   execute(
     'bun test ' +
       'test/unit/persisters/database ' +
-      'test/unit/core/documentation.test.ts',
+      'test/unit/documentation.test.ts',
   );
 
 export const testUnitFast = async () => {
-  await test(['test/unit/core'], {coverageMode: 1});
+  await test(['test/unit/core'], true);
 };
-export const testUnitCountAsserts = async () => {
-  await test(['test/unit'], {coverageMode: 2, countAsserts: true});
+
+// The same suite as testUnit, minus the two projects that need a local
+// PostgreSQL or SQL Server. Coverage is off, since leaving those out puts it
+// short of the 100% that testUnit reports.
+export const testUnitNoServers = async () => {
+  await test(['test/unit'], false, ['!*-servers']);
 };
-export const testUnitSaveCoverage = async () => {
-  await test(['test/unit/core'], {coverageMode: 3});
-};
-export const compileAndTestUnit = series(compileForTest, testUnit);
+
 export const compileAndTestUnitFast = series(compileForTest, testUnitFast);
-export const compileAndTestUnitSaveCoverage = series(
-  compileForTest,
-  testUnitSaveCoverage,
-);
+
+export const testDocs = async () => {
+  await test(['test/unit/documentation.test.ts'], true);
+};
+
+export const compileAndTestDocs = series(compileForTest, testDocs);
 
 export const testPerf = async () => {
-  await test(['test/perf'], {serialTests: true});
+  await test(['test/perf']);
 };
 export const compileAndTestPerf = series(compileForTest, testPerf);
 
@@ -750,9 +915,15 @@ export const compileDocsAssetsOnly = () => compileDocsAndAssets(false, false);
 
 export const compileDocs = () => compileDocsAndAssets();
 
-export const compileForProdAndDocs = series(compileForProd, compileDocs);
+export const preparePackageForProd = () => copyPackageFiles(true);
 
-export const testE2e = () => test(['test/e2e'], {puppeteer: true});
+export const compileForProdAndDocs = series(
+  compileForProd,
+  compileDocs,
+  preparePackageForProd,
+);
+
+export const testE2e = () => execute('npx playwright test', true);
 
 export const compileAndTestE2e = series(compileForProdAndDocs, testE2e);
 
@@ -780,11 +951,12 @@ export const prePublishPackage = series(
   compileForTest,
   parallel(lint, spell, ts),
   testBun,
-  testUnitCountAsserts,
+  testUnit,
   testPerf,
   compileForProd,
-  testProd,
   compileDocs,
+  preparePackageForProd,
+  testProd,
   testE2e,
 );
 

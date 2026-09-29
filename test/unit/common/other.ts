@@ -1,67 +1,75 @@
-import fs from 'fs';
-import type {FetchMock} from 'jest-fetch-mock';
-import fm from 'jest-fetch-mock';
+import type {Database} from 'bun:sqlite';
 import type {Id, Ids, Indexes, Metrics, Relationships} from 'tinybase';
-import {TextDecoder, TextEncoder} from 'util';
+import * as vitest from 'vitest';
 import {IdObj, IdObj2} from './types.ts';
-
-const fetchMock = fm as any as FetchMock;
-
-Object.assign(globalThis, {TextDecoder, TextEncoder});
-
-const ignorable = (...args: any[]): boolean =>
-  args.some((arg) =>
-    arg
-      .toString()
-      .match(/wasm|OPFS|ArrayBuffer|ReactDOMTestUtils|C-web|onCustomMessage/),
-  );
 
 export const isBun = process.versions.bun != null;
 
+// Provided by each vitest project: the '-servers' projects run the database
+// variants and documentation examples that need a local PostgreSQL or SQL
+// Server, and every other project leaves them out. Bun aliases 'vitest' to
+// 'bun:test', which has no inject, so it is reached through the namespace
+// rather than a named import - and it never runs those variants anyway.
+export const withServers: boolean = isBun
+  ? false
+  : (vitest as {inject?: (key: 'servers') => boolean}).inject?.('servers') ==
+    true;
+
+// The two database servers, configured once in vitest.config.ts. Bun aliases
+// 'vitest' to 'bun:test', which has no inject, but it runs no database variant
+// and no server-backed example, so these go unused there.
+const injected = (vitest as {inject?: (key: string) => any}).inject;
+
+export const POSTGRES_URL: string = injected?.('postgres');
+
+export const MSSQL_CONFIG: {
+  server: string;
+  port: number;
+  user: string;
+  password: string;
+} = injected?.('mssql');
+
+export const getMsSqlConnectionString = (database: string): string =>
+  `Server=${MSSQL_CONFIG.server},${MSSQL_CONFIG.port};Database=${database};` +
+  `User Id=${MSSQL_CONFIG.user};Password=${MSSQL_CONFIG.password};` +
+  `Encrypt=false;TrustServerCertificate=true`;
+
+export const AsyncFunction = Object.getPrototypeOf(
+  async () => null,
+).constructor;
+
+export const importBunSqlite = new AsyncFunction(
+  `return await import('bun:sqlite')`, // hide from Vitest static analysis
+) as () => Promise<{Database: typeof Database}>;
+
 export const pause = async (ms = 50): Promise<void> =>
   new Promise<void>((resolve) =>
-    setTimeout(() => setTimeout(() => setTimeout(resolve, 1), ms - 2), 1),
+    setTimeout(
+      () => setTimeout(() => setTimeout(resolve, 1), Math.max(ms - 2, 1)),
+      1,
+    ),
   );
 
-export const mockFetchWasm = (): void => {
-  fetchMock.enableMocks();
-  fetchMock.resetMocks();
-  fetchMock.doMock(async (request) => {
-    if (request.url.startsWith('file://')) {
-      return {
-        status: 200,
-        body: fs.readFileSync(request.url.substring(7)) as any,
-      };
+export const waitFor = async (
+  assertion: () => void | Promise<void>,
+  intervalMilliseconds = 5,
+  timeoutMilliseconds = 10000,
+): Promise<void> => {
+  const deadline = Date.now() + timeoutMilliseconds;
+  for (;;) {
+    try {
+      await assertion();
+      return;
+    } catch (error) {
+      if (Date.now() >= deadline) {
+        throw error;
+      }
     }
-    if (request.url == 'wa-sqlite-async.wasm') {
-      return {
-        status: 200,
-        body: fs.readFileSync(
-          'node_modules/wa-sqlite/dist/' + request.url,
-        ) as any,
-      };
-    }
-    return '';
-  });
+    await pause(intervalMilliseconds);
+  }
 };
 
-export const suppressWarnings = async <Return>(
-  actions: () => Promise<Return>,
-) => {
-  /* eslint-disable no-console */
-  const log = console.log;
-  const warn = console.warn;
-  const error = console.error;
-  console.log = (...args: any[]) => (ignorable(...args) ? 0 : log(...args));
-  console.warn = (...args: any[]) => (ignorable(...args) ? 0 : warn(...args));
-  console.error = (...args: any[]) => (ignorable(...args) ? 0 : error(...args));
-  const result = await actions();
-  console.log = log;
-  console.warn = warn;
-  console.error = error;
-  /* eslint-enable no-console */
-  return result;
-};
+export const noop = () => undefined;
 
 export const getMetricsObject = (
   metrics: Metrics,
@@ -119,3 +127,27 @@ export const getRelationshipsObject = (
   });
   return relationshipsObject;
 };
+
+export const suppressWarnings = async <Return>(
+  actions: () => Promise<Return>,
+) => {
+  /* eslint-disable no-console */
+  const log = console.log;
+  const warn = console.warn;
+  const error = console.error;
+  console.log = (...args: any[]) => (ignorable(...args) ? 0 : log(...args));
+  console.warn = (...args: any[]) => (ignorable(...args) ? 0 : warn(...args));
+  console.error = (...args: any[]) => (ignorable(...args) ? 0 : error(...args));
+  const result = await actions();
+  console.log = log;
+  console.warn = warn;
+  console.error = error;
+  /* eslint-enable no-console */
+  return result;
+};
+const ignorable = (...args: any[]): boolean =>
+  args.some((arg) =>
+    arg
+      .toString()
+      .match(/wasm|OPFS|ArrayBuffer|ReactDOMTestUtils|C-web|onCustomMessage/),
+  );

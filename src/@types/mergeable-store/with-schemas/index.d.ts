@@ -2,6 +2,8 @@
 import type {
   CellIdFromSchema,
   TableIdFromSchema,
+  ValidTablesSchema,
+  ValidValuesSchema,
   ValueIdFromSchema,
 } from '../../_internal/store/with-schemas/index.d.ts';
 import type {GetNow, Hash, Hlc, Id} from '../../common/with-schemas/index.d.ts';
@@ -32,12 +34,14 @@ export type ContentHashes = [tablesHash: Hash, valuesHash: Hash];
 export type TablesStamp<
   Schema extends OptionalTablesSchema,
   Hashed extends boolean = false,
+  WhenSet extends boolean = false,
 > = Stamp<
   {
     [TableId in TableIdFromSchema<Schema>]?: TableStamp<
       Schema,
       TableId,
-      Hashed
+      Hashed,
+      WhenSet
     >;
   },
   Hashed
@@ -53,7 +57,8 @@ export type TableStamp<
   Schema extends OptionalTablesSchema,
   TableId extends TableIdFromSchema<Schema>,
   Hashed extends boolean = false,
-> = Stamp<{[rowId: Id]: RowStamp<Schema, TableId, Hashed>}, Hashed>;
+  WhenSet extends boolean = false,
+> = Stamp<{[rowId: Id]: RowStamp<Schema, TableId, Hashed, WhenSet>}, Hashed>;
 
 /// RowHashes
 export type RowHashes<Schema extends OptionalTablesSchema> = {
@@ -65,13 +70,15 @@ export type RowStamp<
   Schema extends OptionalTablesSchema,
   TableId extends TableIdFromSchema<Schema>,
   Hashed extends boolean = false,
+  WhenSet extends boolean = false,
 > = Stamp<
   {
     [CellId in CellIdFromSchema<Schema, TableId>]?: CellStamp<
       Schema,
       TableId,
       CellId,
-      Hashed
+      Hashed,
+      WhenSet
     >;
   },
   Hashed
@@ -90,18 +97,26 @@ export type CellStamp<
   TableId extends TableIdFromSchema<Schema>,
   CellId extends CellIdFromSchema<Schema, TableId>,
   Hashed extends boolean = false,
-> = Stamp<CellOrUndefined<Schema, TableId, CellId>, Hashed>;
+  WhenSet extends boolean = false,
+> = Stamp<
+  WhenSet extends true
+    ? CellOrUndefined<Schema, TableId, CellId>
+    : CellOrUndefined<Schema, TableId, CellId>,
+  Hashed
+>;
 
 /// ValuesStamp
 export type ValuesStamp<
   Schema extends OptionalValuesSchema,
   Hashed extends boolean = false,
+  WhenSet extends boolean = false,
 > = Stamp<
   {
     [ValueId in ValueIdFromSchema<Schema>]?: ValueStamp<
       Schema,
       ValueId,
-      Hashed
+      Hashed,
+      WhenSet
     >;
   },
   Hashed
@@ -117,27 +132,38 @@ export type ValueStamp<
   Schema extends OptionalValuesSchema,
   ValueId extends ValueIdFromSchema<Schema>,
   Hashed extends boolean = false,
-> = Stamp<ValueOrUndefined<Schema, ValueId>, Hashed>;
+  WhenSet extends boolean = false,
+> = Stamp<
+  WhenSet extends true
+    ? ValueOrUndefined<Schema, ValueId>
+    : ValueOrUndefined<Schema, ValueId>,
+  Hashed
+>;
 
 /// MergeableContent
-export type MergeableContent<Schemas extends OptionalSchemas> = [
-  mergeableTables: TablesStamp<Schemas[0], true>,
-  mergeableValues: ValuesStamp<Schemas[1], true>,
+export type MergeableContent<
+  Schemas extends OptionalSchemas,
+  WhenSet extends boolean = false,
+> = [
+  mergeableTables: TablesStamp<Schemas[0], true, WhenSet>,
+  mergeableValues: ValuesStamp<Schemas[1], true, WhenSet>,
 ];
 
 /// MergeableChanges
 export type MergeableChanges<
   Schemas extends OptionalSchemas,
   Hashed extends boolean = false,
+  WhenSet extends boolean = false,
 > = [
-  mergeableTables: TablesStamp<Schemas[0], Hashed>,
-  mergeableValues: ValuesStamp<Schemas[1], Hashed>,
+  mergeableTables: TablesStamp<Schemas[0], Hashed, WhenSet>,
+  mergeableValues: ValuesStamp<Schemas[1], Hashed, WhenSet>,
   isChanges: 1,
 ];
 
 /// MergeableStore
-export interface MergeableStore<Schemas extends OptionalSchemas>
-  extends Store<Schemas> {
+export interface MergeableStore<
+  Schemas extends OptionalSchemas,
+> extends Store<Schemas> {
   //
   /// MergeableStore.getMergeableContent
   getMergeableContent(): MergeableContent<Schemas>;
@@ -189,22 +215,23 @@ export interface MergeableStore<Schemas extends OptionalSchemas>
 
   /// MergeableStore.setMergeableContent
   setMergeableContent(
-    mergeableContent: MergeableContent<Schemas>,
+    mergeableContent: MergeableContent<Schemas, true>,
   ): MergeableStore<Schemas>;
 
   /// MergeableStore.setDefaultContent
   setDefaultContent(
-    content: Content<Schemas> | (() => Content<Schemas>),
+    content: Content<Schemas, true> | (() => Content<Schemas, true>),
   ): MergeableStore<Schemas>;
 
   /// MergeableStore.getTransactionMergeableChanges
-  getTransactionMergeableChanges(
-    withHashes?: boolean,
-  ): MergeableChanges<Schemas, true>;
+  getTransactionMergeableChanges<Hashed extends boolean = false>(
+    withHashes?: Hashed,
+  ): MergeableChanges<Schemas, Hashed>;
 
   /// MergeableStore.applyMergeableChanges
   applyMergeableChanges(
-    mergeableChanges: MergeableChanges<Schemas> | MergeableContent<Schemas>,
+    mergeableChanges:
+      MergeableChanges<Schemas, false, true> | MergeableContent<Schemas, true>,
   ): MergeableStore<Schemas>;
 
   /// MergeableStore.merge
@@ -214,25 +241,42 @@ export interface MergeableStore<Schemas extends OptionalSchemas>
   isMergeable(): boolean;
 
   /// Store.setTablesSchema
-  setTablesSchema<TS extends TablesSchema>(
-    tablesSchema: TS,
-  ): MergeableStore<[typeof tablesSchema, Schemas[1]]>;
+  setTablesSchema<const TS extends TablesSchema>(
+    tablesSchema: TS & ValidTablesSchema<TS>,
+  ): MergeableStore<[TS, Schemas[1]]>;
+  setTablesSchema<const TS extends TablesSchema>(
+    tablesSchema: TS & ValidTablesSchema<TS>,
+  ): Store<[TS, Schemas[1]]>;
 
   /// Store.setValuesSchema
-  setValuesSchema<VS extends ValuesSchema>(
-    valuesSchema: VS,
-  ): MergeableStore<[Schemas[0], typeof valuesSchema]>;
+  setValuesSchema<const VS extends ValuesSchema>(
+    valuesSchema: VS & ValidValuesSchema<VS>,
+  ): MergeableStore<[Schemas[0], VS]>;
+  setValuesSchema<const VS extends ValuesSchema>(
+    valuesSchema: VS & ValidValuesSchema<VS>,
+  ): Store<[Schemas[0], VS]>;
 
   /// Store.setSchema
-  setSchema<TS extends TablesSchema, VS extends ValuesSchema>(
-    tablesSchema: TS,
-    valuesSchema?: VS,
+  setSchema<const TS extends TablesSchema, const VS extends ValuesSchema>(
+    tablesSchema: TS & ValidTablesSchema<TS>,
+    valuesSchema?: VS & ValidValuesSchema<VS>,
   ): MergeableStore<
     [
-      typeof tablesSchema,
+      TS,
       Exclude<ValuesSchema, typeof valuesSchema> extends never
         ? NoValuesSchema
-        : NonNullable<typeof valuesSchema>,
+        : VS,
+    ]
+  >;
+  setSchema<const TS extends TablesSchema, const VS extends ValuesSchema>(
+    tablesSchema: TS & ValidTablesSchema<TS>,
+    valuesSchema?: VS & ValidValuesSchema<VS>,
+  ): Store<
+    [
+      TS,
+      Exclude<ValuesSchema, typeof valuesSchema> extends never
+        ? NoValuesSchema
+        : VS,
     ]
   >;
 

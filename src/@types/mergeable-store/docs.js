@@ -769,7 +769,8 @@
    * it.
    * @param withHashes Whether to include hashes in the output, defaulting to
    * false.
-   * @returns A MergeableChanges object representing the changes, with hashes.
+   * @returns A MergeableChanges object representing the changes, with hashes
+   * if requested.
    * @example
    * This example makes changes to the MergeableStore. At the end of the
    * transaction, detail about what changed is enumerated.
@@ -822,7 +823,7 @@
    *
    * store.applyMergeableChanges([
    *   [{pets: [{fido: [{color: ['black', 'Nn1JUF----2FnHIC']}]}]}],
-   *   [{open: [null, 'Nn1JUF----3FnHIC']}],
+   *   [{open: [undefined, 'Nn1JUF----3FnHIC']}],
    *   1,
    * ]);
    * console.log(store.getTables());
@@ -1018,19 +1019,19 @@
  *         {
  *           fido: [
  *             {
- *               sold: [false, 'Nn1JUF----2FnHIC', 2603026204],
+ *               sold: [false, '', 3177411910],
  *               species: ['dog', 'Nn1JUF----1FnHIC', 2817056260],
  *             },
  *             '',
- *             2859424112,
+ *             3078067457,
  *           ],
  *         },
  *         '',
- *         1640515891,
+ *         1137907280,
  *       ],
  *     },
  *     '',
- *     2077041985,
+ *     401719767,
  *   ],
  *   [{}, '', 0],
  * ];

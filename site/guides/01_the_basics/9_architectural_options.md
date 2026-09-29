@@ -83,7 +83,8 @@ a basic 'local-only' approach.
 
 The Todo App v1 (the basics) and the Todo App v3 (persistence) demo are good
 examples of how to get started with an app like this. Also see the
-SessionPersister and LocalPersister documentation for more details.
+SessionPersister and LocalPersister documentation for more details. Since v6.7,
+OPFS support is also available via the OpfsPersister interface.
 
 ## 3. Client Database Storage
 
@@ -158,16 +159,12 @@ PostgreSQL, the file system, or a Cloudflare Durable Object.
   it in and out from the persisted storage when clients connect or disconnect.
 
 See the createWsServer function for details of how to create a persister for the
-synchronization server, such as Sqlite3Persister or PostgresPersister.
+synchronization server, such as SqliteNodePersister or PostgresPersister.
 
 A reliable all-in-one solution is to run both synchronization and storage on
-Cloudflare. Check out the Cloudflare Durable Objects guide and the dedicated
-[Vite starter
-template](https://github.com/tinyplex/vite-tinybase-ts-react-sync-durable-object)
-to see how to set this up. This approach can use either the
-DurableObjectStoragePersister (for KV-based storage) or the
-DurableObjectSqlStoragePersister (for SQLite-based storage) to persist data in a
-Durable Object.
+Cloudflare. Check out the Cloudflare Durable Objects guide and/or try the
+Durable Objects option in the [`create-tinybase`
+tool](https://github.com/tinyplex/create-tinybase).
 
 ## 6. Third-Party Synchronization
 
@@ -189,10 +186,10 @@ AutomergePersister interfaces respectively.)
 - **Cons**: This approach adds additional moving parts, other libraries, and
   possible fees for commercial services, based on usage.
 
-For more details on these interfaces, see the ElectricSqlPersister,
-PowerSyncPersister, and LibSqlPersister (Turso) interfaces. The APIs, consistent
-with the other SQLite- and PostgreSQL-based persisters, are described in the
-Database Persistence guide.
+For more details on these interfaces, see the PowerSyncPersister and
+LibSqlPersister (Turso) interfaces. The APIs, consistent with the other SQLite-
+and PostgreSQL-based persisters, are described in the Database Persistence
+guide.
 
 ## Mix It Up!
 
@@ -224,4 +221,5 @@ TinyBase provides many different architectural choices, depending on the type of
 app you are building, and where you want the data to reside when not in use.
 
 Next we will show how you can quickly build user interfaces on top of a Store,
-and for that, it's time to proceed to the Building UIs guide.
+and for that, it's time to proceed to the
+[Building UIs With React](/guides/building-uis-with-react/) guide.

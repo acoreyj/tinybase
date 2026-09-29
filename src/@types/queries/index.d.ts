@@ -8,6 +8,13 @@ import type {
   Store,
 } from '../store/index.d.ts';
 
+/// ParamValue
+export type ParamValue =
+  string | number | boolean | null | string[] | number[] | boolean[];
+
+/// ParamValues
+export type ParamValues = {[paramId: Id]: ParamValue};
+
 /// ResultTable
 export type ResultTable = {[rowId: Id]: ResultRow};
 
@@ -15,33 +22,33 @@ export type ResultTable = {[rowId: Id]: ResultRow};
 export type ResultRow = {[cellId: Id]: ResultCell};
 
 /// ResultCell
-export type ResultCell = string | number | boolean;
+export type ResultCell = Cell;
 
 /// ResultCellOrUndefined
 export type ResultCellOrUndefined = ResultCell | undefined;
 
 /// Aggregate
-export type Aggregate = (cells: Cell[], length: number) => ResultCell;
+export type Aggregate = (cells: ResultCell[], length: number) => ResultCell;
 
 /// AggregateAdd
 export type AggregateAdd = (
-  current: Cell,
-  add: Cell,
+  current: ResultCell,
+  add: ResultCell,
   length: number,
 ) => ResultCellOrUndefined;
 
 /// AggregateRemove
 export type AggregateRemove = (
-  current: Cell,
-  remove: Cell,
+  current: ResultCell,
+  remove: ResultCell,
   length: number,
 ) => ResultCellOrUndefined;
 
 /// AggregateReplace
 export type AggregateReplace = (
-  current: Cell,
-  add: Cell,
-  remove: Cell,
+  current: ResultCell,
+  add: ResultCell,
+  remove: ResultCell,
   length: number,
 ) => ResultCellOrUndefined;
 
@@ -65,6 +72,21 @@ export type ResultCellCallback = (cellId: Id, cell: ResultCell) => void;
 
 /// QueryIdsListener
 export type QueryIdsListener = (queries: Queries) => void;
+
+/// ParamValuesListener
+export type ParamValuesListener = (
+  queries: Queries,
+  queryId: Id,
+  paramValues: ParamValues,
+) => void;
+
+/// ParamValueListener
+export type ParamValueListener = (
+  queries: Queries,
+  queryId: Id,
+  paramId: Id,
+  paramValue: ParamValue,
+) => void;
 
 /// ResultTableListener
 export type ResultTableListener = (
@@ -164,6 +186,10 @@ export type QueriesListenerStats = {
   cellIds: number;
   /// QueriesListenerStats.cell
   cell: number;
+  /// QueriesListenerStats.paramValues
+  paramValues: number;
+  /// QueriesListenerStats.paramValue
+  paramValue: number;
 };
 
 /// GetTableCell
@@ -172,7 +198,12 @@ export type GetTableCell = {
   (cellId: Id): CellOrUndefined;
   /// GetTableCell.2
   (joinedTableId: Id, joinedCellId: Id): CellOrUndefined;
+  /// GetTableCell.3
+  (asQuery: true, joinedQueryId: Id, joinedCellId: Id): CellOrUndefined;
 };
+
+/// Param
+export type Param = (paramId: Id) => ParamValue | undefined;
 
 /// Select
 export type Select = {
@@ -181,9 +212,28 @@ export type Select = {
   /// Select.2
   (joinedTableId: Id, joinedCellId: Id): SelectedAs;
   /// Select.3
+  (asQuery: true, joinedQueryId: Id, joinedCellId: Id): SelectedAs;
+  /// Select.4
   (
     getCell: (getTableCell: GetTableCell, rowId: Id) => ResultCellOrUndefined,
   ): SelectedAs;
+};
+
+/// CellIdMapper
+export type CellIdMapper = (cellId: Id) => Id;
+
+/// SelectAll
+export type SelectAll = {
+  /// SelectAll.1
+  (): void;
+  /// SelectAll.2
+  (joinedTableId: Id, cellIdPrefixOrMapper?: Id | CellIdMapper): void;
+  /// SelectAll.3
+  (
+    asQuery: true,
+    joinedQueryId: Id,
+    cellIdPrefixOrMapper?: Id | CellIdMapper,
+  ): void;
 };
 
 /// SelectedAs
@@ -197,15 +247,40 @@ export type Join = {
   /// Join.1
   (joinedTableId: Id, on: Id): JoinedAs;
   /// Join.2
+  (asQuery: true, joinedQueryId: Id, on: Id): JoinedAs;
+  /// Join.3
   (
     joinedTableId: Id,
     on: (getCell: GetCell, rowId: Id) => Id | undefined,
   ): JoinedAs;
-  /// Join.3
-  (joinedTableId: Id, fromIntermediateJoinedTableId: Id, on: Id): JoinedAs;
   /// Join.4
   (
+    asQuery: true,
+    joinedQueryId: Id,
+    on: (getCell: GetCell, rowId: Id) => Id | undefined,
+  ): JoinedAs;
+  /// Join.5
+  (joinedTableId: Id, fromIntermediateJoinedTableId: Id, on: Id): JoinedAs;
+  /// Join.6
+  (
+    asQuery: true,
+    joinedQueryId: Id,
+    fromIntermediateJoinedTableId: Id,
+    on: Id,
+  ): JoinedAs;
+  /// Join.7
+  (
     joinedTableId: Id,
+    fromIntermediateJoinedTableId: Id,
+    on: (
+      getIntermediateJoinedCell: GetCell,
+      intermediateJoinedRowId: Id,
+    ) => Id | undefined,
+  ): JoinedAs;
+  /// Join.8
+  (
+    asQuery: true,
+    joinedQueryId: Id,
     fromIntermediateJoinedTableId: Id,
     on: (
       getIntermediateJoinedCell: GetCell,
@@ -227,6 +302,8 @@ export type Where = {
   /// Where.2
   (joinedTableId: Id, joinedCellId: Id, equals: Cell): void;
   /// Where.3
+  (asQuery: true, joinedQueryId: Id, joinedCellId: Id, equals: Cell): void;
+  /// Where.4
   (condition: (getTableCell: GetTableCell) => boolean): void;
 };
 
@@ -248,7 +325,7 @@ export type GroupedAs = {
 /// Having
 export type Having = {
   /// Having.1
-  (selectedOrGroupedCellId: Id, equals: Cell): void;
+  (selectedOrGroupedCellId: Id, equals: ResultCell): void;
   /// Having.2
   (condition: (getSelectedOrGroupedCell: GetCell) => boolean): void;
 };
@@ -262,15 +339,47 @@ export interface Queries {
     tableId: Id,
     query: (keywords: {
       select: Select;
+      selectAll: SelectAll;
       join: Join;
       where: Where;
       group: Group;
       having: Having;
+      param: Param;
     }) => void,
+    paramValues?: ParamValues,
+  ): Queries;
+
+  /// Queries.setQueryDefinition.2
+  setQueryDefinition(
+    queryId: Id,
+    asQuery: true,
+    rootQueryId: Id,
+    query: (keywords: {
+      select: Select;
+      selectAll: SelectAll;
+      join: Join;
+      where: Where;
+      group: Group;
+      having: Having;
+      param: Param;
+    }) => void,
+    paramValues?: ParamValues,
   ): Queries;
 
   /// Queries.delQueryDefinition
   delQueryDefinition(queryId: Id): Queries;
+
+  /// Queries.getParamValues
+  getParamValues(queryId: Id): ParamValues;
+
+  /// Queries.getParamValue
+  getParamValue(queryId: Id, paramId: Id): ParamValue | undefined;
+
+  /// Queries.setParamValues
+  setParamValues(queryId: Id, paramValues: ParamValues): Queries;
+
+  /// Queries.setParamValue
+  setParamValue(queryId: Id, paramId: Id, value: ParamValue): Queries;
 
   /// Queries.getStore
   getStore(): Store;
@@ -341,6 +450,16 @@ export interface Queries {
 
   /// Queries.addQueryIdsListener
   addQueryIdsListener(listener: QueryIdsListener): Id;
+
+  /// Queries.addParamValuesListener
+  addParamValuesListener(queryId: IdOrNull, listener: ParamValuesListener): Id;
+
+  /// Queries.addParamValueListener
+  addParamValueListener(
+    queryId: IdOrNull,
+    paramId: IdOrNull,
+    listener: ParamValueListener,
+  ): Id;
 
   /// Queries.addResultTableListener
   addResultTableListener(queryId: IdOrNull, listener: ResultTableListener): Id;

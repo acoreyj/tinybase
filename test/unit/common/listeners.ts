@@ -19,15 +19,6 @@ import {
   StoreListener,
 } from './types.ts';
 
-declare global {
-  // eslint-disable-next-line @typescript-eslint/no-namespace
-  namespace jest {
-    interface Matchers<R> {
-      toEqualWithOrder(expected: any): R;
-    }
-  }
-}
-
 export const createStoreListener = (
   store: Store | StoreWithSchemas<NoSchemas>,
 ): StoreListener => {
@@ -306,10 +297,27 @@ export const createIndexesListener = (indexes: Indexes): IndexesListener => {
       );
     },
 
+    listenToHasIndex: (id, indexId) => {
+      logs[id] = [];
+      return indexes.addHasIndexListener(indexId, (_, indexId, hasIndex) =>
+        logs[id].push({[indexId]: hasIndex}),
+      );
+    },
+
     listenToSliceIds: (id, indexId) => {
       logs[id] = [];
       return indexes.addSliceIdsListener(indexId, (indexes, indexId) =>
         logs[id].push({[indexId]: indexes.getSliceIds(indexId)}),
+      );
+    },
+
+    listenToHasSlice: (id, indexId, sliceId) => {
+      logs[id] = [];
+      return indexes.addHasSliceListener(
+        indexId,
+        sliceId,
+        (_, indexId, sliceId, hasSlice) =>
+          logs[id].push({[indexId]: {[sliceId]: hasSlice}}),
       );
     },
 

@@ -7,8 +7,8 @@ import type {
 import {getHash} from './hash.ts';
 import {IdMap, mapNew, mapToObj} from './map.ts';
 import {IdObj, objNew} from './obj.ts';
-import {isArray, isFiniteNumber, isString, size} from './other.ts';
-import {EMPTY_STRING, NUMBER, getTypeOf} from './strings.ts';
+import {isArray, isFiniteNumber, isNumber, isString, size} from './other.ts';
+import {EMPTY_STRING} from './strings.ts';
 
 export type StampMap<Thing> = Stamp<IdMap<Thing>, true>;
 
@@ -21,11 +21,6 @@ export const stampClone = <Value>([value, hlc]: Stamp<
   Value,
   boolean
 >): Stamp<Value> => stampNew(value, hlc);
-
-const stampCloneWithHash = <Value>([value, hlc, hash]: Stamp<
-  Value,
-  true
->): Stamp<Value, true> => [value, hlc, hash];
 
 export const stampNew = <Value>(
   value: Value,
@@ -48,7 +43,8 @@ export const getLatestHlc = (
   hlc2: Hlc | undefined,
 ): Hlc =>
   /*! istanbul ignore next */
-  ((hlc1 ?? '') > (hlc2 ?? '') ? hlc1 : hlc2) ?? '';
+  ((hlc1 ?? EMPTY_STRING) > (hlc2 ?? EMPTY_STRING) ? hlc1 : hlc2) ??
+  EMPTY_STRING;
 
 export const stampUpdate = (
   stamp: Stamp<unknown, true>,
@@ -72,7 +68,7 @@ export const stampNewMap = <Thing>(hlc = EMPTY_STRING): StampMap<Thing> => [
 
 export const stampMapToObjWithHash = <From, To = From>(
   [map, hlc, hash]: Stamp<IdMap<From>, true>,
-  mapper: (mapValue: From) => To = stampCloneWithHash as any,
+  mapper: (mapValue: From) => To,
 ): Stamp<IdObj<To>, true> => [mapToObj(map, mapper), hlc, hash];
 
 export const stampMapToObjWithoutHash = <From, To = From>(
@@ -87,6 +83,6 @@ export const stampValidate = (
   isArray(stamp) &&
   size(stamp) == 3 &&
   isString(stamp[1]) &&
-  getTypeOf(stamp[2]) == NUMBER &&
+  isNumber(stamp[2]) &&
   isFiniteNumber(stamp[2]) &&
   validateThing(stamp[0]);

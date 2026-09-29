@@ -55,8 +55,9 @@
    * The destroy method provides a way to clean up the server at the end of its
    * use.
    *
-   * This closes the underlying WebSocketServer that was provided when the
-   * WsServerSimple was created. This method is asynchronous.
+   * This closes active client WebSockets and the underlying WebSocketServer
+   * that was provided when the WsServerSimple was created. This method is
+   * asynchronous and resolves once they have all closed.
    * @example
    * This example creates a WsServerSimple and then destroys it again, closing
    * the underlying WebSocketServer.
@@ -91,6 +92,16 @@
  * the complications of listeners, persistence, or statistics. This makes it
  * more suitable to be used as a reference implementation for other server
  * environments.
+ *
+ * Since v9.3, it also supports multiple channel-based WsSynchronizer instances
+ * sharing one WebSocket. Once a client WebSocket is accepted on a base path,
+ * it can subscribe to any valid channel beneath that path: WsServerSimple does
+ * not authenticate or authorize channel Ids. A channel Id can contain at most
+ * 1,024 UTF-8 bytes, and each multiplexed WebSocket can have at most 100
+ * subscribed channels. Pending channel cleanup is also bounded, and fragment
+ * reassembly limits are shared across the physical WebSocket. For untrusted
+ * clients, use a separate authenticated WebSocket for each authorized path
+ * unless access to all descendants is acceptable.
  * @param webSocketServer A WebSocketServer object from your server environment.
  * @returns A reference to the new WsServerSimple object.
  * @example
@@ -101,7 +112,7 @@
  * import {createMergeableStore} from 'tinybase';
  * import {createWsSynchronizer} from 'tinybase/synchronizers/synchronizer-ws-client';
  * import {createWsServerSimple} from 'tinybase/synchronizers/synchronizer-ws-server-simple';
- * import {WebSocketServer} from 'ws';
+ * import {WebSocket, WebSocketServer} from 'ws';
  *
  * // Server
  * const server = createWsServerSimple(new WebSocketServer({port: 8053}));

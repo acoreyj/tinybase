@@ -41,16 +41,31 @@
  * The CellSchema type describes what values are allowed for each Cell in a
  * Table.
  *
- * A CellSchema specifies the type of the Cell (`string`, `boolean`, or
- * `number`), and what the default value can be when an explicit value is not
- * specified.
+ * A CellSchema specifies either the type of the Cell (`string`, `boolean`,
+ * `number`, `object`, or `array`), a non-empty array of those types, or a
+ * non-empty `enum` of exact primitive values that are allowed. Multiple type
+ * names form a union, such as `type: ['string', 'number']`, and repeated names
+ * have no additional effect. The `type` and `enum` properties are mutually
+ * exclusive, and enum members can be strings, finite numbers, or booleans,
+ * including a mixture of those types.
  *
- * If a default value is provided (and its type is correct), you can be certain
- * that that Cell will always be present in a Row.
+ * For `object` and `array` types, TinyBase automatically serializes values to
+ * and from JSON when storing and retrieving them. Their contents should
+ * recursively be strings, finite numbers, booleans, `null`, plain objects, or
+ * arrays to ensure they are preserved.
  *
- * If the default value is _not_ provided (or its type is incorrect), the Cell
- * may be missing from the Row, but when present you can be guaranteed it is of
- * the correct type.
+ * Set `allowNull` to `true` to also allow `null`, whether the schema uses
+ * `type` or `enum`. A default value is used only when it has the correct type,
+ * matches any member of a type union, is an enum member when applicable, or is
+ * `null` when allowed. Literal schemas passed to Store schema setters are
+ * checked against these default rules by TypeScript. A valid default means
+ * that the Cell will always be present in a Row. You can also set `required`
+ * to `true` to indicate to schema-based typing that the Cell should be present
+ * even if it does not have a default.
+ *
+ * If neither a default value nor `required: true` is provided, the Cell may be
+ * missing from the Row, but when present you can be guaranteed it is of the
+ * correct type.
  * @example
  * When applied to a Store, this CellSchema ensures a boolean Cell is always
  * present, and defaults it to `false`.
@@ -61,6 +76,54 @@
  * export const requiredBoolean: CellSchema = {
  *   type: 'boolean',
  *   default: false,
+ * };
+ * ```
+ * @example
+ * When applied to a Store, this CellSchema expects a string Cell to be present
+ * without providing a default value.
+ *
+ * ```js
+ * import type {CellSchema} from 'tinybase';
+ *
+ * export const requiredString: CellSchema = {
+ *   type: 'string',
+ *   required: true,
+ * };
+ * ```
+ * @example
+ * When applied to a Store, this CellSchema allows an object Cell containing
+ * JSON-compatible data, defaulting to an empty object.
+ *
+ * ```js
+ * import type {CellSchema} from 'tinybase';
+ *
+ * export const tagsCell: CellSchema = {
+ *   type: 'object',
+ *   default: {},
+ * };
+ * ```
+ * @example
+ * When applied to a Store, this CellSchema allows either a string or numeric
+ * Cell.
+ *
+ * ```js
+ * import type {CellSchema} from 'tinybase';
+ *
+ * export const referenceCell: CellSchema = {
+ *   type: ['string', 'number'],
+ * };
+ * ```
+ * @example
+ * When applied to a Store, this CellSchema allows one of three exact primitive
+ * values, or `null`.
+ *
+ * ```js
+ * import type {CellSchema} from 'tinybase';
+ *
+ * export const ratingCell: CellSchema = {
+ *   enum: ['good', 5, true],
+ *   allowNull: true,
+ *   default: 'good',
  * };
  * ```
  * @category Schema
@@ -92,16 +155,31 @@
  * The ValueSchema type describes what values are allowed for keyed Values in a
  * Store.
  *
- * A ValueSchema specifies the type of the Value (`string`, `boolean`, or
- * `number`), and what the default value can be when an explicit value is not
- * specified.
+ * A ValueSchema specifies either the type of the Value (`string`, `boolean`,
+ * `number`, `object`, or `array`), a non-empty array of those types, or a
+ * non-empty `enum` of exact primitive values that are allowed. Multiple type
+ * names form a union, such as `type: ['string', 'number']`, and repeated names
+ * have no additional effect. The `type` and `enum` properties are mutually
+ * exclusive, and enum members can be strings, finite numbers, or booleans,
+ * including a mixture of those types.
  *
- * If a default value is provided (and its type is correct), you can be certain
- * that the Value will always be present in a Store.
+ * For `object` and `array` types, TinyBase automatically serializes values to
+ * and from JSON when storing and retrieving them. Their contents should
+ * recursively be strings, finite numbers, booleans, `null`, plain objects, or
+ * arrays to ensure they are preserved.
  *
- * If the default value is _not_ provided (or its type is incorrect), the Value
- * may not be present in the Store, but when present you can be guaranteed it is
- * of the correct type.
+ * Set `allowNull` to `true` to also allow `null`, whether the schema uses
+ * `type` or `enum`. A default value is used only when it has the correct type,
+ * matches any member of a type union, is an enum member when applicable, or is
+ * `null` when allowed. Literal schemas passed to Store schema setters are
+ * checked against these default rules by TypeScript. A valid default means
+ * that the Value will always be present in a Store. You can also set `required`
+ * to `true` to indicate to schema-based typing that the Value should be present
+ * even if it does not have a default.
+ *
+ * If neither a default value nor `required: true` is provided, the Value may
+ * not be present in the Store, but when present you can be guaranteed it is of
+ * the correct type.
  * @example
  * When applied to a Store, this ValueSchema ensures a boolean Value is always
  * present, and defaults it to `false`.
@@ -112,6 +190,54 @@
  * export const requiredBoolean: ValueSchema = {
  *   type: 'boolean',
  *   default: false,
+ * };
+ * ```
+ * @example
+ * When applied to a Store, this ValueSchema expects a string Value to be
+ * present without providing a default value.
+ *
+ * ```js
+ * import type {ValueSchema} from 'tinybase';
+ *
+ * export const requiredString: ValueSchema = {
+ *   type: 'string',
+ *   required: true,
+ * };
+ * ```
+ * @example
+ * When applied to a Store, this ValueSchema allows an array Value containing
+ * a list of items, defaulting to an empty array.
+ *
+ * ```js
+ * import type {ValueSchema} from 'tinybase';
+ *
+ * export const cartItems: ValueSchema = {
+ *   type: 'array',
+ *   default: [],
+ * };
+ * ```
+ * @example
+ * When applied to a Store, this ValueSchema allows either a string or numeric
+ * Value.
+ *
+ * ```js
+ * import type {ValueSchema} from 'tinybase';
+ *
+ * export const referenceValue: ValueSchema = {
+ *   type: ['string', 'number'],
+ * };
+ * ```
+ * @example
+ * When applied to a Store, this ValueSchema allows one of three exact primitive
+ * values, or `null`.
+ *
+ * ```js
+ * import type {ValueSchema} from 'tinybase';
+ *
+ * export const ratingValue: ValueSchema = {
+ *   enum: ['good', 5, true],
+ *   allowNull: true,
+ *   default: 'good',
  * };
  * ```
  * @category Schema
@@ -254,11 +380,33 @@
  */
 /// Row
 /**
+ * The PartialRow type is a Row-like type used when setting part of a row.
+ *
+ * In schema-based typing, a PartialRow allows any known Cell to be omitted,
+ * including Cells marked with `required: true`, while still preventing unknown
+ * Cell Ids from being used.
+ * @category Store
+ * @since v9.1.0
+ */
+/// PartialRow
+/**
  * The Cell type is the data structure representing the data in a single cell.
  *
  * A Cell is used when setting a cell with the setCell method, and when getting
  * it back out again with the getCell method. A Cell is a JavaScript string,
- * number, or boolean.
+ * number, boolean, or null (since v7.0), or a plain JavaScript object or array
+ * (since v8.0).
+ *
+ * Object and array contents should recursively be strings, finite numbers,
+ * booleans, `null`, plain objects, or arrays. TinyBase validates the top-level
+ * container and then uses JSON serialization, so other nested values can be
+ * changed or omitted. If the value cannot be serialized, the Cell is invalid
+ * and the write is ignored silently.
+ *
+ * String Cells must not start with the Unicode replacement character `U+FFFD`,
+ * which TinyBase reserves for its internal object and array encoding, or be the
+ * exact Unicode object replacement character `U+FFFC`, which TinyBase reserves
+ * to represent `undefined` in serialized data.
  * @example
  * ```js
  * import type {Cell} from 'tinybase';
@@ -299,12 +447,35 @@
  */
 /// Values
 /**
+ * The PartialValues type is a Values-like type used when setting some keyed
+ * values.
+ *
+ * In schema-based typing, PartialValues allows any known Value to be omitted,
+ * including Values marked with `required: true`, while still preventing unknown
+ * Value Ids from being used.
+ * @category Store
+ * @since v9.1.0
+ */
+/// PartialValues
+/**
  * The Value type is the data structure representing the data in a single keyed
  * value.
  *
  * A Value is used when setting a value with the setValue method, and when
  * getting it back out again with the getValue method. A Value is a JavaScript
- * string, number, or boolean.
+ * string, number, boolean, or null (since v7.0), or a plain JavaScript object
+ * or array (since v8.0).
+ *
+ * Object and array contents should recursively be strings, finite numbers,
+ * booleans, `null`, plain objects, or arrays. TinyBase validates the top-level
+ * container and then uses JSON serialization, so other nested values can be
+ * changed or omitted. If the value cannot be serialized, the Value is invalid
+ * and the write is ignored silently.
+ *
+ * String Values must not start with the Unicode replacement character `U+FFFD`,
+ * which TinyBase reserves for its internal object and array encoding, or be the
+ * exact Unicode object replacement character `U+FFFC`, which TinyBase reserves
+ * to represent `undefined` in serialized data.
  * @example
  * ```js
  * import type {Value} from 'tinybase';
@@ -401,6 +572,7 @@
  * new one, such as when incrementing a number. See that method for specific
  * examples.
  * @param cell The current value of the Cell to map to a new value.
+ * @returns The new value of the Cell.
  * @category Callback
  * @since v1.0.0
  */
@@ -413,6 +585,7 @@
  * a new one, such as when incrementing a number. See that method for specific
  * examples.
  * @param value The current Value to map to a new Value.
+ * @returns The new Value.
  * @category Callback
  * @since v3.0.0
  */
@@ -425,6 +598,7 @@
  * setMetricDefinition method of a Metrics object, or the setIndexDefinition
  * method of an Indexes object. See those methods for specific examples.
  * @param cellId The Id of the Cell to fetch the value for.
+ * @returns The value of the Cell, or `undefined`.
  * @category Callback
  * @since v1.0.0
  */
@@ -522,6 +696,7 @@
  * can use the getTransactionChanges method and getTransactionLog method of the
  * Store directly to decide whether to do the rollback.
  * @param store A reference to the Store that is completing a transaction.
+ * @returns Whether to rollback the transaction.
  * @category Callback
  * @since v1.0.0
  */
@@ -531,7 +706,7 @@
  * the getSortedRowIds method.
  *
  * It's an object containing the Id of the Table in the Store, and optional
- * `cellId`, `descending`, `offset`, and `limit` parameters. See the
+ * `cellId`, `descending`, `offset`, `limit`, and `sorter` parameters. See the
  * getSortedRowIds method for specific examples.
  * @category Store
  * @since v6.1.0
@@ -569,6 +744,13 @@
    * @since v6.1.0
    */
   /// SortedRowIdsArgs.limit
+  /**
+   * A custom function for comparing the sorting values, defaulting to the
+   * defaultSorter function.
+   * @category Argument
+   * @since v9.1.0
+   */
+  /// SortedRowIdsArgs.sorter
 }
 /**
  * The TransactionListener type describes a function that is used to listen to
@@ -1191,8 +1373,8 @@
  * transaction, primarily used so that you can indicate whether the transaction
  * should be rolled back.
  *
- * It provides both the old and new Values in a two-part array. These
- * describe the state of the changed Value in the Store at the _start_ of the
+ * It provides both the old and new Values in a two-part array. These describe
+ * the state of the changed Value in the Store at the _start_ of the
  * transaction, and by the _end_ of the transaction.
  *
  * Hence, an `undefined` value for the first item in the array means that the
@@ -1480,13 +1662,17 @@
  *
  * The keyed value support is best thought of as a flat JavaScript object. The
  * Store contains a number of Value objects, each with a unique ID, and which is
- * a string, boolean, or number.
+ * a string, boolean, number, null (since v7.0), or a plain JavaScript object or
+ * array (since v8.0).
  *
  * ```json
- * {                  // Store
- *   "value1": "one",   // Value (string)
- *   "value2": true,    // Value (boolean)
- *   "value3": 3,       // Value (number)
+ * {                           // Store
+ *   "value1": "one",            // Value (string)
+ *   "value2": true,             // Value (boolean)
+ *   "value3": 3,                // Value (number)
+ *   "value4": null,             // Value (null since v7.0)
+ *   "value5": {"x": 1},         // Value (object since v8.0)
+ *   "value6": [1, 2, 3],        // Value (array since v8.0)
  *   ...
  * }
  * ```
@@ -1503,7 +1689,8 @@
  * - Each Table contains a number of Row objects.
  * - Each Row contains a number of Cell objects.
  *
- * A Cell is a string, boolean, or number value.
+ * A Cell is a string, boolean, number, null (since v7.0), or a plain JavaScript
+ * object or array (since v8.0).
  *
  * The members of each level of this hierarchy are identified with a unique Id
  * (which is a string). In other words you can naively think of a Store as a
@@ -1516,6 +1703,9 @@
  *       "cell1": "one",       // Cell (string)
  *       "cell2": true,        // Cell (boolean)
  *       "cell3": 3,           // Cell (number)
+ *       "cell4": null,        // Cell (null since v7.0)
+ *       "cell5": {"x": 1},    // Cell (object since v8.0)
+ *       "cell6": [1, 2, 3],   // Cell (array since v8.0)
  *       ...
  *     },
  *     ...
@@ -1914,10 +2104,11 @@
    * The getSortedRowIds method returns the Ids of every Row in a given Table,
    * sorted according to the values in a specified Cell.
    *
-   * The sorting of the rows is alphanumeric, and you can indicate whether it
-   * should be in descending order. The `offset` and `limit` parameters are used
-   * to paginate results, but default to `0` and `undefined` to return all
-   * available Row Ids if not specified.
+   * By default the sorting of the rows is alphanumeric, and you can indicate
+   * whether it should be in descending order. The `offset` and `limit`
+   * parameters are used to paginate results, but default to `0` and `undefined`
+   * to return all available Row Ids if not specified. The `sorter` parameter
+   * can provide a custom comparison function.
    *
    * Note that every call to this method will perform the sorting afresh - there
    * is no caching of the results - and so you are advised to memoize the
@@ -1934,6 +2125,8 @@
    * any.
    * @param limit The maximum number of Row Ids to return, or `undefined` for
    * all.
+   * @param sorter A custom function for comparing the sorting values, or
+   * `undefined` to use the defaultSorter function.
    * @returns An array of the sorted Ids of appropriate Rows in the Table.
    * @example
    * This example retrieves sorted Row Ids in a Table.
@@ -2005,6 +2198,24 @@
    * // -> ['cujo', 'felix', 'fido']
    * ```
    * @example
+   * This example retrieves Row Ids sorted numerically by their own value.
+   *
+   * ```js
+   * import {createStore} from 'tinybase';
+   *
+   * const store = createStore();
+   * ['1', '10', '2'].forEach((rowId) =>
+   *   store.setRow('pets', rowId, {sold: false}),
+   * );
+   * const numericSorter = (sortKey1, sortKey2) =>
+   *   Number(sortKey1) - Number(sortKey2);
+   *
+   * console.log(
+   *   store.getSortedRowIds({tableId: 'pets', sorter: numericSorter}),
+   * );
+   * // -> ['1', '2', '10']
+   * ```
+   * @example
    * This example retrieves the sorted Row Ids of a Table that does not exist,
    * returning an empty array.
    *
@@ -2023,7 +2234,7 @@
    * When called with one object argument, the getSortedRowIds method
    * destructures it to make it easier to skip optional parameters.
    * @param args A SortedRowIdsArgs object containing the Id of the Table in the
-   * Store, and optional `cellId`, `descending`, `offset`, and `limit`
+   * Store, and optional `cellId`, `descending`, `offset`, `limit`, and `sorter`
    * parameters.
    * @returns An array of the sorted Ids of appropriate Rows in the Table.
    * @example
@@ -2726,7 +2937,10 @@
    *   {open: true, employees: 3},
    * ]);
    *
-   * store.setContent([{pets: {felix: {species: 'cat', bug: []}}}, '']);
+   * store.setContent([
+   *   {pets: {felix: {species: 'cat', bug: new Date(0)}}},
+   *   '',
+   * ]);
    * console.log(store.getTables());
    * // -> {pets: {felix: {species: 'cat'}}}
    * console.log(store.getValues());
@@ -2781,7 +2995,7 @@
    *
    * const store = createStore().setTables({pets: {fido: {species: 'dog'}}});
    *
-   * store.setTables({pets: {felix: {species: 'cat', bug: []}}});
+   * store.setTables({pets: {felix: {species: 'cat', bug: new Date(0)}}});
    * console.log(store.getTables());
    * // -> {pets: {felix: {species: 'cat'}}}
    *
@@ -2836,7 +3050,7 @@
    *
    * const store = createStore().setTables({pets: {fido: {species: 'dog'}}});
    *
-   * store.setTable('pets', {felix: {species: 'cat', bug: []}});
+   * store.setTable('pets', {felix: {species: 'cat', bug: new Date(0)}});
    * console.log(store.getTables());
    * // -> {pets: {felix: {species: 'cat'}}}
    *
@@ -2889,7 +3103,7 @@
    *
    * const store = createStore().setTables({pets: {fido: {species: 'dog'}}});
    *
-   * store.setRow('pets', 'fido', {color: 'brown', bug: []});
+   * store.setRow('pets', 'fido', {color: 'brown', bug: new Date(0)});
    * console.log(store.getTables());
    * // -> {pets: {fido: {color: 'brown'}}}
    *
@@ -2953,7 +3167,7 @@
    *
    * const store = createStore().setTables({pets: {'0': {species: 'dog'}}});
    *
-   * console.log(store.addRow('pets', {species: 'cat', bug: []}));
+   * console.log(store.addRow('pets', {species: 'cat', bug: new Date(0)}));
    * // -> '1'
    * console.log(store.getTables());
    * // -> {pets: {'0': {species: 'dog'}, '1': {species: 'cat'}}}
@@ -3011,7 +3225,7 @@
    *
    * const store = createStore().setTables({pets: {fido: {species: 'dog'}}});
    *
-   * store.setPartialRow('pets', 'fido', {color: 'brown', bug: []});
+   * store.setPartialRow('pets', 'fido', {color: 'brown', bug: new Date(0)});
    * console.log(store.getTables());
    * // -> {pets: {fido: {species: 'dog', color: 'brown'}}}
    *
@@ -3033,10 +3247,10 @@
    * does not match a TablesSchema associated with the Store), will be ignored
    * silently.
    *
-   * As well as string, number, or boolean Cell types, this method can also take
-   * a MapCell function that takes the current Cell value as a parameter and
-   * maps it. This is useful if you want to efficiently increment a value
-   * without fetching it first, for example.
+   * As well as string, number, boolean, null, object, and array Cell types,
+   * this method can also take a MapCell function that takes the current Cell
+   * value as a parameter and maps it. This is useful if you want to efficiently
+   * increment a value without fetching it first, for example.
    *
    * The method returns a reference to the Store so that subsequent operations
    * can be chained in a fluent style.
@@ -3078,7 +3292,7 @@
    *
    * const store = createStore().setTables({pets: {fido: {species: 'dog'}}});
    *
-   * store.setCell('pets', 'fido', 'bug', []);
+   * store.setCell('pets', 'fido', 'bug', new Date(0));
    * console.log(store.getTables());
    * // -> {pets: {fido: {species: 'dog'}}}
    * ```
@@ -3125,7 +3339,7 @@
    *
    * const store = createStore().setValues({open: true});
    *
-   * store.setValues({employees: 3, bug: []});
+   * store.setValues({employees: 3, bug: new Date(0)});
    * console.log(store.getValues());
    * // -> {employees: 3}
    *
@@ -3177,7 +3391,7 @@
    *
    * const store = createStore().setValues({open: true});
    *
-   * store.setPartialValues({employees: 3, bug: []});
+   * store.setPartialValues({employees: 3, bug: new Date(0)});
    * console.log(store.getValues());
    * // -> {open: true, employees: 3}
    *
@@ -3198,10 +3412,10 @@
    * If the Value is invalid (either because of its type, or because it does not
    * match a ValuesSchema associated with the Store), will be ignored silently.
    *
-   * As well as string, number, or boolean Value types, this method can also
-   * take a MapValue function that takes the current Value as a parameter and
-   * maps it. This is useful if you want to efficiently increment a value
-   * without fetching it first, for example.
+   * As well as string, number, boolean, null, object, and array Value types,
+   * this method can also take a MapValue function that takes the current Value
+   * as a parameter and maps it. This is useful if you want to efficiently
+   * increment a value without fetching it first, for example.
    *
    * The method returns a reference to the Store so that subsequent operations
    * can be chained in a fluent style.
@@ -3239,7 +3453,7 @@
    *
    * const store = createStore().setValues({employees: 3});
    *
-   * store.setValue('bug', []);
+   * store.setValue('bug', new Date(0));
    * console.log(store.getValues());
    * // -> {employees: 3}
    * ```
@@ -3277,7 +3491,7 @@
    *   .setTables({pets: {fido: {species: 'dog', color: 'brown'}}})
    *   .setValues({open: true});
    *
-   * store.applyChanges([{pets: {fido: {color: 'black'}}}, {open: null}]);
+   * store.applyChanges([{pets: {fido: {color: 'black'}}}, {open: undefined}]);
    * console.log(store.getTables());
    * // -> {pets: {fido: {species: 'dog', color: 'black'}}}
    * console.log(store.getValues());
@@ -3878,6 +4092,20 @@
    * Transactions can be nested. Relevant listeners will be called only when the
    * outermost one completes.
    *
+   * If the `actions` function throws an error, all changes made in the
+   * transaction are rolled back and the same error is rethrown. Nested
+   * transactions share the outer transaction rather than acting as save-points,
+   * so an error in a nested transaction causes the whole outer transaction to
+   * be rolled back, even if the error is caught within the outer `actions`
+   * function. Transaction finish listeners are not called for an aborted
+   * transaction.
+   *
+   * Errors thrown by start, mutating, `doRollback`, or will-finish callbacks
+   * also roll back the transaction. Once non-mutating listener dispatch has
+   * started, the transaction is committed: an error from a non-mutating or
+   * did-finish listener is still propagated, but does not roll back the
+   * transaction.
+   *
    * The second, optional parameter, `doRollback` is a DoRollback callback that
    * you can use to rollback the transaction if it did not complete to your
    * satisfaction. See the DoRollback documentation for more details.
@@ -3958,10 +4186,10 @@
    *   () =>
    *     store
    *       .setCell('pets', 'fido', 'color', 'black')
-   *       .setCell('pets', 'fido', 'eyes', ['left', 'right'])
-   *       .setCell('pets', 'fido', 'info', {sold: null})
+   *       .setCell('pets', 'fido', 'date0', new Date(0))
+   *       .setCell('pets', 'fido', 'date1', new Date(1))
    *       .setValue('open', false)
-   *       .setValue('employees', ['alice', 'bob']),
+   *       .setValue('date2', new Date(2)),
    *   () => {
    *     const [, , changedCells, invalidCells, changedValues, invalidValues] =
    *       store.getTransactionLog();
@@ -3975,9 +4203,9 @@
    * );
    * // -> {pets: {fido: {species: 'dog', color: 'black'}}}
    * // -> {pets: {fido: {color: ['brown', 'black']}}}
-   * // -> {pets: {fido: {eyes: [['left', 'right']], info: [{sold: null}]}}}
+   * // -> {pets: {fido: {date0: [new Date(0)], date1: [new Date(1)]}}}
    * // -> {open: [true, false]}
-   * // -> {employees: [['alice', 'bob']]}
+   * // -> {date2: [new Date(2)]}
    *
    * console.log(store.getTables());
    * // -> {pets: {fido: {species: 'dog', color: 'brown'}}}
@@ -4098,10 +4326,10 @@
    * store
    *   .startTransaction()
    *   .setCell('pets', 'fido', 'color', 'black')
-   *   .setCell('pets', 'fido', 'eyes', ['left', 'right'])
-   *   .setCell('pets', 'fido', 'info', {sold: null})
+   *   .setCell('pets', 'fido', 'date0', new Date(0))
+   *   .setCell('pets', 'fido', 'date1', new Date(1))
    *   .setValue('open', false)
-   *   .setValue('employees', ['alice', 'bob'])
+   *   .setValue('date2', new Date(2))
    *   .finishTransaction(() => {
    *     const [, , changedCells, invalidCells, changedValues, invalidValues] =
    *       store.getTransactionLog();
@@ -4111,9 +4339,9 @@
    *     console.log(invalidValues);
    *   });
    * // -> {pets: {fido: {color: ['brown', 'black']}}}
-   * // -> {pets: {fido: {eyes: [['left', 'right']], info: [{sold: null}]}}}
+   * // -> {pets: {fido: {date0: [new Date(0)], date1: [new Date(1)]}}}
    * // -> {open: [true, false]}
-   * // -> {employees: [['alice', 'bob']]}
+   * // -> {date2: [new Date(2)]}
    * ```
    * @category Transaction
    * @since v5.0.0
@@ -4190,10 +4418,10 @@
    * store
    *   .startTransaction()
    *   .setCell('pets', 'fido', 'color', 'black')
-   *   .setCell('pets', 'fido', 'eyes', ['left', 'right'])
-   *   .setCell('pets', 'fido', 'info', {sold: null})
+   *   .setCell('pets', 'fido', 'date0', new Date(0))
+   *   .setCell('pets', 'fido', 'date1', new Date(1))
    *   .setValue('open', false)
-   *   .setValue('employees', ['alice', 'bob'])
+   *   .setValue('date2', new Date(2))
    *   .finishTransaction(() => {
    *     const [, , changedCells, invalidCells, changedValues, invalidValues] =
    *       store.getTransactionLog();
@@ -4206,9 +4434,9 @@
    *   });
    * // -> {pets: {fido: {species: 'dog', color: 'black'}}}
    * // -> {pets: {fido: {color: ['brown', 'black']}}}
-   * // -> {pets: {fido: {eyes: [['left', 'right']], info: [{sold: null}]}}}
+   * // -> {pets: {fido: {date0: [new Date(0)], date1: [new Date(1)]}}}
    * // -> {open: [true, false]}
-   * // -> {employees: [['alice', 'bob']]}
+   * // -> {date2: [new Date(2)]}
    *
    * console.log(store.getTables());
    * // -> {pets: {fido: {species: 'dog', color: 'brown'}}}
@@ -5417,7 +5645,7 @@
    * addSortedRowIdsListener method destructures it to make it easier to skip
    * optional parameters.
    * @param args A SortedRowIdsArgs object containing the Id of the Table in the
-   * Store, and optional `cellId`, `descending`, `offset`, and `limit`
+   * Store, and optional `cellId`, `descending`, `offset`, `limit`, and `sorter`
    * parameters.
    * @param listener The function that will be called whenever the sorted Row
    * Ids in the Table change.
@@ -6486,16 +6714,16 @@
    * const listenerId = store.addInvalidCellListener(
    *   'pets',
    *   'fido',
-   *   'color',
+   *   'birth',
    *   (store, tableId, rowId, cellId, invalidCells) => {
-   *     console.log('Invalid color cell in fido row in pets table');
+   *     console.log('Invalid birth cell in fido row in pets table');
    *     console.log(invalidCells);
    *   },
    * );
    *
-   * store.setCell('pets', 'fido', 'color', {r: '96', g: '4B', b: '00'});
-   * // -> 'Invalid color cell in fido row in pets table'
-   * // -> [{r: '96', g: '4B', b: '00'}]
+   * store.setCell('pets', 'fido', 'birth', new Date(0));
+   * // -> 'Invalid birth cell in fido row in pets table'
+   * // -> [new Date(0)]
    *
    * store.delListener(listenerId);
    * ```
@@ -6522,10 +6750,10 @@
    *   },
    * );
    *
-   * store.setCell('pets', 'fido', 'color', {r: '96', g: '4B', b: '00'});
-   * // -> 'Invalid color cell in fido row in pets table'
-   * store.setTable('sales', {fido: {date: new Date()}});
-   * // -> 'Invalid date cell in fido row in sales table'
+   * store.setCell('pets', 'fido', 'birth', new Date(0));
+   * // -> 'Invalid birth cell in fido row in pets table'
+   * store.setTable('sales', {fido: {birth: new Date()}});
+   * // -> 'Invalid birth cell in fido row in sales table'
    *
    * store.setRow('pets', 'felix', {});
    * // -> 'Invalid undefined cell in felix row in pets table'
@@ -6629,7 +6857,7 @@
    * const listenerId = store.addInvalidCellListener(
    *   'pets',
    *   'fido',
-   *   'color',
+   *   'birth',
    *   (store, tableId, rowId, cellId, invalidCells) =>
    *     store.setCell(
    *       'meta',
@@ -6640,9 +6868,9 @@
    *   true,
    * );
    *
-   * store.setCell('pets', 'fido', 'color', {r: '96', g: '4B', b: '00'});
+   * store.setCell('pets', 'fido', 'birth', new Date(0));
    * console.log(store.getRow('meta', 'invalid_updates'));
-   * // -> {'pets_fido_color': '{"r":"96","g":"4B","b":"00"}'}
+   * // -> {'pets_fido_birth': '"1970-01-01T00:00:00.000Z"'}
    *
    * store.delListener(listenerId);
    * ```
@@ -6704,16 +6932,16 @@
    *
    * const store = createStore().setValues({open: true});
    * const listenerId = store.addInvalidValueListener(
-   *   'open',
+   *   'openDate',
    *   (store, valueId, invalidValues) => {
-   *     console.log('Invalid open value');
+   *     console.log('Invalid openDate value');
    *     console.log(invalidValues);
    *   },
    * );
    *
-   * store.setValue('open', {yes: true});
-   * // -> 'Invalid open value'
-   * // -> [{yes: true}]
+   * store.setValue('openDate', new Date(0));
+   * // -> 'Invalid openDate value'
+   * // -> [new Date(0)]
    *
    * store.delListener(listenerId);
    * ```
@@ -6733,10 +6961,10 @@
    *   },
    * );
    *
-   * store.setValue('open', {yes: true});
-   * // -> 'Invalid open value'
-   * store.setValue('employees', ['alice', 'bob']);
-   * // -> 'Invalid employees value'
+   * store.setValue('openDate', new Date(0));
+   * // -> 'Invalid openDate value'
+   * store.setValue('closeDate', new Date(1));
+   * // -> 'Invalid closeDate value'
    *
    * store.setValues('pets', 'felix', {});
    * // -> 'Invalid undefined value'
@@ -6812,15 +7040,15 @@
    *
    * const store = createStore().setValues({open: true});
    * const listenerId = store.addInvalidValueListener(
-   *   'open',
+   *   'openDate',
    *   (store, valueId, invalidValues) =>
    *     store.setValue('invalid_updates', JSON.stringify(invalidValues[0])),
    *   true,
    * );
    *
-   * store.setValue('open', {yes: true});
+   * store.setValue('openDate', new Date(0));
    * console.log(store.getValue('invalid_updates'));
-   * // -> '{"yes":true}'
+   * // -> '"1970-01-01T00:00:00.000Z"'
    *
    * store.delListener(listenerId);
    * ```

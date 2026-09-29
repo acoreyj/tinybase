@@ -11,8 +11,14 @@ import {
   jsonStringWithUndefined,
 } from '../../../common/json.ts';
 import {createCustomPersister} from '../create.ts';
-import {getCommandFunctions} from './commands.ts';
-import {QuerySchema, SINGLE_ROW_ID, Upsert} from './common.ts';
+import {DatabaseTransaction, getCommandFunctions} from './commands.ts';
+import {
+  type Dialect,
+  GetPlaceholder,
+  QuerySchema,
+  SINGLE_ROW_ID,
+  Upsert,
+} from './common.ts';
 import type {DefaultedJsonConfig} from './config.ts';
 
 export const createJsonPersister = <
@@ -36,16 +42,25 @@ export const createJsonPersister = <
   thing: any,
   getThing: string,
   columnType: string,
+  getPlaceholder: GetPlaceholder,
   upsert?: Upsert,
+  _encode?: (cellOrValue: any) => string | number,
+  _decode?: (field: string | number) => any,
+  executeTransaction?: DatabaseTransaction,
+  dialect?: Dialect,
 ): Persister<Persist> => {
   const [refreshSchema, loadTable, saveTable, transaction] =
     getCommandFunctions(
       executeCommand,
       managedTableNames,
       querySchema,
-      onIgnoredError,
       columnType,
+      getPlaceholder,
       upsert,
+      undefined,
+      undefined,
+      executeTransaction,
+      dialect,
     );
 
   const getPersisted = (): Promise<PersistedContent<Persist>> =>
@@ -76,13 +91,7 @@ export const createJsonPersister = <
       );
     });
 
-  const destroy = async () => {
-    await persister.stopAutoPersisting();
-    extraDestroy();
-    return persister;
-  };
-
-  const persister = createCustomPersister(
+  return createCustomPersister(
     store,
     getPersisted,
     setPersisted,
@@ -90,10 +99,8 @@ export const createJsonPersister = <
     delPersisterListener,
     onIgnoredError,
     persist,
-    {[getThing]: () => thing, destroy},
+    {[getThing]: () => thing, destroy: extraDestroy},
     0,
     thing,
   );
-
-  return persister;
 };

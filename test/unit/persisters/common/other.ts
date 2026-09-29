@@ -7,8 +7,9 @@ import type {
   Store,
 } from 'tinybase';
 import type {Persister, Persists} from 'tinybase/persisters';
+import {expect} from 'vitest';
+import {waitFor} from '../../common/other.ts';
 
-export const noop = () => undefined;
 export const asyncNoop = async () => undefined;
 
 export type GetLocationMethod<Location = string> = [
@@ -35,5 +36,32 @@ export type Persistable<Location = string> = {
   afterEach?: (location: Location) => Promise<void>;
   getChanges?: () => Changes | MergeableChanges;
   testMissing: boolean;
-  extraLoad?: 0 | 1;
+  testAutoLoad: boolean;
+  testContent?: boolean;
 };
+
+export const getPersistedContentWaiter =
+  <Location>(persistable: Persistable<Location>) =>
+  async (
+    location: Location,
+    content: Content | MergeableContent,
+  ): Promise<Content | MergeableContent | void> => {
+    if (persistable.testContent === false) {
+      return await persistable.get(location);
+    }
+    const serializedContent = JSON.parse(
+      JSON.stringify(content, (_key, value) =>
+        value === undefined ? '\uFFFC' : value,
+      ),
+    );
+    let persisted: Content | MergeableContent | void = undefined;
+    await waitFor(async () => {
+      persisted = await persistable.get(location);
+      try {
+        expect(persisted).toEqual(content);
+      } catch {
+        expect(persisted).toEqual(serializedContent);
+      }
+    }, 20);
+    return persisted;
+  };

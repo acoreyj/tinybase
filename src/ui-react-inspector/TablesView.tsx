@@ -4,9 +4,17 @@ import type {
   TableProps,
   TablesProps,
 } from '../@types/ui-react/index.d.ts';
-import {arrayIsEmpty, arrayMap} from '../common/array.ts';
+import {arrayMap} from '../common/array.ts';
+import {
+  SORT_CELL,
+  STATE_TABLE,
+  getUniqueId,
+  sortedIdsMap,
+} from '../common/inspector/common.ts';
+import type {StoreProp} from '../common/inspector/types.ts';
 import {jsonParse, jsonStringWithMap} from '../common/json.ts';
 import {objNew} from '../common/obj.ts';
+import {isEmpty} from '../common/other.ts';
 import {TABLE, TABLES} from '../common/strings.ts';
 import {
   EditableCellView,
@@ -28,14 +36,7 @@ import {
   TableActions2,
   TablesActions,
 } from './actions/tables.tsx';
-import {
-  getUniqueId,
-  SORT_CELL,
-  sortedIdsMap,
-  STATE_TABLE,
-  useEditable,
-} from './common.ts';
-import type {StoreProp} from './types.ts';
+import {useEditable} from './editable.ts';
 
 const rowActions = [{label: '', component: RowActions}];
 
@@ -125,8 +126,8 @@ export const TablesView = ({
       handleEditable={handleEditable}
       s={s}
     >
-      {arrayIsEmpty(tableIds) ? (
-        <caption>No tables.</caption>
+      {isEmpty(tableIds) ? (
+        <p>No tables.</p>
       ) : (
         sortedIdsMap(tableIds, (tableId) => (
           <TableView

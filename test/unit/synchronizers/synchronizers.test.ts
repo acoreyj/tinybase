@@ -1,15 +1,19 @@
-/* eslint-disable jest/no-conditional-expect */
 import type {Content, MergeableStore} from 'tinybase';
 import {createMergeableStore} from 'tinybase';
 import type {Receive, Synchronizer} from 'tinybase/synchronizers';
-import {createCustomSynchronizer} from 'tinybase/synchronizers';
+import {Message, createCustomSynchronizer} from 'tinybase/synchronizers';
 import {createBroadcastChannelSynchronizer} from 'tinybase/synchronizers/synchronizer-broadcast-channel';
 import {createLocalSynchronizer} from 'tinybase/synchronizers/synchronizer-local';
 import {createWsSynchronizer} from 'tinybase/synchronizers/synchronizer-ws-client';
 import type {WsServer} from 'tinybase/synchronizers/synchronizer-ws-server';
 import {createWsServer} from 'tinybase/synchronizers/synchronizer-ws-server';
-import {WebSocket, WebSocketServer} from 'ws';
+import {afterEach, beforeEach, describe, expect, test, vi} from 'vitest';
+import {WebSocket} from 'ws';
 import {getTimeFunctions} from '../common/mergeable.ts';
+import {
+  createTestWebSocketServer,
+  getTestWebSocketUrl,
+} from '../common/websocket.ts';
 
 const [reset, getNow, pause] = getTimeFunctions();
 
@@ -29,7 +33,7 @@ beforeEach(() => {
 });
 
 type Synchronizable<Environment> = {
-  createEnvironment?: () => Environment;
+  createEnvironment?: () => Environment | Promise<Environment>;
   destroyEnvironment?: (environment: Environment) => Promise<void>;
   getSynchronizer: (
     store: MergeableStore,
@@ -44,13 +48,21 @@ const mockLocalSynchronizer: Synchronizable<undefined> = {
   pauseMilliseconds: 20,
 };
 
-const mockWsSynchronizer: Synchronizable<WsServer> = {
-  createEnvironment: () => createWsServer(new WebSocketServer({port: 8042})),
-  destroyEnvironment: async (wsServer: WsServer) => {
+type WsEnvironment = {port: number; wsServer: WsServer};
+
+const mockWsSynchronizer: Synchronizable<WsEnvironment> = {
+  createEnvironment: async () => {
+    const [webSocketServer, port] = await createTestWebSocketServer();
+    return {
+      port,
+      wsServer: createWsServer(webSocketServer),
+    };
+  },
+  destroyEnvironment: async ({wsServer}) => {
     await wsServer.destroy();
   },
-  getSynchronizer: async (store: MergeableStore) => {
-    const webSocket = new WebSocket('ws://localhost:8042');
+  getSynchronizer: async (store: MergeableStore, {port}) => {
+    const webSocket = new WebSocket(getTestWebSocketUrl(port));
     return await createWsSynchronizer(store, webSocket, 0.04);
   },
   pauseMilliseconds: 50,
@@ -74,6 +86,12 @@ const mockCustomSynchronizer: Synchronizable<
     return createCustomSynchronizer(
       store,
       (toClientId, requestId, messageType, messageBody): void => {
+        const toClientIds =
+          toClientId == null
+            ? [...clients.keys()].filter(
+                (otherClientId) => otherClientId != clientId,
+              )
+            : [toClientId];
         setTimeout(() => {
           const requestKey = 'push ' + messages.size;
           if (!messages.has(requestKey)) {
@@ -88,20 +106,14 @@ const mockCustomSynchronizer: Synchronizable<
                 JSON.stringify(messageBody),
             );
 
-          if (toClientId == null) {
-            clients.forEach((receive, otherClientId) =>
-              otherClientId != clientId
-                ? receive(clientId, requestId, messageType, messageBody)
-                : 0,
-            );
-          } else {
+          toClientIds.forEach((toClientId) =>
             clients.get(toClientId)?.(
               clientId,
               requestId,
               messageType,
               messageBody,
-            );
-          }
+            ),
+          );
         }, 0);
       },
       (receive: Receive): void => {
@@ -115,6 +127,215 @@ const mockCustomSynchronizer: Synchronizable<
   },
   pauseMilliseconds: 10,
 };
+
+test('Malformed custom Synchronizer messages are ignored', async () => {
+  const errors: Error[] = [];
+  let receive: Receive = () => {};
+  const synchronizer = createCustomSynchronizer(
+    createMergeableStore(),
+    () => {},
+    (registeredReceive) => (receive = registeredReceive),
+    () => {},
+    1,
+    undefined,
+    undefined,
+    (error) => errors.push(error),
+  );
+
+  expect(() => receive('peer', null, Message.GetTableDiff, null)).not.toThrow();
+  expect(errors.map(({message}) => message)).toEqual(['tinybase:14']);
+  expect(synchronizer.getSynchronizerStats()).toEqual({receives: 0, sends: 0});
+
+  await synchronizer.destroy();
+});
+
+test('Custom Synchronizer pending requests are bounded', async () => {
+  const errors: Error[] = [];
+  let receive: Receive = () => {};
+  const synchronizer = createCustomSynchronizer(
+    createMergeableStore(),
+    () => {},
+    (registeredReceive) => (receive = registeredReceive),
+    () => {},
+    1,
+    undefined,
+    undefined,
+    (error) => errors.push(error),
+  );
+
+  void synchronizer.startSync();
+  for (let request = 0; request < 101; request++) {
+    receive(
+      'peer' + request,
+      'transaction' + request,
+      Message.ContentHashes,
+      [1, 1],
+    );
+  }
+  await pause();
+
+  expect(errors.map(({message}) => message)).toContain('tinybase:15:requests');
+
+  await synchronizer.destroy();
+});
+
+test.each(['send', 'onSend'])(
+  'Custom Synchronizer cleans up failed %s',
+  async (failingSend) => {
+    const error = new Error('send error');
+    const errors: Error[] = [];
+    const send = () => {
+      if (failingSend == 'send') {
+        throw error;
+      }
+    };
+    const onSend = () => {
+      if (failingSend == 'onSend') {
+        throw error;
+      }
+    };
+    const synchronizer = createCustomSynchronizer(
+      createMergeableStore(),
+      send,
+      () => {},
+      () => {},
+      0.01,
+      onSend,
+      undefined,
+      (error) => errors.push(error),
+    );
+
+    await synchronizer.startSync();
+    await pause(20);
+    expect(errors).toEqual([error, error]);
+    await synchronizer.destroy();
+  },
+);
+
+test('Custom Synchronizer rejects and cleans up transport state', async () => {
+  const errors: Error[] = [];
+  const destroyTransport = vi.fn();
+  const send = vi.fn();
+  let fail: (error: Error) => void = () => {};
+  const synchronizer = createCustomSynchronizer(
+    createMergeableStore(),
+    send,
+    (_receive, registeredFail) => {
+      fail = registeredFail;
+    },
+    destroyTransport,
+    1,
+    undefined,
+    undefined,
+    (error) => errors.push(error),
+  );
+
+  const syncing = synchronizer.startSync();
+  await vi.waitFor(() => expect(send).toHaveBeenCalled());
+  const transportError = new Error('transport');
+  fail(transportError);
+  await syncing;
+  expect(errors).toContain(transportError);
+
+  await synchronizer.destroy();
+  expect(destroyTransport).toHaveBeenCalledOnce();
+});
+
+test('BroadcastChannel Synchronizer validates messages', async () => {
+  const errors: Error[] = [];
+  const channelName = 'invalid-messages';
+  const synchronizer = createBroadcastChannelSynchronizer(
+    createMergeableStore(),
+    channelName,
+    undefined,
+    undefined,
+    (error) => errors.push(error),
+  );
+  const channel = new BroadcastChannel(channelName);
+
+  channel.postMessage(null);
+  channel.postMessage(['peer', null, null, Message.GetTableDiff, null]);
+  await pause();
+
+  expect(errors.map(({message}) => message)).toEqual([
+    'tinybase:14',
+    'tinybase:14',
+  ]);
+  channel.close();
+  await synchronizer.destroy();
+});
+
+test('Local Synchronizer cancels scheduled messages on destroy', async () => {
+  const receive = vi.fn();
+  const sender = createLocalSynchronizer(createMergeableStore());
+  const receiver = createLocalSynchronizer(
+    createMergeableStore(),
+    undefined,
+    receive,
+  );
+
+  await sender.save();
+  await sender.destroy();
+  await pause();
+
+  expect(receive).not.toHaveBeenCalled();
+  await receiver.destroy();
+});
+
+test('Local Synchronizer tolerates delayed timer delivery', async () => {
+  vi.useFakeTimers();
+  const setTimeoutImpl = globalThis.setTimeout;
+  const timerSpy = vi
+    .spyOn(globalThis, 'setTimeout')
+    .mockImplementation(((
+      callback: (...args: any[]) => void,
+      delay = 0,
+      ...args: any[]
+    ) =>
+      setTimeoutImpl(
+        callback,
+        delay === 0 ? 15 : delay,
+        ...args,
+      )) as typeof setTimeout);
+  const errors: Error[] = [];
+  const source = createLocalSynchronizer(
+    createMergeableStore().setValue('v1', 'value'),
+  );
+  const store = createMergeableStore();
+  const target = createLocalSynchronizer(store, undefined, undefined, (error) =>
+    errors.push(error),
+  );
+  try {
+    await source.startAutoSave();
+    const loading = target.load();
+    await vi.advanceTimersByTimeAsync(200);
+    await loading;
+    expect(store.getValue('v1')).toBe('value');
+    expect(errors).toEqual([]);
+  } finally {
+    await target.destroy();
+    await source.destroy();
+    timerSpy.mockRestore();
+    vi.useRealTimers();
+  }
+});
+
+test('Local Synchronizer excludes late recipients', async () => {
+  const receive = vi.fn();
+  const sender = createLocalSynchronizer(createMergeableStore());
+
+  await sender.save();
+  const receiver = createLocalSynchronizer(
+    createMergeableStore(),
+    undefined,
+    receive,
+  );
+  await pause();
+
+  expect(receive).not.toHaveBeenCalled();
+  await sender.destroy();
+  await receiver.destroy();
+});
 
 describe.each([
   ['LocalSynchronizer', mockLocalSynchronizer],
@@ -147,8 +368,8 @@ describe.each([
       ]).toMatchSnapshot('stats');
     };
 
-    beforeEach(() => {
-      environment = synchronizable.createEnvironment?.();
+    beforeEach(async () => {
+      environment = await synchronizable.createEnvironment?.();
     });
 
     afterEach(async () => {
@@ -252,6 +473,11 @@ describe.each([
         await synchronizer1.startSync();
         await synchronizer2.startSync();
         await pause(synchronizable.pauseMilliseconds);
+        await vi.waitFor(() =>
+          expect(store1.getMergeableContent()).toEqual(
+            store2.getMergeableContent(),
+          ),
+        );
       };
 
       beforeEach(() => {
@@ -298,6 +524,58 @@ describe.each([
         store2.setCell('t2', 'r2', 'c2', 2);
         await sync();
         expectEachToHaveContent([{t1: {r1: {c1: 1}}, t2: {r2: {c2: 2}}}, {}]);
+      });
+
+      test('object and array cell', async () => {
+        store1.setCell('t1', 'r1', 'c1', {k1: 'v'});
+        store2.setCell('t1', 'r1', 'c2', [1, 2, 3]);
+        await sync();
+        expectEachToHaveContent([
+          {t1: {r1: {c1: {k1: 'v'}, c2: [1, 2, 3]}}},
+          {},
+        ]);
+      });
+
+      test('reserved identifiers', async () => {
+        store1
+          .setCell('__proto__', 'constructor', 'prototype', 'safe')
+          .setValue('__proto__', 'safe');
+        await sync();
+
+        const [tables, values] = store2.getContent();
+        expect(Object.hasOwn(tables, '__proto__')).toEqual(true);
+        expect(tables['__proto__']['constructor']['prototype']).toEqual('safe');
+        expect(Object.hasOwn(values, '__proto__')).toEqual(true);
+        expect(values['__proto__']).toEqual('safe');
+      });
+
+      test('defaulted value does not overwrite value', async () => {
+        const valuesSchema = {v1: {type: 'number', default: 0}} as const;
+        store1.setValuesSchema(valuesSchema);
+        store1.setValue('v1', 1);
+        await pause(synchronizable.pauseMilliseconds);
+        store2.setValuesSchema(valuesSchema);
+        await sync();
+        expect(store1.getContent()).toEqual([{}, {v1: 1}]);
+        expect(store2.getContent()).toEqual([{}, {v1: 1}]);
+        expect(store2.getMergeableContent()).toEqual(
+          store1.getMergeableContent(),
+        );
+      });
+
+      test('defaulted cell does not overwrite cell', async () => {
+        const tablesSchema = {t1: {c1: {type: 'number', default: 0}}} as const;
+        store1.setTablesSchema(tablesSchema);
+        store1.setCell('t1', 'r1', 'c1', 1);
+        await pause(synchronizable.pauseMilliseconds);
+        store2.setTablesSchema(tablesSchema);
+        store2.setRow('t1', 'r1', {});
+        await sync();
+        expect(store1.getContent()).toEqual([{t1: {r1: {c1: 1}}}, {}]);
+        expect(store2.getContent()).toEqual([{t1: {r1: {c1: 1}}}, {}]);
+        expect(store2.getMergeableContent()).toEqual(
+          store1.getMergeableContent(),
+        );
       });
     });
 
@@ -654,6 +932,58 @@ describe.each([
         store2.setValue('v1', 2);
         await pause(synchronizable.pauseMilliseconds);
         expectEachToHaveContent([{}, {v1: 2}]);
+      });
+
+      test('mutator mutation', async () => {
+        store2.addRowListener(
+          't1',
+          null,
+          (store, tableId, rowId) => {
+            if (store.getCell(tableId, rowId, 'c1') === true) {
+              store.setCell(tableId, rowId, 'c2', 'b');
+            }
+          },
+          true,
+        );
+
+        store1.setRow('t1', 'r1', {c1: true, c2: 'a'});
+        expect(store1.getTable('t1')).toEqual({r1: {c1: true, c2: 'a'}});
+
+        await pause(synchronizable.pauseMilliseconds);
+        expect(store2.getTable('t1')).toEqual({r1: {c1: true, c2: 'b'}});
+
+        await pause(synchronizable.pauseMilliseconds);
+        expect(store1.getTable('t1')).toEqual({r1: {c1: true, c2: 'b'}});
+
+        store1.setRow('t2', 'r2', {c1: false, c2: 'a'});
+        await pause(synchronizable.pauseMilliseconds);
+        expect(store1.getTable('t2')).toEqual({r2: {c1: false, c2: 'a'}});
+        expect(store2.getTable('t2')).toEqual({r2: {c1: false, c2: 'a'}});
+      });
+
+      test('mutator deletion', async () => {
+        store2.addRowListener(
+          't1',
+          null,
+          (store, tableId, rowId) => {
+            if (store.getCell(tableId, rowId, 'c1') === true) {
+              store.delRow(tableId, rowId);
+            }
+          },
+          true,
+        );
+
+        store1.setRow('t1', 'r1', {c1: true, c2: 'a'});
+        await pause(synchronizable.pauseMilliseconds);
+        expect(store2.getTable('t1')).toEqual({});
+
+        await pause(synchronizable.pauseMilliseconds);
+        expect(store1.getTable('t1')).toEqual({});
+
+        store1.setRow('t2', 'r2', {c1: false, c2: 'a'});
+        await pause(synchronizable.pauseMilliseconds);
+        expect(store1.getTable('t2')).toEqual({r2: {c1: false, c2: 'a'}});
+        expect(store2.getTable('t2')).toEqual({r2: {c1: false, c2: 'a'}});
       });
 
       describe('tracking messages', () => {

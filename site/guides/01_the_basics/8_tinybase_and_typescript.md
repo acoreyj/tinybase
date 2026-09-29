@@ -7,17 +7,18 @@ use with TinyBase.
 
 Out of the box, TinyBase has complete type coverage for all of its modules. So
 for example, setting and getting tabular and key-value data will obey the
-system's constraints. A Cell or a Value can only be a number, string, or
-boolean, for example:
+system's constraints. A Cell or a Value can be a number, string, boolean,
+`null`, or a plain JavaScript object or array, for example:
 
-```ts yolo
+```ts ignore
 import {createStore} from 'tinybase';
 
 const store = createStore();
 
-store.setValues({employees: 3}); //                OK
-store.setValues({employees: true}); //             OK
-store.setValues({employees: ['Alice', 'Bob']}); // TypeScript error
+store.setValues({employees: 3}); //                  OK
+store.setValues({employees: true}); //               OK
+store.setValues({employees: ['Alice', 'Bob']}); //   OK since v8.0
+store.setValues({employees: () => 3}); //            TypeScript error
 ```
 
 This basic typing of the API is comprehensively described throughout in the API
@@ -32,7 +33,7 @@ contain.
 Since v3.1, TinyBase can provide typing that adapts according to the schema when
 you import the `with-schemas` version of the library. For example:
 
-```ts yolo
+```ts ignore
 import {createStore} from 'tinybase/with-schemas';
 
 // NB the 'with-schemas'

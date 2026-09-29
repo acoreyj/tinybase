@@ -1,3 +1,5 @@
+import {beforeEach, describe, expect, test, vi} from 'vitest';
+
 import type {Metrics, Store} from 'tinybase';
 import {createMetrics, createStore} from 'tinybase';
 import {expectChanges, expectNoChanges} from '../../common/expect.ts';
@@ -63,6 +65,24 @@ describe('Sets', () => {
     expect(metrics.getMetric('m1')).toBeUndefined();
   });
 
+  test('avg after replacing all rows in a transaction', () => {
+    store.setCell('t1', 'r1', 'c1', 1);
+    metrics.setMetricDefinition('m1', 't1', 'avg', 'c1');
+    const listener = vi.fn();
+    metrics.addMetricListener('m1', listener);
+
+    store.transaction(() => {
+      store.delRow('t1', 'r1');
+      store.setCell('t1', 'r2', 'c1', 2);
+      store.setCell('t1', 'r3', 'c1', 4);
+    });
+
+    expect(metrics.getMetric('m1')).toBe(3);
+    expect(listener).toHaveBeenCalledExactlyOnceWith(metrics, 'm1', 3, 1);
+    store.setCell('t1', 'r3', 'c1', 6);
+    expect(metrics.getMetric('m1')).toBe(4);
+  });
+
   test('min', () => {
     setCells();
     metrics.setMetricDefinition('m1', 't1', 'min', 'c1');
@@ -85,6 +105,25 @@ describe('Sets', () => {
     expect(metrics.getMetric('m1')).toBe(3);
     delCells();
     expect(metrics.getMetric('m1')).toBeUndefined();
+  });
+
+  test('min and max support large tables', () => {
+    const rowCount = 125000;
+    store.setTable(
+      't1',
+      Object.fromEntries(
+        Array.from({length: rowCount}, (_, index) => [
+          'r' + index,
+          {c1: index},
+        ]),
+      ),
+    );
+    metrics
+      .setMetricDefinition('min', 't1', 'min', 'c1')
+      .setMetricDefinition('max', 't1', 'max', 'c1');
+
+    expect(metrics.getMetric('min')).toBe(0);
+    expect(metrics.getMetric('max')).toBe(rowCount - 1);
   });
 
   test('definition before data', () => {
@@ -202,7 +241,7 @@ describe('Listens to Metrics when sets', () => {
     expect.assertions(5);
     store.setTables({t1: {r1: {c1: 1}}});
     metrics.setMetricDefinition('m1', 't1');
-    const listener = jest.fn((metrics2, metricId, newMetric, oldMetric) => {
+    const listener = vi.fn((metrics2, metricId, newMetric, oldMetric) => {
       expect(metrics2).toEqual(metrics);
       expect(metricId).toEqual('m1');
       expect(oldMetric).toEqual(1);
@@ -589,7 +628,7 @@ describe('Listens to Metrics when sets', () => {
 
 describe('Miscellaneous', () => {
   test('Listener cannot mutate original store', () => {
-    const listener = jest.fn(() => {
+    const listener = vi.fn(() => {
       store.setValue('mutated', true);
     });
     metrics.setMetricDefinition('m1', 't1');

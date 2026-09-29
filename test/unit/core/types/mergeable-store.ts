@@ -684,7 +684,7 @@ const storeWithSchemasOneValue = store.setSchema(tablesSchema, oneValueSchema);
     (store, tableId) => {
       store.getTables().t1;
       tableId == 't1';
-      tableId == 't0';
+      tableId == 't0'; // !
       store.getTables().t2; // !
       tableId == 't2'; // !
     },
@@ -1520,10 +1520,91 @@ const storeWithSchemasOneValue = store.setSchema(tablesSchema, oneValueSchema);
   mergeableContent[0][0].t1?.[0]?.r1?.[0]?.c1d?.[0] as string;
   mergeableContent[0][0].t1?.[0]?.r1?.[0]?.c1?.[0] as string; // !
   mergeableContent[0][0].t1?.[0]?.r1?.[0]?.c1d?.[0] as number; // !
-  mergeableContent[0][0].t1?.[0]?.r1?.[0]?.c2?.[0] as number;
+  mergeableContent[0][0].t1?.[0]?.r1?.[0]?.c2?.[0] as number; // !
 
   mergeableContent[1][0].v1;
   mergeableContent[1][0].v1![0] as undefined;
   mergeableContent[1][0].v1![0] as string; // !
   mergeableContent[1][0].v2; // !
+
+  const changes = storeWithSchemas.getTransactionMergeableChanges();
+  changes[0][2]; // !
+  const hashedChanges = storeWithSchemas.getTransactionMergeableChanges(true);
+  hashedChanges[0][2] as number;
+  hashedChanges[0][2] as string; // !
 };
+
+// WhenSet flags
+type TestSchemas = [typeof tablesSchema, typeof valuesSchema];
+type MergeableContentWhenSet =
+  import('tinybase/mergeable-store/with-schemas').MergeableContent<
+    TestSchemas,
+    true
+  >;
+type MergeableChangesWhenSet =
+  import('tinybase/mergeable-store/with-schemas').MergeableChanges<
+    TestSchemas,
+    false,
+    true
+  >;
+const mergeableContentWhenSet =
+  storeWithSchemas.getMergeableContent() as MergeableContentWhenSet;
+const mergeableChangesWhenSet = {} as MergeableChangesWhenSet;
+
+mergeableContentWhenSet[0][0].t1;
+storeWithSchemas.setMergeableContent(mergeableContentWhenSet);
+storeWithSchemas.applyMergeableChanges(mergeableChangesWhenSet);
+const _mergeableContentWhenSetWithBadCell: MergeableContentWhenSet = [
+  [
+    {
+      t1: [
+        {
+          r1: [
+            {
+              c1: ['a', '', 0], // !
+            },
+            '',
+            0,
+          ],
+        },
+        '',
+        0,
+      ],
+    },
+    '',
+    0,
+  ],
+  [{v1: [1, '', 0]}, '', 0],
+];
+const _mergeableContentWhenSetWithBadCellId: MergeableContentWhenSet = [
+  [
+    {
+      t1: [
+        {
+          r1: [
+            {
+              c2: [1, '', 0], // !
+            },
+            '',
+            0,
+          ],
+        },
+        '',
+        0,
+      ],
+    },
+    '',
+    0,
+  ],
+  [{v1: [1, '', 0]}, '', 0],
+];
+const _mergeableChangesWhenSetWithBadValue: MergeableChangesWhenSet = [
+  [{t1: [{r1: [{c1: [1, '']}, '']}, '']}, ''],
+  [{v1: ['a', '']}, ''], // !
+  1,
+];
+const _mergeableChangesWhenSetWithBadValueId: MergeableChangesWhenSet = [
+  [{t1: [{r1: [{c1: [1, '']}, '']}, '']}, ''],
+  [{v2: [1, '']}, ''], // !
+  1,
+];

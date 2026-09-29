@@ -1,0 +1,67 @@
+import {test} from '@playwright/test';
+import {
+  expectedElement,
+  expectedFramedElement,
+  getServerFunctions,
+} from '../common.ts';
+
+const {beforeAll, afterAll, describe} = test;
+const [startServer, stopServer, expectPage] = getServerFunctions(8812);
+
+beforeAll(startServer);
+afterAll(stopServer);
+
+describe('chart-components', () => {
+  test('Composing Charts', async ({page}) => {
+    await expectPage(page, `/demos/chart-components-react/composing-charts/`);
+    await expectedElement(page, 'h1', 'Composing Charts');
+    await expectedFramedElement(page, 'svg.chart-lines .series-revenue .line');
+    await expectedFramedElement(page, 'svg.chart-bars .series-orders .bar');
+    await expectedFramedElement(page, 'svg.chart-mixed .series-revenue .line');
+  });
+
+  test('Sorting And Types', async ({page}) => {
+    await expectPage(page, `/demos/chart-components-react/sorting-and-types/`);
+    await expectedElement(page, 'h1', 'Sorting And Types');
+    await expectedFramedElement(page, 'svg.chart-numbers .plot .line');
+    await expectedFramedElement(page, 'svg.chart-categories .bar');
+    await expectedFramedElement(
+      page,
+      'svg.chart-booleans .series-accounts .bar',
+    );
+    await expectedFramedElement(page, 'svg.chart-booleans text', 'true');
+    await expectedFramedElement(page, 'svg.chart-booleans text', 'false');
+  });
+
+  test('Axis Overrides', async ({page}) => {
+    await expectPage(page, `/demos/chart-components-react/axis-overrides/`);
+    await expectedElement(page, 'h1', 'Axis Overrides');
+    await expectedFramedElement(page, 'svg.chart-axes .plot .line');
+    await expectedFramedElement(page, 'svg.chart-axes .axis-dates', 'Jan 3');
+    await expectedFramedElement(
+      page,
+      'svg.chart-axes .axis-dates',
+      'Sale date',
+    );
+    await expectedFramedElement(page, 'svg.chart-axes .axis-revenue', '$40k');
+    await expectedFramedElement(
+      page,
+      'svg.chart-axes .axis-revenue',
+      'Revenue',
+    );
+  });
+
+  test('Time Axes', async ({page}) => {
+    await expectPage(page, `/demos/chart-components-react/time-axes/`);
+    await expectedElement(page, 'h1', 'Time Axes');
+    await expectedFramedElement(page, 'svg.chart-iso .plot .line');
+    await expectedFramedElement(page, 'svg.chart-iso .axes .x', 'day');
+    await expectedFramedElement(page, 'svg.chart-unix .plot .line');
+    await expectedFramedElement(page, 'svg.chart-unix .axis-unix', 'Jan 5');
+    await expectedFramedElement(
+      page,
+      'svg.chart-unix .axis-unix',
+      'Order date',
+    );
+  });
+});

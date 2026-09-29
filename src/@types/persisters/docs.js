@@ -14,21 +14,20 @@
  * |-|-|-|-|
  * |SessionPersister|Browser session storage|Yes|Yes
  * |LocalPersister|Browser local storage|Yes|Yes
+ * |OpfsPersister|Browser origin private file system (OPFS)|Yes|Yes
  * |FilePersister|Local file (where possible)|Yes|Yes
  * |IndexedDbPersister|Browser IndexedDB|Yes|No
  * |RemotePersister|Remote server|Yes|No
  * |ReactNativeMmkvPersister|MMKV in React Native, via [react-native-mmkv](https://github.com/mrousavy/react-native-mmkv)|Yes|Yes
  * |DurableObjectStoragePersister|Cloudflare Durable Object (KV)|No|Yes
  * |DurableObjectSqlStoragePersister|Cloudflare Durable Object (SQLite)|No|Yes
- * |Sqlite3Persister|SQLite in Node, via [sqlite3](https://github.com/TryGhost/node-sqlite3)|Yes|Yes*
  * |SqliteBunPersister| SQLite in Bun, via [bun:sqlite](https://bun.sh/docs/api/sqlite)|Yes|Yes*
  * |SqliteWasmPersister|SQLite in a browser, via [sqlite-wasm](https://github.com/tomayac/sqlite-wasm)|Yes|Yes*
  * |ExpoSqlitePersister|SQLite in React Native, via [expo-sqlite](https://github.com/expo/expo/tree/main/packages/expo-sqlite)|Yes|Yes*
  * |ReactNativeSqlitePersister|SQLite in React Native, via [react-native-sqlite-storage](https://github.com/andpor/react-native-sqlite-storage)|Yes|Yes*
  * |PostgresPersister|PostgreSQL, via [postgres](https://github.com/porsager/postgres)|Yes|Yes*
  * |PglitePersister|PostgreSQL, via [PGlite](https://github.com/electric-sql/pglite)|Yes|Yes*
- * |CrSqliteWasmPersister|SQLite CRDTs, via [cr-sqlite-wasm](https://github.com/vlcn-io/cr-sqlite)|Yes|No
- * |ElectricSqlPersister|Electric SQL, via [electric-sql](https://github.com/electric-sql/electric)|Yes|No
+ * |TinyJoinPersister|PostgreSQL-shaped SQL in a browser, via [TinyJoin](https://tinyjoin.org)|Yes|Yes*
  * |LibSqlPersister|LibSQL for Turso, via [libsql-client](https://github.com/tursodatabase/libsql-client-ts)|Yes|No
  * |PowerSyncPersister|PowerSync, via [powersync-sdk](https://github.com/powersync-ja/powersync-js)|Yes|No
  * |YjsPersister|Yjs CRDTs, via [yjs](https://github.com/yjs/yjs)|Yes|No
@@ -178,10 +177,10 @@
  * neither are present, the content will be loaded using the Persister's load
  * method. Prior to v5.0, these parameters were callbacks and the overall type
  * was non-generic.
- * @param content If provided, this is a Content object from the Persister
- * that will be used to immediately wholesale update the Store.
- * @param changes If provided, this is a Changes object from the Persister
- * that will be used to immediately incrementally update the Store. This takes
+ * @param content If provided, this is a Content object from the Persister that
+ * will be used to immediately wholesale update the Store.
+ * @param changes If provided, this is a Changes object from the Persister that
+ * will be used to immediately incrementally update the Store. This takes
  * priority over the content argument above if present.
  * @category Creation
  * @since v4.0.0
@@ -784,12 +783,15 @@
  * Note that both loading and saving of Values from and to the database are
  * disabled by default.
  *
+ * The `load` and `save` properties can be set to `true` to persist all Values,
+ * or to a DpcTabularValuesIn array to persist just a subset of Value Ids.
+ *
  * The 'Dpc' prefix indicates that this type is used within the
  * DatabasePersisterConfig type.
  * @example
  * When applied to a database Persister, this DatabasePersisterConfig will load
- * and save the data of a Store's Values into a database
- * table called 'my_tinybase_values'.
+ * and save the data of two Store Values into a database table called
+ * 'my_tinybase_values'.
  *
  * ```js
  * import type {DatabasePersisterConfig} from 'tinybase';
@@ -797,8 +799,8 @@
  * export const databasePersisterConfig: DatabasePersisterConfig = {
  *   mode: 'tabular',
  *   values: {
- *     load: true,
- *     save: true,
+ *     load: ['selectedPet', 'open'],
+ *     save: ['selectedPet', 'open'],
  *     tableName: 'my_tinybase_values',
  *   },
  * };
@@ -809,13 +811,15 @@
 /// DpcTabularValues
 {
   /**
-   * Whether Store Values will be loaded from a database table.
+   * Whether Store Values will be loaded from a database table, or the subset of
+   * Value Ids that will be loaded.
    * @category Configuration
    * @since v4.0.0
    */
   /// DpcTabularValues.load
   /**
-   * Whether Store Values will be saved to a database table.
+   * Whether Store Values will be saved to a database table, or the subset of
+   * Value Ids that will be saved.
    * @category Configuration
    * @since v4.0.0
    */
@@ -828,6 +832,20 @@
    */
   /// DpcTabularValues.tableName
 }
+/**
+ * The DpcTabularValuesIn type describes the subset of Store Values that are
+ * persisted by the DpcTabularValues type.
+ *
+ * When used as the DpcTabularValues `load` or `save` property, only the listed
+ * Value Ids will be loaded from or saved to the database table. Unlisted
+ * database columns are ignored on load and left untouched on save.
+ *
+ * The 'Dpc' prefix indicates that this type is used within the
+ * DatabasePersisterConfig type.
+ * @category Configuration
+ * @since v9.0.0
+ */
+/// DpcTabularValuesIn
 /**
  * A Persister object lets you save and load Store data to and from different
  * locations, or underlying storage types.
@@ -1295,6 +1313,10 @@
    * This simply runs the startAutoLoad and startAutoSave methods in sequence,
    * and returns a Promise that resolves when both have completed.
    *
+   * If the second method fails after either half has partially started, both
+   * halves are stopped again before this method rejects. The original startup
+   * error is preserved if that cleanup also fails.
+   *
    * This method can take `initialContent` to pass to the startAutoLoad method.
    * See its documentation for more details.
    *
@@ -1457,8 +1479,8 @@
    * });
    *
    * await persister.load();
-   * // -> `Status changed to 1`
-   * // -> `Status changed to 0`
+   * // -> 'Status changed to 1'
+   * // -> 'Status changed to 0'
    *
    * persister.delListener(listenerId);
    *
@@ -1491,7 +1513,7 @@
    * Store and then sequences two tasks in order to update its data on a
    * hypothetical remote system.
    *
-   * ```js yolo
+   * ```js ignore
    * import {
    *   checkRemoteSystemIsReady,
    *   getDataFromRemoteSystem,
@@ -1696,7 +1718,8 @@
  * `stopListeningToPersisted` has been renamed `delPersisterListener`.
  * @param store The Store to persist.
  * @param getPersisted An asynchronous function which will fetch content from
- * the persistence layer (or `undefined` if not present).
+ * the persistence layer. If it returns `undefined`, the load will use the
+ * provided initial content if present, and otherwise leave the Store unchanged.
  * @param setPersisted An asynchronous function which will send content to the
  * persistence layer. Since v4.0, it receives functions for getting the Store
  * content and information about the changes made during a transaction. Since
@@ -1839,11 +1862,18 @@
  * ideas on how to build your own Persister type, and as functional examples.
  * Examine the implementation of the createSqlite3Persister function as a good
  * starting point, for example.
+ *
+ * Your `executeCommand` function is given SQL that uses SQLite's anonymous `?`
+ * placeholders, with the parameters to bind to them in order. SQLite drivers
+ * agree on that form, whereas they vary in how they handle the numbered
+ * placeholders that PostgreSQL requires, so you should not need to rewrite
+ * statements before passing them on.
  * @param store The Store to persist.
  * @param configOrStoreTableName A DatabasePersisterConfig object, or a string
  * that will be used as the name of the Store's table in the database.
  * @param executeCommand A function that will execute a command against the
- * database.
+ * database. It receives SQL with anonymous `?` placeholders, and the parameters
+ * to bind to them in order.
  * @param addChangeListener A function that will register a listener for changes
  * to the database.
  * @param delChangeListener A function that will unregister the listener for
@@ -1868,6 +1898,46 @@
  * @since v5.2.0
  */
 /// createCustomSqlitePersister
+/**
+ * The createCustomMsSqlPersister function creates a Persister object that you
+ * can configure to persist the Store to a SQL Server database.
+ *
+ * This is only used when developing custom database-oriented Persisters, and
+ * most TinyBase users will not need to be particularly aware of it.
+ *
+ * Unlike the PostgreSQL equivalent, this takes no change listener functions.
+ * SQL Server has no notification mechanism that is available on every one of
+ * its hosted flavors, so automatic loading polls a `rowversion` column that the
+ * Persister maintains instead.
+ *
+ * The createMsSqlPersister function uses this function under the covers, and so
+ * you may wish to look at that implementation for ideas on how to build your
+ * own Persister type, and as a functional example.
+ * @param store The Store to persist.
+ * @param configOrStoreTableName A DpcJson object, or a string that will be used
+ * as the name of the Store's table in the database.
+ * @param executeCommand A function that will execute a command against the
+ * database.
+ * @param onSqlCommand A function that will be called for each SQL command
+ * executed against the database.
+ * @param onIgnoredError An optional handler for the errors that the Persister
+ * would otherwise ignore when trying to save or load data. This is suitable for
+ * debugging persistence issues in a development environment.
+ * @param destroy A function that will be called to perform any extra clean up
+ * on the Persister.
+ * @param persist An integer from the Persists enum to indicate which types of
+ * Store are supported by this Persister: `1` indicates only a regular Store is
+ * supported, `2` indicates only a MergeableStore is supported, and `3`
+ * indicates that both Store and MergeableStore are supported.
+ * @param thing A reference to the database or connection that can be returned
+ * with a method, by default called `getDb`.
+ * @param getThing An optional string that will be used to get the reference to
+ * the database or connection from the Persister, defaulting to `getDb`.
+ * @returns A reference to the new Persister object.
+ * @category Creation
+ * @since 10.0.0
+ */
+/// createCustomMsSqlPersister
 /**
  * The createCustomPostgreSqlPersister function creates a Persister object that
  * you can configure to persist the Store to a PostgreSQL database.

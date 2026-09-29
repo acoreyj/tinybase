@@ -20,6 +20,15 @@ export class WsServerDurableObject<Env = unknown> extends DurableObject<Env> {
   /// WsServerDurableObject.getClientIds
   getClientIds(): Ids;
 
+  /// WsServerDurableObject.getFragmentSize
+  getFragmentSize(): number | undefined;
+
+  /// WsServerDurableObject.getRequestTimeoutSeconds
+  getRequestTimeoutSeconds(): number;
+
+  /// WsServerDurableObject.onIgnoredError
+  onIgnoredError(error: any): void;
+
   /// WsServerDurableObject.onPathId
   onPathId(pathId: Id, addedOrRemoved: IdAddedOrRemoved): void;
 
@@ -49,4 +58,4 @@ export function getWsServerDurableObjectFetch<Namespace extends string>(
   env: {
     [namespace in Namespace]: DurableObjectNamespace<WsServerDurableObject>;
   },
-) => Response;
+) => Response | Promise<Response>;

@@ -1,0 +1,461 @@
+import {createRequire} from 'module';
+import {DatabaseSync} from 'node:sqlite';
+import {createMergeableStore, createStore} from 'tinybase';
+import {createCustomSqlitePersister, Persists} from 'tinybase/persisters';
+import {createSqliteNodePersister} from 'tinybase/persisters/persister-sqlite-node';
+import {afterEach, expect, test, vi} from 'vitest';
+import {isBun, waitFor} from '../../common/other.ts';
+
+const Database = createRequire(import.meta.url)('better-sqlite3');
+
+afterEach(() => vi.useRealTimers());
+
+test('replaces every table name placeholder', async () => {
+  const db = new DatabaseSync(':memory:');
+  db.exec(
+    'CREATE TABLE pets (id TEXT PRIMARY KEY, species TEXT);' +
+      `INSERT INTO pets VALUES ('fido', 'dog'), ('felix', 'cat');`,
+  );
+  const store = createStore();
+  const persister = createSqliteNodePersister(store, db, {
+    mode: 'tabular',
+    tables: {
+      load: {
+        pets: {
+          tableId: 'pets',
+          rowIdColumnName: 'id',
+          condition: `$tableName.species = 'dog' OR $tableName.species = 'cat'`,
+        },
+      },
+    },
+  });
+  await persister.load();
+
+  expect(store.getTable('pets')).toEqual({
+    fido: {species: 'dog'},
+    felix: {species: 'cat'},
+  });
+  await persister.destroy();
+  db.close();
+});
+
+test('rolls back failed database transactions', async () => {
+  const db = new DatabaseSync(':memory:');
+  const ignoredError = vi.fn();
+  const executeCommand = async (
+    sql: string,
+    params: any[] = [],
+  ): Promise<any[]> => db.prepare(sql).all(...params) as any[];
+  const persister = createCustomSqlitePersister(
+    createStore().setValue('species', 'dog'),
+    undefined,
+    async (sql, params) =>
+      sql.startsWith('INSERT')
+        ? Promise.reject(new Error('insert failed'))
+        : executeCommand(sql, params),
+    () => undefined,
+    () => {},
+    undefined,
+    ignoredError,
+    () => {},
+    Persists.StoreOnly,
+    db,
+  );
+  await persister.save();
+
+  expect(
+    await executeCommand(
+      `SELECT name FROM sqlite_master WHERE type='table'AND name='tinybase'`,
+    ),
+  ).toEqual([]);
+  expect(ignoredError).toHaveBeenCalledOnce();
+  expect(ignoredError.mock.calls[0][0].message).toBe('insert failed');
+  await persister.destroy();
+  db.close();
+});
+
+test('establishes the SQLite auto-load baseline before polling', async () => {
+  let content = '[{},{"species":"dog"}]';
+  let dataVersion = 1;
+  const persister = createCustomSqlitePersister(
+    createStore(),
+    {mode: 'json', autoLoadIntervalSeconds: 0.01},
+    async (sql) =>
+      sql.includes('data_version')
+        ? [{d: dataVersion, s: 1, c: 0}]
+        : sql.includes('pragma_table')
+          ? [
+              {tn: 'tinybase', cn: '_id'},
+              {tn: 'tinybase', cn: 'store'},
+            ]
+          : sql.startsWith('SELECT*')
+            ? [{_id: '_', store: content}]
+            : [],
+    () => undefined,
+    () => {},
+    undefined,
+    undefined,
+    () => {},
+    Persists.StoreOnly,
+    {},
+  );
+  await persister.startAutoLoad();
+
+  content = '[{},{"species":"cat"}]';
+  dataVersion++;
+  await waitFor(() =>
+    expect(persister.getStore().getValue('species')).toBe('cat'),
+  );
+  await persister.destroy();
+});
+
+test('serializes and drains SQLite auto-load polling', async () => {
+  vi.useFakeTimers();
+  let changeListener!: (tableName: string) => void;
+  let resolveBaseline!: (rows: any[]) => void;
+  let resolvePoll!: (rows: any[]) => void;
+  let resolvePollStarted!: () => void;
+  let resolveRegistered!: () => void;
+  let resolveDelete!: () => void;
+  let resolveDeleteStarted!: () => void;
+  let slowPoll = false;
+  let versionChecks = 0;
+  const baseline = new Promise<any[]>((resolve) => (resolveBaseline = resolve));
+  const poll = new Promise<any[]>((resolve) => (resolvePoll = resolve));
+  const pollStarted = new Promise<void>(
+    (resolve) => (resolvePollStarted = resolve),
+  );
+  const registered = new Promise<void>(
+    (resolve) => (resolveRegistered = resolve),
+  );
+  const deleting = new Promise<void>((resolve) => (resolveDelete = resolve));
+  const deleteStarted = new Promise<void>(
+    (resolve) => (resolveDeleteStarted = resolve),
+  );
+  const delChangeListener = vi.fn(() => {
+    resolveDeleteStarted();
+    return deleting;
+  });
+  const persister = createCustomSqlitePersister(
+    createStore(),
+    {mode: 'json', autoLoadIntervalSeconds: 0.01},
+    async (sql) => {
+      if (sql.includes('data_version')) {
+        versionChecks++;
+        if (versionChecks == 1) {
+          return await baseline;
+        }
+        if (slowPoll) {
+          resolvePollStarted();
+          return await poll;
+        }
+        return [{d: 1, s: 1, c: 0}];
+      }
+      return sql.includes('pragma_table')
+        ? [
+            {tn: 'tinybase', cn: '_id'},
+            {tn: 'tinybase', cn: 'store'},
+          ]
+        : sql.startsWith('SELECT*')
+          ? [{_id: '_', store: '[{}, {"species":"dog"}]'}]
+          : [];
+    },
+    (listener) => {
+      changeListener = listener;
+      resolveRegistered();
+      return 0;
+    },
+    delChangeListener,
+    undefined,
+    undefined,
+    () => {},
+    Persists.StoreOnly,
+    {},
+  );
+  const starting = persister.startAutoLoad();
+  await registered;
+  changeListener('tinybase');
+  resolveBaseline([{d: 1, s: 1, c: 0}]);
+  await starting;
+
+  expect(vi.getTimerCount()).toBe(1);
+  const loads = persister.getStats().loads;
+  slowPoll = true;
+  vi.advanceTimersByTime(10);
+  await pollStarted;
+  vi.advanceTimersByTime(100);
+
+  expect(versionChecks).toBe(4);
+  let destroyed = false;
+  const destroying = persister.destroy().then(() => (destroyed = true));
+  await Promise.resolve();
+  expect(destroyed).toBe(false);
+
+  resolvePoll([{d: 2, s: 1, c: 0}]);
+  await deleteStarted;
+  expect(destroyed).toBe(false);
+  resolveDelete();
+  await destroying;
+
+  expect(persister.getStats().loads).toBe(loads);
+  expect(vi.getTimerCount()).toBe(0);
+  expect(delChangeListener).toHaveBeenCalledWith(0);
+});
+
+test('preserves the SQLite baseline across native reloads', async () => {
+  vi.useFakeTimers();
+  let changeListener!: (tableName: string) => void;
+  let content = '[{}, {"species":"dog"}]';
+  let dataVersion = 1;
+  let injectExternalChange = false;
+  let resolveNativeLoad!: () => void;
+  let resolveExternalLoad!: () => void;
+  const nativeLoad = new Promise<void>(
+    (resolve) => (resolveNativeLoad = resolve),
+  );
+  const externalLoad = new Promise<void>(
+    (resolve) => (resolveExternalLoad = resolve),
+  );
+  const store = createStore();
+  const persister = createCustomSqlitePersister(
+    store,
+    {mode: 'json', autoLoadIntervalSeconds: 0.01},
+    async (sql) => {
+      if (sql.includes('data_version')) {
+        return [{d: dataVersion, s: 1, c: 0}];
+      }
+      if (sql.includes('pragma_table')) {
+        return [
+          {tn: 'tinybase', cn: '_id'},
+          {tn: 'tinybase', cn: 'store'},
+        ];
+      }
+      if (sql.startsWith('SELECT*')) {
+        const loadedContent = content;
+        if (injectExternalChange) {
+          injectExternalChange = false;
+          content = '[{}, {"species":"bird"}]';
+          dataVersion++;
+          resolveNativeLoad();
+        } else if (loadedContent.includes('bird')) {
+          resolveExternalLoad();
+        }
+        return [{_id: '_', store: loadedContent}];
+      }
+      return [];
+    },
+    (listener) => (changeListener = listener),
+    () => {},
+    undefined,
+    undefined,
+    () => {},
+    Persists.StoreOnly,
+    {},
+  );
+  await persister.startAutoLoad();
+
+  content = '[{}, {"species":"cat"}]';
+  dataVersion++;
+  injectExternalChange = true;
+  changeListener('tinybase');
+  await nativeLoad;
+  await externalLoad;
+  for (let turn = 0; turn < 10; turn++) {
+    await Promise.resolve();
+  }
+
+  expect(store.getValue('species')).toBe('bird');
+  await persister.destroy();
+});
+
+test('reports SQLite auto-load polling errors', async () => {
+  vi.useFakeTimers();
+  let fail = false;
+  let resolveErrorReported!: () => void;
+  const errorReported = new Promise<void>(
+    (resolve) => (resolveErrorReported = resolve),
+  );
+  const ignoredError = vi.fn((_error: Error) => resolveErrorReported());
+  const persister = createCustomSqlitePersister(
+    createStore(),
+    {mode: 'json', autoLoadIntervalSeconds: 0.01},
+    async (sql) => {
+      if (sql.includes('data_version')) {
+        if (fail) {
+          throw new Error('poll failed');
+        }
+        return [{d: 1, s: 1, c: 0}];
+      }
+      return sql.includes('pragma_table')
+        ? [
+            {tn: 'tinybase', cn: '_id'},
+            {tn: 'tinybase', cn: 'store'},
+          ]
+        : sql.startsWith('SELECT*')
+          ? [{_id: '_', store: '[{},{}]'}]
+          : [];
+    },
+    () => undefined,
+    () => {},
+    undefined,
+    ignoredError,
+    () => {},
+    Persists.StoreOnly,
+    {},
+  );
+  await persister.startAutoLoad();
+  fail = true;
+  vi.advanceTimersByTime(10);
+  await errorReported;
+
+  expect(ignoredError.mock.calls[0][0].message).toBe('poll failed');
+  await persister.destroy();
+});
+
+test('contains SQLite ignored-error handler failures', async () => {
+  vi.useFakeTimers();
+  let fail = false;
+  let resolveErrorReported!: () => void;
+  const errorReported = new Promise<void>(
+    (resolve) => (resolveErrorReported = resolve),
+  );
+  const ignoredError = vi.fn(() => {
+    resolveErrorReported();
+    throw new Error('ignored-error handler failed');
+  });
+  const persister = createCustomSqlitePersister(
+    createStore(),
+    {mode: 'json', autoLoadIntervalSeconds: 0.01},
+    async (sql) => {
+      if (sql.includes('data_version')) {
+        if (fail) {
+          throw new Error('poll failed');
+        }
+        return [{d: 1, s: 1, c: 0}];
+      }
+      return sql.includes('pragma_table')
+        ? [
+            {tn: 'tinybase', cn: '_id'},
+            {tn: 'tinybase', cn: 'store'},
+          ]
+        : sql.startsWith('SELECT*')
+          ? [{_id: '_', store: '[{},{}]'}]
+          : [];
+    },
+    () => undefined,
+    () => {},
+    undefined,
+    ignoredError,
+    () => {},
+    Persists.StoreOnly,
+    {},
+  );
+  await persister.startAutoLoad();
+
+  fail = true;
+  vi.advanceTimersByTime(10);
+  await errorReported;
+  expect(ignoredError).toHaveBeenCalledOnce();
+
+  fail = false;
+  await persister.destroy();
+});
+
+test('adds collision-safe unique row ID indexes', async () => {
+  const db = new DatabaseSync(':memory:');
+  db.exec(
+    'CREATE TABLE pets (id TEXT, species TEXT);' +
+      'CREATE TABLE owners (id TEXT, name TEXT);',
+  );
+  const store = createStore()
+    .setTable('pets', {fido: {species: 'dog'}})
+    .setTable('owners', {alice: {name: 'Alice'}});
+  const persister = createSqliteNodePersister(store, db, {
+    mode: 'tabular',
+    tables: {
+      save: {
+        pets: {tableName: 'pets', rowIdColumnName: 'id'},
+        owners: {tableName: 'owners', rowIdColumnName: 'id'},
+      },
+    },
+  });
+  await persister.save();
+
+  const indexes = db
+    .prepare(
+      `SELECT name FROM sqlite_master WHERE type='index'AND sql IS NOT NULL`,
+    )
+    .all() as {name: string}[];
+  expect(indexes).toHaveLength(2);
+  expect(new Set(indexes.map(({name}) => name)).size).toBe(2);
+  expect(indexes.every(({name}) => name.startsWith('tinybase_pk_'))).toBe(true);
+  expect(store.getTables()).toEqual({
+    pets: {fido: {species: 'dog'}},
+    owners: {alice: {name: 'Alice'}},
+  });
+  await persister.destroy();
+  db.close();
+});
+
+test('rejects tabular persistence for MergeableStore', () => {
+  expect(() =>
+    createCustomSqlitePersister(
+      createMergeableStore(),
+      {mode: 'tabular'},
+      async () => [],
+      () => undefined,
+      () => {},
+      undefined,
+      undefined,
+      () => {},
+      Persists.StoreOrMergeableStore,
+      {},
+    ),
+  ).toThrow('tinybase:0');
+});
+
+// better-sqlite3's native module cannot be loaded by Bun.
+test.skipIf(isBun)(
+  'binds with anonymous placeholders, for every SQLite driver',
+  async () => {
+    const statements: string[] = [];
+    const logged: string[] = [];
+    // better-sqlite3 stands in for the strict drivers: it binds an array of
+    // values positionally, and rejects the numbered placeholders that
+    // PostgreSQL requires.
+    const database = new Database(':memory:');
+    const store = createStore().setTables({pets: {fido: {species: 'dog'}}});
+    const persister = createCustomSqlitePersister(
+      store,
+      'my_tinybase',
+      async (sql: string, params: any[] = []) => {
+        statements.push(sql);
+        const statement = database.prepare(sql);
+        return statement.reader
+          ? statement.all(...params)
+          : (statement.run(...params), []);
+      },
+      () => undefined,
+      () => {},
+      (sql: string) => logged.push(sql),
+      undefined,
+      () => {},
+      Persists.StoreOrMergeableStore,
+      {},
+    );
+
+    await persister.save();
+    expect(database.prepare('SELECT * FROM my_tinybase').all()).toEqual([
+      {_id: '_', store: '[{"pets":{"fido":{"species":"dog"}}},{}]'},
+    ]);
+
+    // Nothing numbered is generated for SQLite in the first place, so what the
+    // driver runs is what the onSqlCommand handler reports.
+    expect(statements.some((sql) => /\$\d/.test(sql))).toBe(false);
+    expect(statements.some((sql) => sql.includes('?'))).toBe(true);
+    expect(logged).toEqual(statements);
+
+    await persister.destroy();
+    database.close();
+  },
+);

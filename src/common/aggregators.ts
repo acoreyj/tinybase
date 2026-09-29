@@ -1,4 +1,4 @@
-import {arraySum} from './array.ts';
+import {arrayMax, arrayMin, arraySum} from './array.ts';
 import {Coll, collForEach, collIsEmpty, collSize, collValues} from './coll.ts';
 import {IdMap, mapNew} from './map.ts';
 import {isUndefined, mathMax, mathMin} from './other.ts';
@@ -24,54 +24,52 @@ type Aggregators<Value, AggregateValue> = [
   ) => AggregateValue | undefined)?,
 ];
 
-export const numericAggregators: IdMap<Aggregators<number, number>> =
-  /* @__PURE__ */ mapNew([
+export const numericAggregators: IdMap<Aggregators<number, number>> = mapNew([
+  [
+    AVG,
     [
-      AVG,
-      [
-        (numbers: number[], length: number): number =>
-          arraySum(numbers) / length,
-        (metric: number, add: number, length: number): number =>
-          metric + (add - metric) / (length + 1),
-        (metric: number, remove: number, length: number): number =>
-          metric + (metric - remove) / (length - 1),
-        (metric: number, add: number, remove: number, length: number): number =>
-          metric + (add - remove) / length,
-      ],
+      (numbers: number[], length: number): number => arraySum(numbers) / length,
+      (metric: number, add: number, length: number): number =>
+        metric + (add - metric) / (length + 1),
+      (metric: number, remove: number, length: number): number | undefined =>
+        length > 1 ? metric + (metric - remove) / (length - 1) : undefined,
+      (metric: number, add: number, remove: number, length: number): number =>
+        metric + (add - remove) / length,
     ],
+  ],
+  [
+    MAX,
     [
-      MAX,
-      [
-        (numbers: number[]): number => mathMax(...numbers),
-        (metric: number, add: number): number => mathMax(add, metric),
-        (metric: number, remove: number): number | undefined =>
-          remove == metric ? undefined : metric,
-        (metric: number, add: number, remove: number): number | undefined =>
-          remove == metric ? undefined : mathMax(add, metric),
-      ],
+      arrayMax,
+      (metric: number, add: number): number => mathMax(add, metric),
+      (metric: number, remove: number): number | undefined =>
+        remove == metric ? undefined : metric,
+      (metric: number, add: number, remove: number): number | undefined =>
+        remove == metric ? undefined : mathMax(add, metric),
     ],
+  ],
+  [
+    MIN,
     [
-      MIN,
-      [
-        (numbers: number[]): number => mathMin(...numbers),
-        (metric: number, add: number): number => mathMin(add, metric),
-        (metric: number, remove: number): number | undefined =>
-          remove == metric ? undefined : metric,
-        (metric: number, add: number, remove: number): number | undefined =>
-          remove == metric ? undefined : mathMin(add, metric),
-      ],
+      arrayMin,
+      (metric: number, add: number): number => mathMin(add, metric),
+      (metric: number, remove: number): number | undefined =>
+        remove == metric ? undefined : metric,
+      (metric: number, add: number, remove: number): number | undefined =>
+        remove == metric ? undefined : mathMin(add, metric),
     ],
+  ],
+  [
+    SUM,
     [
-      SUM,
-      [
-        (numbers: number[]): number => arraySum(numbers),
-        (metric: number, add: number): number => metric + add,
-        (metric: number, remove: number): number => metric - remove,
-        (metric: number, add: number, remove: number): number =>
-          metric - remove + add,
-      ],
+      (numbers: number[]): number => arraySum(numbers),
+      (metric: number, add: number): number => metric + add,
+      (metric: number, remove: number): number => metric - remove,
+      (metric: number, add: number, remove: number): number =>
+        metric - remove + add,
     ],
-  ]);
+  ],
+]);
 
 export const getAggregateValue = <Value, AggregateValue>(
   aggregateValue: AggregateValue | undefined,

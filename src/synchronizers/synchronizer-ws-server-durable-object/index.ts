@@ -3,15 +3,26 @@ import type {Id, Ids} from '../../@types/common/index.d.ts';
 import type {Persister, Persists} from '../../@types/persisters/index.d.ts';
 import type {IdAddedOrRemoved} from '../../@types/store/index.d.ts';
 import type {Receive} from '../../@types/synchronizers/index.d.ts';
-import {arrayIsEmpty, arrayMap} from '../../common/array.ts';
+import {arrayForEach, arrayMap} from '../../common/array.ts';
+import {weakMapNew} from '../../common/map.ts';
 import {objValues} from '../../common/obj.ts';
-import {ifNotUndefined, noop, size, startTimeout} from '../../common/other.ts';
+import {
+  ifNotUndefined,
+  isEmpty,
+  noop,
+  size,
+  startTimeout,
+} from '../../common/other.ts';
 import {EMPTY_STRING, strMatch} from '../../common/strings.ts';
 import {
+  type PayloadDecoder,
+  createInvalidPayloadHandler,
   createPayload,
+  createPayloadDecoder,
+  createPayloadReceiver,
+  createPayloads,
   createRawPayload,
   ifPayloadValid,
-  receivePayload,
 } from '../common.ts';
 import {createCustomSynchronizer} from '../index.ts';
 
@@ -41,6 +52,7 @@ export class WsServerDurableObject<Env = unknown>
 {
   // @ts-expect-error See blockConcurrencyWhile
   serverClientSend: (payload: string) => void;
+  #payloadDecoders = weakMapNew<WebSocket, PayloadDecoder>();
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -49,24 +61,27 @@ export class WsServerDurableObject<Env = unknown>
         await ifNotUndefined(
           await this.createPersister(),
           async (persister) => {
+            const requestTimeoutSeconds = this.getRequestTimeoutSeconds();
             const synchronizer = createCustomSynchronizer(
               persister.getStore(),
               (toClientId, requestId, message, body) =>
-                this.#handleMessage(
-                  SERVER_CLIENT_ID,
-                  createPayload(toClientId, requestId, message, body),
+                arrayForEach(
+                  createPayloads(
+                    toClientId,
+                    requestId,
+                    message,
+                    body,
+                    this.getFragmentSize(),
+                  ),
+                  (payload) => this.#handleMessage(SERVER_CLIENT_ID, payload),
                 ),
-              (receive: Receive) => {
-                // console.log('receive', receive);
-                this.serverClientSend = (payload: string) => {
-                  // console.log('serverClientSend', {
-                  //   payload,
-                  // });
-                  receivePayload(payload, receive);
-                };
-              },
+              (receive: Receive) =>
+                (this.serverClientSend = createPayloadReceiver(
+                  receive,
+                  requestTimeoutSeconds,
+                )[0]),
               noop,
-              1,
+              requestTimeoutSeconds,
             );
             await persister.load();
             await persister.startAutoSave();
@@ -83,7 +98,7 @@ export class WsServerDurableObject<Env = unknown>
       getClientId(request),
       (clientId) => {
         const [webSocket, client] = objValues(new WebSocketPair());
-        if (arrayIsEmpty(this.#getClients())) {
+        if (isEmpty(this.#getClients())) {
           this.onPathId(pathId, 1);
         }
         this.ctx.acceptWebSocket(client, [clientId, pathId]);
@@ -97,12 +112,32 @@ export class WsServerDurableObject<Env = unknown>
   }
 
   webSocketMessage(client: WebSocket, message: ArrayBuffer | string) {
-    ifNotUndefined(this.ctx.getTags(client)[0], (clientId) =>
-      this.#handleMessage(clientId, message.toString(), client),
-    );
+    ifNotUndefined(this.ctx.getTags(client)[0], (clientId) => {
+      let decode = this.#payloadDecoders.get(client);
+      if (!decode) {
+        decode = createPayloadDecoder(
+          (toClientId, remainders) =>
+            arrayForEach(remainders, (remainder) =>
+              this.#handleMessage(
+                clientId,
+                createRawPayload(toClientId, remainder),
+                client,
+              ),
+            ),
+          this.getRequestTimeoutSeconds(),
+          createInvalidPayloadHandler(client, (error) =>
+            this.onIgnoredError(error),
+          ),
+        );
+        this.#payloadDecoders.set(client, decode);
+      }
+      decode[0](message.toString());
+    });
   }
 
   webSocketClose(client: WebSocket) {
+    this.#payloadDecoders.get(client)?.[1]();
+    this.#payloadDecoders.delete(client);
     const [clientId, pathId] = this.ctx.getTags(client);
     this.onClientId(pathId, clientId, -1);
     if (size(this.#getClients()) == 1) {
@@ -254,7 +289,12 @@ export class WsServerDurableObject<Env = unknown>
   }
 
   getPathId(): Id {
-    return this.ctx.getTags(this.#getClients()[0])?.[1];
+    return (
+      ifNotUndefined(
+        this.#getClients()[0],
+        (client) => this.ctx.getTags(client)?.[1] ?? EMPTY_STRING,
+      ) ?? EMPTY_STRING
+    );
   }
 
   getClientIds(): Ids {
@@ -263,6 +303,16 @@ export class WsServerDurableObject<Env = unknown>
       (client) => this.ctx.getTags(client)[0],
     );
   }
+
+  getFragmentSize(): number | undefined {
+    return undefined;
+  }
+
+  getRequestTimeoutSeconds(): number {
+    return 1;
+  }
+
+  onIgnoredError(_error: any) {}
 
   onPathId(_pathId: Id, _addedOrRemoved: IdAddedOrRemoved) {}
 

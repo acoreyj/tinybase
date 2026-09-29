@@ -6,3 +6,6 @@ tmp
 node_modules
 npm-debug.log
 .partykit
+.vscode
+*.code-workspace
+*.tsbuildinfo

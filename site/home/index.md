@@ -1,14 +1,19 @@
 # TinyBase
 
 <section id="hero">
-  <h2>
-    A <em>reactive</em> data store & <span><em>sync</em> engine</span>
-  </h2>
+  <h2><em>Local</em> first.</h2>
+  <h2><em>Sync</em> on demand.</h2>
+  <h2><em>Fast</em> always.</h2>
+  <p>
+    TinyBase is a reactive in-memory data store with persistence and
+    synchronization for local-first JavaScript and TypeScript apps that need to
+    feel instant, work offline, and stay consistent when they come back online.
+  </p>
 </section>
 
-<a href='/guides/releases/#v6-6'><em>NEW!</em> v6.6 release</a>
+<a href='/guides/releases/#v10-0'><em>NEW!</em> v10.0 release</a>
 
-<span id="one-with">"Shiny New Inspector Tools!"</span>
+<span id="one-with">"The one with SQL Server & TinyJoin!"</span>
 
 <a class='start' href='/guides/the-basics/getting-started/'>Get started</a>
 
@@ -18,14 +23,28 @@
 
 ---
 
+> ## Your first _TinyBase_ app
+>
+> Create a todo list, a chat app, a drawing tool, a charting app, or a
+> tic-tac-toe game - with sync & persistence! - in less than 60s.
+
+```bash
+> npm create tinybase@latest
+
+📦 Creating your project...
+```
+
+---
+
 > ## It's _Reactive_
 >
 > TinyBase lets you [listen to changes](#register-granular-listeners) made to
 > any part of your data. This means your app will be fast, since you only spend
 > rendering cycles on things that change. The optional [bindings to
-> React](#call-hooks-to-bind-to-data) and
-> [pre-built components](#pre-built-reactive-components) let you easily build
-> fully reactive UIs on top of TinyBase. You even get a built-in [undo
+> React](#call-hooks-to-bind-to-data), [pre-built
+> components](#pre-built-reactive-components), and
+> [charts](#local-first-data-visualizations) let you easily build fully reactive
+> UIs on top of TinyBase. You even get a built-in [undo
 > stack](#set-checkpoints-for-an-undo-stack), and [developer
 > tools](#an-inspector-for-your-data)!
 
@@ -51,7 +70,7 @@
 > you can deterministically [synchronize](/guides/synchronization/) and merge
 > data across multiple sources, clients, and servers. And although TinyBase is
 > an in-memory data store, you can easily
-> [persist](#persist-to-storage-databases-more) your data to file, [browser
+> [persist](#persist-to-storage-or-a-database) your data to file, [browser
 > storage](/api/persister-browser), [IndexedDB](/api/persister-indexed-db),
 > [SQLite or PostgreSQL databases](/guides/persistence/database-persistence/),
 > and [more](/guides/persistence/third-party-crdt-persistence/).
@@ -75,29 +94,31 @@
 
 <section id="friends">
 <h2>TinyBase works great on its own, but also plays well with friends.</h2>
+<h3><a href='/guides/'>UI Frameworks</a></h3>
 <div>
-  <a href='/guides/building-uis/getting-started-with-ui-react'>
+  <a href='/guides/building-uis-with-react/getting-started-with-ui-react'>
     <img width="48" src="/react.svg?asImg" /> React
   </a>
 </div>
+<div>
+  <a href='/guides/building-uis-with-solid/getting-started-with-ui-solid'>
+    <img width="48" src="/solid.svg?asImg" /> Solid
+  </a>
+</div>
+<div>
+  <a href='/guides/building-uis-with-svelte/getting-started-with-ui-svelte'>
+    <img width="48" src="/svelte.svg?asImg" /> Svelte
+  </a>
+</div>
+<h3><a href='/guides/persistence/'>Storage & Sync</a></h3>
 <div>
   <a href='/api/persister-indexed-db/functions/creation/createindexeddbpersister'>
     <img width="48" src="/indexeddb.svg?asImg" /> IndexedDB
   </a>
 </div>
 <div>
-  <a href='/guides/integrations/cloudflare-durable-objects'>
-    <img width="48" src="/cloudflare.svg?asImg" /> Cloudflare
-  </a>
-</div>
-<div>
-  <a href='/guides/schemas-and-persistence/database-persistence'>
-    <img width="48" src="/postgresql.svg?asImg" /> PostgreSQL
-  </a>
-</div>
-<div>
-  <a href='/guides/schemas-and-persistence/database-persistence'>
-    <img width="48" src="/pglite.svg?asImg" /> PGlite
+  <a href='/api/persister-browser'>
+    <img width="48" src="/browser.svg?asImg" /> OPFS
   </a>
 </div>
 <div>
@@ -117,7 +138,7 @@
 </div>
 <div>
   <a href='/guides/schemas-and-persistence/database-persistence'>
-    <img width="48" src="/electric.svg?asImg" /> ElectricSQL
+    <img width="48" src="/capacitor.svg?asImg" /> Capacitor
   </a>
 </div>
 <div>
@@ -131,6 +152,41 @@
   </a>
 </div>
 <div>
+  <a href='/guides/schemas-and-persistence/database-persistence'>
+    <img width="48" src="/postgresql.svg?asImg" /> PostgreSQL
+  </a>
+</div>
+<div>
+  <a href='/guides/schemas-and-persistence/database-persistence'>
+    <img width="48" src="/pglite.svg?asImg" /> PGlite
+  </a>
+</div>
+<div>
+  <a href='/guides/schemas-and-persistence/database-persistence'>
+    <img width="48" src="/mssql.svg?asImg" /> SQL Server
+  </a>
+</div>
+<div>
+  <a href='/guides/schemas-and-persistence/database-persistence'>
+    <img width="48" src="/tinyjoin.svg?asImg" /> TinyJoin
+  </a>
+</div>
+<div>
+  <a href='/guides/schemas-and-persistence/database-persistence'>
+    <img width="48" src="/neon.svg?asImg" /> Neon
+  </a>
+</div>
+<div>
+  <a href='/guides/schemas-and-persistence/database-persistence'>
+    <img width="48" src="/supabase.svg?asImg" /> Supabase
+  </a>
+</div>
+<div>
+  <a href='/guides/integrations/cloudflare-durable-objects'>
+    <img width="48" src="/cloudflare.svg?asImg" /> Cloudflare
+  </a>
+</div>
+<div>
   <a href='/api/persister-partykit-client'>
     <img width="48" src="/partykit.svg?asImg" /> PartyKit
   </a>
@@ -141,18 +197,44 @@
   </a>
 </div>
 <div>
-  <a href='/api/persister-cr-sqlite-wasm'>
-    <img width="48" src="/crsqlite.png" /> CR-SQLite
-  </a>
-</div>
-<div>
   <a href='/api/persister-automerge'>
     <img width="48" src="/automerge.svg?asImg" /> Automerge
   </a>
 </div>
+<h3><a href='/guides/schemas/using-schematizers/'>Schema Systems</a></h3>
+<div>
+  <a href='/api/schematizer-zod/functions/creation/createzodschematizer'>
+    <img width="48" src="/zod.svg?asImg" /> Zod
+  </a>
+</div>
+<div>
+  <a href='/api/schematizer-typebox/functions/creation/createtypeboxschematizer'>
+    <img width="48" src="/typebox.svg?asImg" /> TypeBox
+  </a>
+</div>
+<div>
+  <a href='/api/schematizer-valibot/functions/creation/createvalibotschematizer'>
+    <img width="48" src="/valibot.svg?asImg" /> Valibot
+  </a>
+</div>
+<div>
+  <a href='/api/schematizer-arktype/functions/creation/createarktypeschematizer'>
+    <img width="48" src="/arktype.svg?asImg" /> ArkType
+  </a>
+</div>
+<div>
+  <a href='/api/schematizer-yup/functions/creation/createyupschematizer'>
+    <img width="48" src="/yup.svg?asImg" /> Yup
+  </a>
+</div>
+<div>
+  <a href='/api/schematizer-effect/functions/creation/createeffectschematizer'>
+    <img width="48" src="/effect.svg?asImg" /> Effect
+  </a>
+</div>
 <p>
-  (Baffled by all these logos? Check out our 
-  <a href='/guides/the-basics/architectural-options'>architectural 
+  (Baffled by all these logos? Check out our
+  <a href='/guides/the-basics/architectural-options'>architectural
   options</a> guide to make sense of it all!)
 </p>
 </section>
@@ -160,41 +242,31 @@
 ---
 
 <section id="follow">
-
-  <a href='@@EVAL("metadata.repository")' target='_blank'>
-    <img src="https://img.shields.io/github/stars/tinyplex/tinybase?style=for-the-badge&logo=GitHub&logoColor=%23fff&label=GitHub&labelColor=%23d81b60&color=%23333">
-  </a>
-
-  <a href='https://bsky.app/profile/tinybase.bsky.social'>
-    <img src="https://img.shields.io/badge/Bluesky-Follow-blue?style=for-the-badge&logo=bluesky&logoColor=%23fff&color=%23333&labelColor=%230285FF" />
-  </a>
-  
-  <a href='https://x.com/tinybasejs' target='_blank'>
-    <img src="https://img.shields.io/badge/%2F%20Twitter-Follow-blue?style=for-the-badge&logo=x&logoColor=%23fff&color=%23333&labelColor=%23000" />
-  </a>
-
-  <a href='https://discord.com/invite/mGz3mevwP8' target='_blank'>
-    <img src="https://img.shields.io/discord/1027918215323590676?style=for-the-badge&logo=discord&logoColor=%23fff&label=Discord&labelColor=%233131e8&color=%23333" />
-  </a>
-
+<a href='@@EVAL("metadata.repository")' target='_blank'> <img
+    src="https://img.shields.io/github/stars/tinyplex/tinybase?style=for-the-badge&logo=GitHub&logoColor=%23fff&label=GitHub&labelColor=%23d81b60&color=%23333">
+</a>
+<a href='https://bsky.app/profile/tinybase.bsky.social'> <img
+    src="https://img.shields.io/badge/Bluesky-Follow-blue?style=for-the-badge&logo=bluesky&logoColor=%23fff&color=%23333&labelColor=%230285FF"
+  /> </a>
+<a href='https://x.com/tinybasejs' target='_blank'> <img
+    src="https://img.shields.io/badge/%2F%20Twitter-Follow-blue?style=for-the-badge&logo=x&logoColor=%23fff&color=%23333&labelColor=%23000"
+  /> </a>
+<a href='https://discord.com/invite/mGz3mevwP8' target='_blank'> <img
+    src="https://img.shields.io/discord/1027918215323590676?style=for-the-badge&logo=discord&logoColor=%23fff&label=Discord&labelColor=%233131e8&color=%23333"
+  /> </a>
   <br />
-
-  <a href='@@EVAL("metadata.repository")/discussions' target='_blank'>
-    <img src="https://img.shields.io/github/discussions/tinyplex/tinybase?style=for-the-badge&logo=GitHub&logoColor=%23fff&label=Ideas&labelColor=%23d81b60&color=%23333">
-  </a>
-
-  <a href='@@EVAL("metadata.repository")/issues' target='_blank'>
-    <img src="https://img.shields.io/github/issues/tinyplex/tinybase?style=for-the-badge&logo=GitHub&logoColor=%23fff&label=Issues&labelColor=%23d81b60&color=%23333">
-  </a>
-
-  <a href='#well-tested-and-documented'>
-    <img src="https://img.shields.io/badge/Tests-100%25-green?style=for-the-badge&logo=jest&logoColor=%23fff&color=%23333&labelColor=%2387c305" />
-  </a>
-
-  <a href='@@EVAL("metadata.package")' target='_blank'>
-    <img src="https://img.shields.io/npm/v/tinybase?style=for-the-badge&logo=npm&logoColor=%23fff&labelColor=%23bd0005&color=%23333" />
-  </a>
-
+<a href='@@EVAL("metadata.repository")/discussions' target='_blank'> <img
+    src="https://img.shields.io/github/discussions/tinyplex/tinybase?style=for-the-badge&logo=GitHub&logoColor=%23fff&label=Ideas&labelColor=%23d81b60&color=%23333">
+</a>
+<a href='@@EVAL("metadata.repository")/issues' target='_blank'> <img
+    src="https://img.shields.io/github/issues/tinyplex/tinybase?style=for-the-badge&logo=GitHub&logoColor=%23fff&label=Issues&labelColor=%23d81b60&color=%23333">
+</a>
+<a href='#well-tested-and-documented'> <img
+    src="https://img.shields.io/badge/Tests-100%25-green?style=for-the-badge&logo=Vitest&logoColor=%23fff&color=%23333&labelColor=%2387c305"
+  /> </a>
+<a href='@@EVAL("metadata.package")' target='_blank'> <img
+    src="https://img.shields.io/npm/v/tinybase?style=for-the-badge&logo=npm&logoColor=%23fff&labelColor=%23bd0005&color=%23333"
+  /> </a>
 </section>
 
 ---
@@ -220,9 +292,9 @@ console.log(store.getValues());
 
 > ## Level up to use tabular data.
 >
-> For other types of data applications, a tabular data structure is more
-> useful. TinyBase lets you set and get nested Table, Row, or Cell data, by
-> unique Id - and in the same Store as the keyed values!
+> For other types of data applications, a tabular data structure is more useful.
+> TinyBase lets you set and get nested Table, Row, or Cell data, by unique Id -
+> and in the same Store as the keyed values!
 >
 > Read more about setting and changing data in The Basics guide.
 
@@ -255,19 +327,21 @@ store.setCell('pets', 'fido', 'sold', false);
 store.delListener(listenerId);
 ```
 
-> ## Call hooks to bind to data.
+> ## Bind to data in UI libraries.
 >
-> If you're using React in your application, the optional ui-react module
-> provides hooks to bind to the data in a Store.
+> If you're using React, Solid, or Svelte in your application, the optional
+> `ui-react` module, `ui-solid` module, or `ui-svelte` module provide hooks and
+> functions to bind to the data in a Store.
 >
-> More magic! The useCell hook in this example fetches the dog's color. But it
+> For example, the useCell hook in this example fetches the dog's color. But it
 > also registers a listener on that cell that will fire and re-render the
-> component whenever the value changes.
+> component whenever the value changes!
 >
 > Basically you simply describe what data you want in your user interface and
 > TinyBase will take care of the whole lifecycle of updating it for you.
 >
-> Read more about the using hooks in the Using React Hooks guide.
+> Read more about the using hooks in the Using React Hooks guide and the
+> Building UIs With Svelte guide.
 
 ```jsx
 import React from 'react';
@@ -294,23 +368,36 @@ root.unmount(); // !act
 
 > ## Pre-built reactive components.
 >
-> The ui-react module provides bare React components that let you build up a
-> fully reactive user interface based on a Store.
+> The UI modules also provide bare React, Solid, and Svelte components that let
+> you build up a fully reactive user interface based on a Store.
 >
-> For web applications in particular, the new ui-react-dom module provides
-> pre-built components for tabular display of your data, with lots of
+> It's super easy to wire up tabular display of your data with lots of
 > customization and interactivity options.
 >
-> Try them out in the UI Components demos, and read more about the underlying
-> ui-react module in the Building UIs guides.
+> Try them out in the UI Components (React), Chart Components (React), UI
+> Components (Solid), and UI Components (Svelte) demos, and read more in the
+> Building UIs guides.
 
 <img src='/ui-react-dom.webp' />
 
+> ## Local-first data visualizations.
+>
+> Render TinyBase data and queries directly as responsive, styleable SVG charts
+> with the ui-react-dom-charts module. These charts update reactively when data
+> changes, and are composable with labels, bounds, ticks, and time-aware x-axes.
+>
+> Try the [Chart Components (React)](/demos/chart-components-react/) demos, or
+> read more in the [Using Charts](/guides/building-uis-with-react/using-charts/)
+> guide.
+
+<img src='/shots/styled-chart-react-demo.png' />
+
 > ## An inspector for your data.
 >
-> If you are building a web application, the new Inspector component lets you
-> overlay a view of the data in your Store, Indexes, Relationships, and so on.
-> You can even edit the data in place and see it update in your app immediately.
+> If you are building a web application with React or Svelte, the Inspector
+> component lets you overlay a view of the data in your Store, Indexes,
+> Relationships, and so on. You can even edit the data in place and see it
+> update in your app immediately.
 >
 > Read more about this powerful new tool in the Inspecting Data guide.
 
@@ -318,14 +405,13 @@ root.unmount(); // !act
 
 > ## Apply schemas to tables & values.
 >
-> By default, a Store can contain any arbitrary Value, and a Row can contain any
-> arbitrary Cell. But you can add a ValuesSchema or a TablesSchema to a Store to
-> ensure that the values are always what you expect: constraining their types,
-> and providing defaults. There are even TypeScript definitions that infer API
-> types from the data schemas you apply.
+> Want clean data? You can add a ValuesSchema or a TablesSchema to a Store to
+> ensure that they are always what you expect by constraining types, and
+> providing defaults. There are even TypeScript definitions that infer API types
+> from the data schemas you apply.
 >
-> In this example, we set a new Row without the `sold` Cell in it. The schema
-> ensures it's present with default of `false`.
+> And our 'schematizer' modules let you convert schemas from libraries like Zod,
+> TypeBox, Valibot, ArkType, Yup, and Effect Schema into TinyBase at runtime.
 >
 > Read more about schemas in the Schemas guide.
 
@@ -379,7 +465,7 @@ await synchronizer1.destroy();
 await server.destroy();
 ```
 
-> ## Persist to storage, databases, & more.
+> ## Persist to storage or a database.
 >
 > You can easily persist a Store between browser page reloads or sessions. You
 > can also synchronize it with a web endpoint, or (if you're using TinyBase in
@@ -431,7 +517,7 @@ await sessionStorage.clear();
 > "which is the highest-priced species, and in which state?"
 >
 > Needless to say, the results are reactive too! You can add listeners to
-> queries just as easily as you do to raw tables.
+> queries, and since v7.2, even parameterize them.
 >
 > Read more about Queries in the [v2.0 Release Notes](/guides/releases/#v2-0),
 > the Using Queries guide, and the Car Analysis demo and Movie Database demo.
@@ -624,9 +710,9 @@ console.log(store.getCell('pets', 'felix', 'sold'));
 > ## Did we say tiny?
 >
 > If you use the basic store module alone, you'll only add a gzipped
-> _@@EVAL("toKb(modulesSizes.get('store').get('gz'))")_ to your app. Incrementally add the
-> other modules as you need more functionality, or get it all for
-> _@@EVAL("toKb(modulesSizes.get('').get('gz'))")_.
+> _@@EVAL("toKb(modulesSizes.get('store').get('gz'))")_ to your app.
+> Incrementally add the other modules as you need more functionality, or get it
+> all for _@@EVAL("toKb(modulesSizes.get('').get('gz'))")_.
 >
 > The optional ui-react module is just
 > _@@EVAL("toKb(modulesSizes.get('ui-react').get('gz'))")_, the ui-react-dom
@@ -653,11 +739,16 @@ console.log(store.getCell('pets', 'felix', 'sold'));
 ---
 
 <section id="sponsors">
-<h2>Proud to be sponsored by:</h2>
-@@EVAL("getGitHubAvatar('cpojer')")
-@@EVAL("getGitHubAvatar('expo')")
-@@EVAL("getGitHubAvatar('beekeeb')")
+<h2>Proud to be supported by:</h2>
+@@EVAL("getGitHubAvatar('fastrepl')")
+@@EVAL("getGitHubAvatar('ComputelessComputer')")
 @@EVAL("getGitHubAvatar('cancelself')")
+@@EVAL("getGitHubAvatar('expo')")
+@@EVAL("getGitHubAvatar('braden-w')")
+@@EVAL("getGitHubAvatar('dylmye')")
+@@EVAL("getGitHubAvatar('gonza224')")
+@@EVAL("getGitHubAvatar('cpojer')")
+@@EVAL("getGitHubAvatar('beekeeb')")
 @@EVAL("getGitHubAvatar('WonderPanda')")
 @@EVAL("getGitHubAvatar('arpitBhalla')")
 </section>
@@ -721,10 +812,21 @@ console.log(store.getCell('pets', 'felix', 'sold'));
   <p>TinyBase is part of a group of small libraries designed to help make rich client and local-first apps easier to build. Check out the others!</p>
 
   <p>
-    <img width="48" src="https://tinybase.org/favicon.svg?asImg" />
-    <br/>
-    <b>TinyBase</b>
-    <br />A reactive data store and sync engine.
+    <a href='https://tinyjoin.org' target='_blank'>
+      <img width="48" src="https://tinyjoin.org/favicon.svg?asImg" />
+      <br />
+      <b>TinyJoin</b>
+    </a>
+    <br />A tiny, worker-first relational database for browser apps.
+  </p>
+
+  <p>
+    <a href='https://synclets.org' target='_blank'>
+      <img width="48" src="https://synclets.org/favicon.svg?asImg" />
+      <br/>
+      <b>Synclets</b>
+    </a>
+    <br />An open, storage-agnostic, sync engine development kit.
   </p>
 
   <p>

@@ -1,28 +1,548 @@
-<!DOCTYPE html><html lang="en"><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="preload" as="image" href="/favicon.svg"><link rel="preload" as="image" href="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c.svg"><script async="" src="https://www.googletagmanager.com/gtag/js?id=G-D1MGR8VRWJ"></script><link rel="dns-prefetch" href="https://www.googletagmanager.com/"><link href="https://www.googletagmanager.com/gtag/js?id=G-D1MGR8VRWJ" rel="preload" as="script"><link rel="preload" as="font" href="/fonts/inter.woff2" type="font/woff2" crossorigin="anonymous"><link rel="preload" as="font" href="/fonts/inconsolata.woff2" type="font/woff2" crossorigin="anonymous"><link rel="preload" as="font" href="/fonts/shantell.woff2" type="font/woff2" crossorigin="anonymous"><title>Movie Database | TinyBase</title><meta name="description" content="In this demo, we build an app that showcases the relational query capabilities of TinyBase v2.0, joining together information about movies, directors, and actors."><meta property="og:type" content="website"><meta property="og:title" content="Movie Database | TinyBase"><meta property="og:description" content="In this demo, we build an app that showcases the relational query capabilities of TinyBase v2.0, joining together information about movies, directors, and actors."><meta property="og:url" content="https://tinybase.org/demos/movie-database/"><meta property="og:image" content="https://tinybase.org/favicon_pad.png"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="Movie Database | TinyBase"><meta name="twitter:description" content="In this demo, we build an app that showcases the relational query capabilities of TinyBase v2.0, joining together information about movies, directors, and actors."><meta name="twitter:site" content="@tinybasejs"><meta name="twitter:image" content="https://tinybase.org/favicon_pad.png"><link rel="icon" type="image/svg+xml" href="/favicon.svg"><link rel="canonical" href="https://tinybase.org/demos/movie-database/"><link rel="stylesheet" href="/css/index.css"><script src="/js/app.js"></script></head><body><header><a href="/"><img src="/favicon.svg" alt="TinyBase logo"><span>TinyBase</span></a><nav><ul><li><a href="/guides/">Guides</a></li><li><a href="/demos/">Demos</a></li><li><a href="/api/">API</a></li><li><a href="https://github.com/tinyplex/tinybase">GitHub</a></li></ul></nav><span id="dark"></span></header><main><nav><ul><li id="root" class="parent open"><span></span><a href="/">TinyBase</a><ul><li id="G" class="parent"><span></span><a href="/guides/">Guides</a></li><li id="D2" class="parent open"><span></span><a href="/demos/">Demos</a><ul><li id="HW" class="parent"><span></span><a href="/demos/hello-world/">Hello World</a></li><li id="RD" class="parent"><span></span><a href="/demos/rolling-dice/">Rolling Dice</a></li><li id="C2"><span></span><a href="/demos/countries/">Countries</a></li><li id="TA" class="parent"><span></span><a href="/demos/todo-app/">Todo App</a></li><li id="D3"><span></span><a href="/demos/drawing/">Drawing</a></li><li id="CD"><span></span><a href="/demos/city-database/">City Database</a></li><li id="CA"><span></span><a href="/demos/car-analysis/">Car Analysis</a></li><li id="MD" class="current"><span></span><a href="/demos/movie-database/">Movie Database</a></li><li id="WF"><span></span><a href="/demos/word-frequencies/">Word Frequencies</a></li><li id="UIC" class="parent"><span></span><a href="/demos/ui-components/">UI Components</a></li></ul></li><li id="api" class="parent"><span></span><a href="/api/">API</a></li></ul></li></ul></nav><article><nav><ul><li><a href="/">TinyBase</a></li><li><a href="/demos/">Demos</a></li><li><a href="/demos/movie-database/">Movie Database</a></li></ul></nav><section class="s1" id="/demos/movie-database/" data-id="MD"><h1>Movie Database</h1><iframe srcdoc="&lt;html&gt;&lt;head&gt;&lt;script type=&quot;importmap&quot;&gt;{
-    &quot;imports&quot;: {
-      &quot;tinybase&quot;: &quot;https://esm.sh/tinybase@6.6.0&quot;,
-      &quot;tinybase/ui-react&quot;: &quot;https://esm.sh/tinybase@6.6.0/ui-react&quot;,
-      &quot;tinybase/ui-react-dom&quot;: &quot;https://esm.sh/tinybase@6.6.0/ui-react-dom&quot;,
-      &quot;tinybase/ui-react-inspector&quot;: &quot;https://esm.sh/tinybase@6.6.0/ui-react-inspector&quot;,
-      &quot;react&quot;: &quot;https://esm.sh/react@^19.0.0&quot;,
-      &quot;react/jsx-runtime&quot;: &quot;https://esm.sh/react@^19.0.0/jsx-runtime&quot;,
-      &quot;react-dom/client&quot;: &quot;https://esm.sh/react-dom@^19.0.0/client&quot;
+<!DOCTYPE html><html lang="en"><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="preload" as="image" href="/favicon.svg"><link rel="preload" as="image" href="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c.svg"><script async="" src="https://www.googletagmanager.com/gtag/js?id=G-D1MGR8VRWJ"></script><link rel="dns-prefetch" href="https://www.googletagmanager.com/"><link href="https://www.googletagmanager.com/gtag/js?id=G-D1MGR8VRWJ" rel="preload" as="script"><link rel="preload" as="font" href="/fonts/inter.woff2" type="font/woff2" crossorigin="anonymous"><link rel="preload" as="font" href="/fonts/inconsolata.woff2" type="font/woff2" crossorigin="anonymous"><link rel="preload" as="font" href="/fonts/shantell.woff2" type="font/woff2" crossorigin="anonymous"><title>Movie Database | TinyBase</title><meta name="description" content="In this demo, we build an app that showcases the relational query capabilities of TinyBase v2.0, joining together information about movies, directors, and actors."><meta property="og:type" content="website"><meta property="og:title" content="Movie Database | TinyBase"><meta property="og:description" content="In this demo, we build an app that showcases the relational query capabilities of TinyBase v2.0, joining together information about movies, directors, and actors."><meta property="og:url" content="https://tinybase.org/demos/movie-database/"><meta property="og:image" content="https://tinybase.org/favicon_pad.png"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="Movie Database | TinyBase"><meta name="twitter:description" content="In this demo, we build an app that showcases the relational query capabilities of TinyBase v2.0, joining together information about movies, directors, and actors."><meta name="twitter:site" content="@tinybasejs"><meta name="twitter:image" content="https://tinybase.org/favicon_pad.png"><link rel="icon" type="image/svg+xml" href="/favicon.svg"><link rel="canonical" href="https://tinybase.org/demos/movie-database/"><link rel="stylesheet" href="/css/index.css"><script src="/js/app.js"></script></head><body><a class="skip" href="#content">Skip to content</a><header><a href="/"><img src="/favicon.svg" alt="TinyBase logo"><span>TinyBase</span></a><input id="menustate" type="checkbox" aria-label="Menu"><label id="hamburger" for="menustate" aria-hidden="true"></label><nav aria-label="Primary"><ul><li><a href="/guides/">Guides</a></li><li><a href="/demos/" aria-current="true">Demos</a></li><li><a href="/api/">API</a></li><li><a href="https://github.com/tinyplex/tinybase">GitHub</a></li></ul></nav><button id="dark" type="button" aria-label="Color theme: automatic; activate for dark"></button></header><main><nav aria-label="Documentation"><ul><li id="root" class="parent open"><span></span><a href="/" aria-current="true">TinyBase</a><ul><li id="G" class="parent"><span></span><a href="/guides/">Guides</a></li><li id="D2" class="parent open"><span></span><a href="/demos/" aria-current="true">Demos</a><ul><li id="HW" class="parent"><span></span><a href="/demos/hello-world/">Hello World</a></li><li id="C2" class="parent"><span></span><a href="/demos/countries/">Countries</a></li><li id="TA" class="parent"><span></span><a href="/demos/todo-app/">Todo App</a></li><li id="D3"><span></span><a href="/demos/drawing/">Drawing</a></li><li id="CD"><span></span><a href="/demos/city-database/">City Database</a></li><li id="CA"><span></span><a href="/demos/car-analysis/">Car Analysis</a></li><li id="MD" class="current"><span></span><a href="/demos/movie-database/" aria-current="page">Movie Database</a></li><li id="WF"><span></span><a href="/demos/word-frequencies/">Word Frequencies</a></li><li id="UICR" class="parent"><span></span><a href="/demos/ui-components-react/">UI Components (React)</a></li><li id="UICS" class="parent"><span></span><a href="/demos/ui-components-solid/">UI Components (Solid)</a></li><li id="UICS2" class="parent"><span></span><a href="/demos/ui-components-svelte/">UI Components (Svelte)</a></li><li id="CCR" class="parent"><span></span><a href="/demos/chart-components-react/">Chart Components (React)</a></li></ul></li><li id="api" class="parent"><span></span><a href="/api/">API</a></li></ul></li></ul></nav><article id="content" tabindex="-1"><nav><ul><li><a href="/" aria-current="true">TinyBase</a></li><li><a href="/demos/" aria-current="true">Demos</a></li><li><a href="/demos/movie-database/" aria-current="page">Movie Database</a></li></ul></nav><section class="s1" id="/demos/movie-database/" data-id="MD"><h1>Movie Database</h1><iframe srcdoc="&lt;html&gt;
+      &lt;head&gt;
+        
+        &lt;style&gt;#loading{animation:spin 1s infinite linear;height:2rem;margin:40vh auto;width:2rem}#loading::before{content:url(&#x27;data:image/svg+xml,&lt;svg xmlns=&quot;http://www.w3.org/2000/svg&quot; height=&quot;2rem&quot; viewBox=&quot;0 0 100 100&quot;&gt;&lt;path d=&quot;M50 10A40 40 0 1 1 10 50&quot; stroke=&quot;black&quot; fill=&quot;none&quot; stroke-width=&quot;4&quot; /&gt;&lt;/svg&gt;&#x27;)}@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}nav{background:#eee;display:flex}nav a{flex:1;padding:.25rem;text-align:center}nav a.current{background:#ddd;font-weight:600}main{padding:.5rem}table{border-collapse:collapse;font-size:inherit;line-height:inherit;margin-top:.5rem;table-layout:fixed;width:100%}table caption{text-align:left}table caption button{border:0;margin-right:.25rem}table th,table td{padding:.25rem .5rem .25rem 0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}table th{border:solid #ddd;border-width:1px 0;cursor:pointer;text-align:left;width:20%}table th:nth-child(1){width:40%}table td{border-bottom:1px solid #eee}img{width:1rem;height:1.5rem;object-fit:cover;vertical-align:top;margin:0 .25rem 0 0}img.large{width:4rem;height:6rem;margin:0 .5rem 1rem 0;object-fit:contain;float:left}img.large+ul+*{clear:both}@font-face{font-family:Inter;src:url(https://tinybase.org/fonts/inter.woff2) format(&#x27;woff2&#x27;)}*{box-sizing:border-box}body{user-select:none;font-family:Inter,sans-serif;letter-spacing:-0.04rem;font-size:.8rem;line-height:1.5rem;margin:0;color:#333}h1{margin:0 0 1rem}h2{margin:1.5rem 0 .5rem}ul{padding-left:0}li{display:block;padding-bottom:.25rem}a{white-space:nowrap;text-overflow:ellipsis;overflow:hidden;cursor:pointer;max-width:100%;display:inline-block;vertical-align:top;color:#000}a:hover{text-decoration:underline}p{line-height:1.2rem}&lt;/style&gt;
+      &lt;/head&gt;
+      &lt;body&gt;
+        
+      &lt;/body&gt;
+      &lt;script type=&#x27;module&#x27;&gt;// ../../../../../../demo/src/main.jsx
+import { Fragment, jsx, jsxs } from &quot;https://esm.sh/react@^19.3.0/jsx-runtime&quot;;
+import { useMemo, useState } from &quot;https://esm.sh/react@^19.3.0&quot;;
+import React from &quot;https://esm.sh/react@^19.3.0&quot;;
+import { createRoot } from &quot;https://esm.sh/react-dom@^19.3.0/client&quot;;
+import { createQueries, createStore } from &quot;https://esm.sh/tinybase@10.0.0&quot;;
+import {
+  CellView,
+  Provider,
+  ResultCellView,
+  useCell,
+  useCreateQueries,
+  useCreateStore,
+  useQueries,
+  useResultCell,
+  useResultRowIds,
+  useSetParamValuesCallback,
+  useSetValuesCallback,
+  useValues
+} from &quot;https://esm.sh/tinybase@10.0.0/ui-react&quot;;
+import { ResultSortedTableInHtmlTable } from &quot;https://esm.sh/tinybase@10.0.0/ui-react-dom&quot;;
+import { Inspector } from &quot;https://esm.sh/tinybase@10.0.0/ui-react-inspector&quot;;
+var App = () =&gt; {
+  const store = useCreateStore(createStore);
+  const viewStore = useCreateStore(
+    () =&gt; createStore().setValues({ currentSection: &quot;movies&quot; })
+  );
+  const queries = useCreateQueries(store, createAndInitQueries, []);
+  const [isLoading, setIsLoading] = useState(true);
+  useMemo(async () =&gt; {
+    await loadStore(store);
+    setIsLoading(false);
+  }, []);
+  return jsxs(Provider, { store, storesById: { viewStore }, queries, children: [
+    jsx(Header, {}),
+    isLoading ? jsx(Loading, {}) : jsx(Body, {}),
+    jsx(Inspector, {})
+  ] });
+};
+addEventListener(&quot;load&quot;, () =&gt; createRoot(document.body).render(jsx(App, {})));
+var Loading = () =&gt; jsx(&quot;div&quot;, { id: &quot;loading&quot; });
+var MoviesSection = ({ detailId }) =&gt; detailId == null ? jsx(MoviesOverview, {}) : jsx(MovieDetail, { movieId: detailId });
+var YearsSection = ({ detailId }) =&gt; detailId == null ? jsx(YearsOverview, {}) : jsx(YearDetail, { year: detailId });
+var GenresSection = ({ detailId }) =&gt; detailId == null ? jsx(GenresOverview, {}) : jsx(GenreDetail, { genreId: detailId });
+var PeopleSection = ({ detailId }) =&gt; detailId == null ? jsx(PeopleOverview, {}) : jsx(PersonDetail, { personId: detailId });
+var SECTIONS = {
+  movies: [&quot;Movies&quot;, MoviesSection],
+  years: [&quot;Years&quot;, YearsSection],
+  genres: [&quot;Genres&quot;, GenresSection],
+  people: [&quot;People&quot;, PeopleSection]
+};
+var useRoute = () =&gt; useValues(&quot;viewStore&quot;);
+var useSetRouteCallback = (currentSection, currentDetailId) =&gt; useSetValuesCallback(
+  () =&gt; ({ currentSection, currentDetailId }),
+  [currentSection, currentDetailId],
+  &quot;viewStore&quot;
+);
+var Header = () =&gt; {
+  const { currentSection } = useRoute();
+  return jsx(&quot;nav&quot;, { children: Object.entries(SECTIONS).map(([section, [title]]) =&gt; jsx(
+    &quot;a&quot;,
+    {
+      className: currentSection == section ? &quot;current&quot; : &quot;&quot;,
+      onClick: useSetRouteCallback(section, null),
+      children: title
     }
-  }&lt;/script&gt;&lt;style&gt;#loading{animation:spin 1s infinite linear;height:2rem;margin:40vh auto;width:2rem}#loading::before{content:url(&#x27;data:image/svg+xml,&lt;svg xmlns=&quot;http://www.w3.org/2000/svg&quot; height=&quot;2rem&quot; viewBox=&quot;0 0 100 100&quot;&gt;&lt;path d=&quot;M50 10A40 40 0 1 1 10 50&quot; stroke=&quot;black&quot; fill=&quot;none&quot; stroke-width=&quot;4&quot; /&gt;&lt;/svg&gt;&#x27;)}@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}nav{background:#eee;display:flex}nav a{flex:1;padding:.25rem;text-align:center}nav a.current{background:#ddd;font-weight:600}main{padding:.5rem}table{border-collapse:collapse;font-size:inherit;line-height:inherit;margin-top:.5rem;table-layout:fixed;width:100%}table caption{text-align:left}table caption button{border:0;margin-right:.25rem}table td,table th{padding:.25rem .5rem .25rem 0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}table th{border:solid #ddd;border-width:1px 0;cursor:pointer;text-align:left;width:20%}table th:nth-child(1){width:40%}table td{border-bottom:1px solid #eee}img{width:1rem;height:1.5rem;object-fit:cover;vertical-align:top;margin:0 .25rem 0 0}img.large{width:4rem;height:6rem;margin:0 .5rem 1rem 0;object-fit:contain;float:left}img.large+ul+*{clear:both}@font-face{font-family:Inter;src:url(https://tinybase.org/fonts/inter.woff2) format(&#x27;woff2&#x27;)}*{box-sizing:border-box}body{user-select:none;font-family:Inter,sans-serif;letter-spacing:-.04rem;font-size:.8rem;line-height:1.5rem;margin:0;color:#333}h1{margin:0 0 1rem}h2{margin:1.5rem 0 .5rem}ul{padding-left:0}li{display:block;padding-bottom:.25rem}a{white-space:nowrap;text-overflow:ellipsis;overflow:hidden;cursor:pointer;max-width:100%;display:inline-block;vertical-align:top;color:#000}a:hover{text-decoration:underline}p{line-height:1.2rem}&lt;/style&gt;&lt;/head&gt;&lt;body&gt;&lt;/body&gt;&lt;script type=&quot;module&quot;&gt;import{Fragment as D,jsx as o,jsxs as a}from&quot;react/jsx-runtime&quot;;import{useMemo as f,useState as W}from&quot;react&quot;;import{createRoot as T}from&quot;react-dom/client&quot;;import{createQueries as E,createStore as R}from&quot;tinybase&quot;;import{CellView as b,Provider as V,ResultCellView as g,useCell as I,useCreateQueries as _,useCreateStore as S,useQueries as G,useResultCell as d,useResultRowIds as M,useSetValuesCallback as A,useValues as B}from&quot;tinybase/ui-react&quot;;import{ResultSortedTableInHtmlTable as c}from&quot;tinybase/ui-react-dom&quot;;import{Inspector as H}from&quot;tinybase/ui-react-inspector&quot;;const J=()=&gt;{const e=S(R),t=S(()=&gt;R().setValues({currentSection:&quot;movies&quot;})),r=_(e,re,[]),[i,n]=W(!0);return f(async()=&gt;{await te(e),n(!1)},[]),a(V,{store:e,storesById:{viewStore:t},queries:r,children:[o(Z,{}),i?o(U,{}):o(j,{}),o(H,{})]})};addEventListener(&quot;load&quot;,()=&gt;T(document.body).render(o(J,{})));const U=()=&gt;o(&quot;div&quot;,{id:&quot;loading&quot;}),x=({detailId:e})=&gt;e==null?o(ae,{}):o(pe,{movieId:e}),z=({detailId:e})=&gt;e==null?o(le,{}):o(Ie,{year:e}),K=({detailId:e})=&gt;e==null?o(ce,{}):o(ye,{genreId:e}),X=({detailId:e})=&gt;e==null?o(de,{}):o(be,{personId:e}),O={movies:[&quot;Movies&quot;,x],years:[&quot;Years&quot;,z],genres:[&quot;Genres&quot;,K],people:[&quot;People&quot;,X]},q=()=&gt;B(&quot;viewStore&quot;),p=(e,t)=&gt;A(()=&gt;({currentSection:e,currentDetailId:t}),[e,t],&quot;viewStore&quot;),Z=()=&gt;{const{currentSection:e}=q();return o(&quot;nav&quot;,{children:Object.entries(O).map(([t,[r]])=&gt;o(&quot;a&quot;,{className:e==t?&quot;current&quot;:&quot;&quot;,onClick:p(t,null),children:r}))})},j=()=&gt;{const{currentSection:e,currentDetailId:t}=q();if(O[e]!=null){const[,r]=O[e];return o(&quot;main&quot;,{children:o(r,{detailId:t})})}return null},ee=/^[\d\.]+$/,oe=async(e,t)=&gt;{const r=(await(await fetch(`https://tinybase.org/assets/${t}.tsv`)).text()).split(`
-`),i=r.shift().split(&quot;	&quot;);r.forEach(n=&gt;{const l=n.split(&quot;	&quot;);if(l.length==i.length){const m=l.shift();l.forEach((s,u)=&gt;{s!=&quot;&quot;&amp;&amp;(ee.test(s)&amp;&amp;(s=parseFloat(s)),e.setCell(t,m,i[u+1],s))})}})},te=async e=&gt;{e.startTransaction(),await Promise.all([&quot;movies&quot;,&quot;genres&quot;,&quot;people&quot;,&quot;cast&quot;].map(t=&gt;oe(e,t))),e.finishTransaction()},h=({select:e,join:t})=&gt;{e((r,i)=&gt;i).as(&quot;movieId&quot;),e(&quot;name&quot;).as(&quot;movieName&quot;),e(&quot;image&quot;).as(&quot;movieImage&quot;),e(&quot;year&quot;),e(&quot;rating&quot;),e(&quot;genreId&quot;),e(&quot;genres&quot;,&quot;name&quot;).as(&quot;genreName&quot;),t(&quot;genres&quot;,&quot;genreId&quot;)},re=e=&gt;{const t=E(e);return t.setQueryDefinition(&quot;movies&quot;,&quot;movies&quot;,({select:r,join:i})=&gt;{h({select:r,join:i}),r(&quot;overview&quot;),r(&quot;directorId&quot;),r(&quot;directors&quot;,&quot;name&quot;).as(&quot;directorName&quot;),r(&quot;directors&quot;,&quot;image&quot;).as(&quot;directorImage&quot;),i(&quot;people&quot;,&quot;directorId&quot;).as(&quot;directors&quot;),[1,2,3].forEach(n=&gt;{const l=`cast${n}`;i(&quot;cast&quot;,(s,u)=&gt;`${u}/${n}`).as(l),r(l,&quot;castId&quot;).as(`castId${n}`);const m=`actors${n}`;i(&quot;people&quot;,l,&quot;castId&quot;).as(m),r(m,&quot;name&quot;).as(`castName${n}`),r(m,&quot;image&quot;).as(`castImage${n}`)})}),t.setQueryDefinition(&quot;years&quot;,&quot;movies&quot;,({select:r,group:i})=&gt;{r(&quot;year&quot;),r((n,l)=&gt;l).as(&quot;movieId&quot;),i(&quot;movieId&quot;,&quot;count&quot;).as(&quot;movieCount&quot;)}),t.setQueryDefinition(&quot;genres&quot;,&quot;movies&quot;,({select:r,join:i,group:n})=&gt;{r(&quot;genreId&quot;),r((l,m)=&gt;m).as(&quot;movieId&quot;),i(&quot;genres&quot;,&quot;genreId&quot;),r(&quot;genres&quot;,&quot;name&quot;).as(&quot;genreName&quot;),n(&quot;movieId&quot;,&quot;count&quot;).as(&quot;movieCount&quot;)}),t.setQueryDefinition(&quot;directors&quot;,&quot;movies&quot;,({select:r,join:i,group:n})=&gt;{r(&quot;directorId&quot;),r((l,m)=&gt;m).as(&quot;movieId&quot;),r(&quot;people&quot;,&quot;name&quot;).as(&quot;directorName&quot;),r(&quot;people&quot;,&quot;image&quot;).as(&quot;directorImage&quot;),r(&quot;people&quot;,&quot;gender&quot;),r(&quot;people&quot;,&quot;popularity&quot;),i(&quot;people&quot;,&quot;directorId&quot;),n(&quot;movieId&quot;,&quot;count&quot;).as(&quot;movieCount&quot;)}),t.setQueryDefinition(&quot;cast&quot;,&quot;cast&quot;,({select:r,join:i,group:n})=&gt;{r(&quot;castId&quot;),r(&quot;movieId&quot;),r(&quot;people&quot;,&quot;name&quot;).as(&quot;castName&quot;),r(&quot;people&quot;,&quot;image&quot;).as(&quot;castImage&quot;),r(&quot;people&quot;,&quot;gender&quot;),r(&quot;people&quot;,&quot;popularity&quot;),i(&quot;people&quot;,&quot;castId&quot;),n(&quot;movieId&quot;,&quot;count&quot;).as(&quot;movieCount&quot;)}),t},N=({queryId:e,rowId:t})=&gt;{const r=d(e,t,&quot;movieId&quot;);return a(&quot;a&quot;,{onClick:p(&quot;movies&quot;,r),children:[o(k,{queryId:e,rowId:t,cellId:&quot;movieImage&quot;}),o(g,{queryId:e,rowId:t,cellId:&quot;movieName&quot;})]})},C=({queryId:e,rowId:t})=&gt;{const r=d(e,t,&quot;year&quot;);return o(&quot;a&quot;,{onClick:p(&quot;years&quot;,r),children:o(g,{queryId:e,rowId:t,cellId:&quot;year&quot;})})},y=({queryId:e,rowId:t})=&gt;{const r=d(e,t,&quot;genreId&quot;);return o(&quot;a&quot;,{onClick:p(&quot;genres&quot;,r),children:o(g,{queryId:e,rowId:t,cellId:&quot;genreName&quot;})})},F=({queryId:e,rowId:t})=&gt;{const r=d(e,t,&quot;directorId&quot;);return a(&quot;a&quot;,{onClick:p(&quot;people&quot;,r),children:[o(k,{queryId:e,rowId:t,cellId:&quot;directorImage&quot;}),o(g,{queryId:e,rowId:t,cellId:&quot;directorName&quot;})]})},w=({queryId:e,rowId:t,billing:r=&quot;&quot;})=&gt;{const i=d(e,t,`castId${r}`);return i==null?null:a(&quot;a&quot;,{onClick:p(&quot;people&quot;,i),children:[o(k,{queryId:e,rowId:t,cellId:`castImage${r}`}),o(g,{queryId:e,rowId:t,cellId:`castName${r}`})]})},$=({queryId:e,rowId:t})=&gt;Q(d(e,t,&quot;gender&quot;)),ie=({tableId:e,rowId:t})=&gt;Q(I(e,t,&quot;gender&quot;)),Q=e=&gt;{switch(e){case 1:return&quot;Female&quot;;case 2:return&quot;Male&quot;;case 3:return&quot;Non-binary&quot;;default:return&quot;Unknown&quot;}},k=({queryId:e,rowId:t,cellId:r,isLarge:i})=&gt;o(Y,{imageFile:d(e,t,r),isLarge:i}),ne=({tableId:e,rowId:t,cellId:r,isLarge:i})=&gt;o(Y,{imageFile:I(e,t,r),isLarge:i}),Y=({imageFile:e,isLarge:t})=&gt;o(&quot;img&quot;,{src:`https://image.tmdb.org/t/p/w${t?92:45}${e}`,className:t?&quot;large&quot;:&quot;&quot;}),v=({title:e,children:t})=&gt;a(D,{children:[o(&quot;h1&quot;,{children:e}),t]}),ae=()=&gt;o(v,{title:&quot;Rated movies&quot;,children:o(c,{queryId:&quot;movies&quot;,customCells:se,cellId:&quot;rating&quot;,descending:!0,limit:20,sortOnClick:!0,paginator:!0,idColumn:!1})}),se={movieName:{label:&quot;Movie&quot;,component:N},year:{label:&quot;Year&quot;,component:C},rating:{label:&quot;Rating&quot;},genreName:{label:&quot;Genre&quot;,component:y}},le=()=&gt;o(v,{title:&quot;Years&quot;,children:o(c,{queryId:&quot;years&quot;,customCells:me,cellId:&quot;year&quot;,limit:20,descending:!0,sortOnClick:!0,paginator:!0,idColumn:!1})}),me={year:{label:&quot;Year&quot;,component:C},movieCount:{label:&quot;Rated movies&quot;}},ce=()=&gt;o(v,{title:&quot;Genres&quot;,children:o(c,{queryId:&quot;genres&quot;,customCells:ue,cellId:&quot;movieCount&quot;,descending:!0,limit:20,sortOnClick:!0,paginator:!0,idColumn:!1})}),ue={genreName:{label:&quot;Genre&quot;,component:y},movieCount:{label:&quot;Rated movies&quot;}},de=()=&gt;a(v,{title:&quot;People&quot;,children:[o(&quot;h2&quot;,{children:&quot;Directors&quot;}),o(c,{queryId:&quot;directors&quot;,customCells:ve,cellId:&quot;popularity&quot;,descending:!0,limit:20,sortOnClick:!0,paginator:!0,idColumn:!1}),o(&quot;h2&quot;,{children:&quot;Cast&quot;}),o(c,{queryId:&quot;cast&quot;,customCells:ge,cellId:&quot;popularity&quot;,descending:!0,limit:20,sortOnClick:!0,paginator:!0,idColumn:!1})]}),ve={directorName:{label:&quot;Director&quot;,component:F},gender:{label:&quot;Gender&quot;,component:$},popularity:{label:&quot;Popularity&quot;},movieCount:{label:&quot;Rated movies&quot;}},ge={castName:{label:&quot;Cast&quot;,component:w},gender:{label:&quot;Gender&quot;,component:$},popularity:{label:&quot;Popularity&quot;},movieCount:{label:&quot;Rated movies&quot;}},pe=({movieId:e})=&gt;{const t={queryId:&quot;movies&quot;,rowId:e},r=d(&quot;movies&quot;,e,&quot;movieName&quot;);return r==null?null:a(v,{title:r,children:[o(k,{...t,cellId:&quot;movieImage&quot;,isLarge:!0}),a(&quot;ul&quot;,{children:[a(&quot;li&quot;,{children:[&quot;Year: &quot;,o(C,{...t})]}),a(&quot;li&quot;,{children:[&quot;Genre: &quot;,o(y,{...t})]}),a(&quot;li&quot;,{children:[&quot;Rating: &quot;,o(g,{...t,cellId:&quot;rating&quot;})]})]}),o(&quot;p&quot;,{children:o(g,{...t,cellId:&quot;overview&quot;})}),o(&quot;h2&quot;,{children:&quot;Credits&quot;}),a(&quot;ul&quot;,{children:[a(&quot;li&quot;,{children:[o(F,{...t}),&quot;, director&quot;]}),o(&quot;li&quot;,{children:o(w,{...t,billing:1})}),o(&quot;li&quot;,{children:o(w,{...t,billing:2})}),o(&quot;li&quot;,{children:o(w,{...t,billing:3})})]})]})},Ie=({year:e})=&gt;{const t=G();return f(()=&gt;t.setQueryDefinition(&quot;moviesInYear&quot;,&quot;movies&quot;,({select:r,join:i,where:n})=&gt;{h({select:r,join:i}),n(&quot;year&quot;,e)}),[e]),o(v,{title:`Movies from ${e}`,children:o(c,{queryId:&quot;moviesInYear&quot;,customCells:Ce,cellId:&quot;rating&quot;,descending:!0,limit:20,sortOnClick:!0,paginator:!0,idColumn:!1})})},Ce={movieName:{label:&quot;Movie&quot;,component:N},rating:{label:&quot;Rating&quot;},genreName:{label:&quot;Genre&quot;,component:y}},ye=({genreId:e})=&gt;{const t=G();f(()=&gt;t.setQueryDefinition(&quot;moviesInGenre&quot;,&quot;movies&quot;,({select:i,join:n,where:l})=&gt;{h({select:i,join:n}),l(&quot;genreId&quot;,e)}),[e]);const r=I(&quot;genres&quot;,e,&quot;name&quot;);return r==null?null:o(v,{title:`${r} movies`,children:o(c,{queryId:&quot;moviesInGenre&quot;,customCells:fe,cellId:&quot;rating&quot;,descending:!0,limit:20,sortOnClick:!0,paginator:!0,idColumn:!1})})},fe={movieName:{label:&quot;Movie&quot;,component:N},year:{label:&quot;Year&quot;,component:C},rating:{label:&quot;Rating&quot;}},be=({personId:e})=&gt;{const t=G();f(()=&gt;t.setQueryDefinition(&quot;moviesWithDirector&quot;,&quot;movies&quot;,({select:s,join:u,where:P})=&gt;{h({select:s,join:u}),P(&quot;directorId&quot;,e)}).setQueryDefinition(&quot;moviesWithCast&quot;,&quot;cast&quot;,({select:s,join:u,where:P})=&gt;{s(&quot;movieId&quot;),s(&quot;movies&quot;,&quot;name&quot;).as(&quot;movieName&quot;),s(&quot;movies&quot;,&quot;image&quot;).as(&quot;movieImage&quot;),s(&quot;movies&quot;,&quot;year&quot;),s(&quot;movies&quot;,&quot;rating&quot;),s(&quot;movies&quot;,&quot;genreId&quot;),s(&quot;genres&quot;,&quot;name&quot;).as(&quot;genreName&quot;),u(&quot;movies&quot;,&quot;movieId&quot;),u(&quot;genres&quot;,&quot;movies&quot;,&quot;genreId&quot;),P(&quot;castId&quot;,e)}),[e]);const r={tableId:&quot;people&quot;,rowId:e},i=I(&quot;people&quot;,e,&quot;name&quot;),n=I(&quot;people&quot;,e,&quot;died&quot;),l=M(&quot;moviesWithDirector&quot;),m=M(&quot;moviesWithCast&quot;);return i==null?null:a(v,{title:i,children:[o(ne,{...r,cellId:&quot;image&quot;,isLarge:!0}),a(&quot;ul&quot;,{children:[a(&quot;li&quot;,{children:[&quot;Gender: &quot;,o(ie,{...r})]}),a(&quot;li&quot;,{children:[&quot;Born: &quot;,o(b,{...r,cellId:&quot;born&quot;}),n&amp;&amp;a(D,{children:[&quot;; died: &quot;,o(b,{...r,cellId:&quot;died&quot;})]})]}),a(&quot;li&quot;,{children:[&quot;Popularity: &quot;,o(b,{...r,cellId:&quot;popularity&quot;})]})]}),o(&quot;p&quot;,{children:o(b,{...r,cellId:&quot;biography&quot;})}),l.length==0?null:a(D,{children:[o(&quot;h2&quot;,{children:&quot;As director:&quot;}),o(c,{queryId:&quot;moviesWithDirector&quot;,customCells:L,cellId:&quot;rating&quot;,descending:!0,limit:20,sortOnClick:!0,paginator:!0,idColumn:!1})]}),m.length==0?null:a(D,{children:[o(&quot;h2&quot;,{children:&quot;As cast:&quot;}),o(c,{queryId:&quot;moviesWithCast&quot;,customCells:L,cellId:&quot;rating&quot;,descending:!0,limit:20,sortOnClick:!0,paginator:!0,idColumn:!1})]})]})},L={movieName:{label:&quot;Movie&quot;,component:N},year:{label:&quot;Year&quot;,component:C},rating:{label:&quot;Rating&quot;},genreName:{label:&quot;Genre&quot;,component:y}};&lt;/script&gt;&lt;/html&gt;"></iframe><p>In this demo, we build an app that showcases the relational query capabilities of TinyBase v2.0, joining together information about movies, directors, and actors.</p><p><img src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c.svg" alt="TMDB" title="Inline logo for TMDB"> - we use The Movie Database as the source of the movie information in this app. Thank you for a great data set to demonstrate TinyBase!</p><h3 id="an-overview-of-the-data">An Overview Of The Data</h3><p>Before looking at code, let&#x27;s familiarize ourselves with the data used in this application.</p><h4 id="tables"><a href="/api/store/type-aliases/store/tables/"><code>Tables</code></a></h4><p>The raw data is loaded into four normalized <a href="/api/store/type-aliases/store/table/"><code>Table</code></a> objects: <code>movies</code> (the top 250 movies on TMDB), <code>genres</code> (the styles of those movies), <code>people</code> (actors and directors), and <code>cast</code> (how the actors are associated with the movies).</p><p>Naturally, there are relationships between these. For example, the <code>directorId</code> <a href="/api/store/type-aliases/store/cell/"><code>Cell</code></a> of the <code>movies</code> <a href="/api/store/type-aliases/store/table/"><code>Table</code></a> references a person in the <code>people</code> table, and the <code>genreId</code> <a href="/api/store/type-aliases/store/cell/"><code>Cell</code></a> references the <code>genre</code> <a href="/api/store/type-aliases/store/table/"><code>Table</code></a>. The <code>cast</code> <a href="/api/store/type-aliases/store/table/"><code>Table</code></a> is a many-to-many join that contains all the <code>movieId</code>/<code>castId</code> pairs for the top three billed actors of each movie.</p><div class="table"><table><thead><tr><th><a href="/api/store/type-aliases/store/table/"><code>Table</code></a></th><th><a href="/api/store/type-aliases/store/cell/"><code>Cell</code></a> <a href="/api/common/type-aliases/identity/ids/"><code>Ids</code></a></th></tr></thead><tbody><tr><td><code>movies</code></td><td><code>id</code>, <code>name</code>, <code>genreId</code>, <code>directorId</code>, <code>year</code>, <code>rating</code>, <code>overview</code>, <code>image</code></td></tr><tr><td><code>genres</code></td><td><code>id</code>, <code>name</code></td></tr><tr><td><code>people</code></td><td><code>id</code>, <code>name</code>, <code>gender</code>, <code>born</code>, <code>died</code>, <code>popularity</code>, <code>biography</code>, <code>image</code></td></tr><tr><td><code>cast</code></td><td><code>id</code>, <code>movieId</code>, <code>castId</code></td></tr></tbody></table></div><p>Because the data is normalized (and fetched as TSV over the wire), it loads quickly. But generally this data isn&#x27;t suited to render directly into the application: the user doesn&#x27;t want to see the movie&#x27;s <code>directorId</code>. They want to see the director&#x27;s <code>name</code>!</p><h4 id="queries"><a href="/api/queries/interfaces/queries/queries/"><code>Queries</code></a></h4><p>The app therefore uses a set of queries against these underlying <a href="/api/store/type-aliases/store/table/"><code>Table</code></a> objects. These act as de-normalized &#x27;views&#x27; of the underlying normalized data and make it easy for the application to render &#x27;virtual&#x27; rows comprised of <a href="/api/store/type-aliases/store/cell/"><code>Cell</code></a> values from multiple joined <a href="/api/store/type-aliases/store/table/"><code>Table</code></a> objects in the <a href="/api/the-essentials/creating-stores/store/"><code>Store</code></a>.</p><p>Some of these, like the main <code>movies</code> query, are set up for the lifetime of the application:</p><div class="table"><table><thead><tr><th>Query</th><th>From <a href="/api/store/type-aliases/store/tables/"><code>Tables</code></a></th><th><a href="/api/store/type-aliases/store/cell/"><code>Cell</code></a> <a href="/api/common/type-aliases/identity/ids/"><code>Ids</code></a></th></tr></thead><tbody><tr><td><code>movies</code></td><td><code>movies</code>, <code>genres</code>, <code>people</code></td><td><code>movieId</code>, <code>movieName</code>, <code>movieImage</code>, <code>year</code>, <code>rating</code>, <code>genreId</code>, <code>genreName</code>, <code>overview</code>, <code>directorId</code>, <code>directorName</code>, <code>directorImage</code>, <code>castId1</code>, <code>castName1</code>, <code>castImage1</code>, <code>castId2</code>, <code>castName2</code>, <code>castImage2</code>, <code>castId3</code>, <code>castName3</code>, <code>castImage3</code></td></tr><tr><td><code>years</code></td><td><code>movies</code></td><td><code>year</code>, <code>movieCount</code></td></tr><tr><td><code>genres</code></td><td><code>movies</code></td><td><code>genreId</code>, <code>genreName</code>, <code>movieCount</code></td></tr><tr><td><code>directors</code></td><td><code>movies</code>, <code>people</code></td><td><code>directorId</code>, <code>directorName</code>, <code>directorImage</code>, <code>gender</code>, <code>popularity</code>, <code>movieCount</code></td></tr><tr><td><code>cast</code></td><td><code>cast</code>, <code>people</code></td><td><code>castId</code>, <code>castName</code>, <code>castImage</code>, <code>gender</code>, <code>popularity</code>, <code>movieCount</code></td></tr></tbody></table></div><p>Others, like the <code>moviesInYear</code> query, are set up when a specific page is being viewed (in that case, the detail page for a particular year):</p><div class="table"><table><thead><tr><th>Query</th><th>From <a href="/api/store/type-aliases/store/tables/"><code>Tables</code></a></th><th><a href="/api/store/type-aliases/store/cell/"><code>Cell</code></a> <a href="/api/common/type-aliases/identity/ids/"><code>Ids</code></a></th></tr></thead><tbody><tr><td><code>moviesInYear</code></td><td><code>movies</code>, <code>genres</code></td><td><code>movieId</code>, <code>movieName</code>, <code>movieImage</code>, <code>year</code>, <code>rating</code>, <code>genreId</code>, <code>genreName</code></td></tr><tr><td><code>moviesInGenre</code></td><td><code>movies</code>, <code>genres</code></td><td><code>movieId</code>, <code>movieName</code>, <code>movieImage</code>, <code>year</code>, <code>rating</code>, <code>genreId</code>, <code>genreName</code></td></tr><tr><td><code>moviesWithDirector</code></td><td><code>movies</code>, <code>genres</code></td><td><code>movieId</code>, <code>movieName</code>, <code>movieImage</code>, <code>year</code>, <code>rating</code>, <code>genreId</code>, <code>genreName</code></td></tr><tr><td><code>moviesWithCast</code></td><td><code>cast</code>, <code>movies</code>, <code>genres</code></td><td><code>movieId</code>, <code>movieName</code>, <code>movieImage</code>, <code>year</code>, <code>rating</code>, <code>genreId</code>, <code>genreName</code></td></tr></tbody></table></div><p>You might notice that many of these queries share the same <a href="/api/store/type-aliases/store/cell/"><code>Cell</code></a> <a href="/api/common/type-aliases/identity/ids/"><code>Ids</code></a>. You&#x27;ll discover that TinyBase lets you compose queries programmatically, so we&#x27;ll be able to build these queries without much repetition: the common <code>queryMovieBasics</code> function is used to select the same <a href="/api/store/type-aliases/store/cell/"><code>Cell</code></a> <a href="/api/common/type-aliases/identity/ids/"><code>Ids</code></a> into most of these query views.</p><p>Refer back to this section when we start <a href="#loading-the-data">loading the data</a>, <a href="#querying-the-data">querying the data</a>, and rendering them into the user interface. Otherwise, that&#x27;s enough preamble... let&#x27;s get to some code!</p><h3 id="boilerplate">Boilerplate</h3><p>First, we create the import aliases for TinyBase and React modules we&#x27;ll need:</p><pre><code><span class="tag"><span class="tag"><span class="punctuation">&lt;</span>script</span> <span class="attr-name">type</span><span class="attr-value"><span class="punctuation">=</span><span class="punctuation">"</span>importmap<span class="punctuation">"</span></span><span class="punctuation">></span></span><span class="script"><span class="language-javascript">
+  )) });
+};
+var Body = () =&gt; {
+  const { currentSection, currentDetailId } = useRoute();
+  if (SECTIONS[currentSection] != null) {
+    const [, Section] = SECTIONS[currentSection];
+    return jsx(&quot;main&quot;, { children: jsx(Section, { detailId: currentDetailId }) });
+  }
+  return null;
+};
+var NUMERIC = /^[\d\.]+$/;
+var loadTable = async (store, tableId) =&gt; {
+  const rows = (await (await fetch(`https://tinybase.org/assets/${tableId}.tsv`)).text()).split(&quot;\n&quot;);
+  const cellIds = rows.shift().split(&quot;	&quot;);
+  rows.forEach((row) =&gt; {
+    const cells = row.split(&quot;	&quot;);
+    if (cells.length == cellIds.length) {
+      const rowId = cells.shift();
+      cells.forEach((cell, c) =&gt; {
+        if (cell != &quot;&quot;) {
+          if (NUMERIC.test(cell)) {
+            cell = parseFloat(cell);
+          }
+          store.setCell(tableId, rowId, cellIds[c + 1], cell);
+        }
+      });
+    }
+  });
+};
+var loadStore = async (store) =&gt; {
+  store.startTransaction();
+  await Promise.all(
+    [&quot;movies&quot;, &quot;genres&quot;, &quot;people&quot;, &quot;cast&quot;].map(
+      (tableId) =&gt; loadTable(store, tableId)
+    )
+  );
+  store.finishTransaction();
+};
+var queryMovieBasics = ({ select, join }) =&gt; {
+  select((_, movieId) =&gt; movieId).as(&quot;movieId&quot;);
+  select(&quot;name&quot;).as(&quot;movieName&quot;);
+  select(&quot;image&quot;).as(&quot;movieImage&quot;);
+  select(&quot;year&quot;);
+  select(&quot;rating&quot;);
+  select(&quot;genreId&quot;);
+  select(&quot;genres&quot;, &quot;name&quot;).as(&quot;genreName&quot;);
+  join(&quot;genres&quot;, &quot;genreId&quot;);
+};
+var createAndInitQueries = (store) =&gt; {
+  const queries = createQueries(store);
+  queries.setQueryDefinition(&quot;movies&quot;, &quot;movies&quot;, ({ select, join }) =&gt; {
+    queryMovieBasics({ select, join });
+    select(&quot;overview&quot;);
+    select(&quot;directorId&quot;);
+    select(&quot;directors&quot;, &quot;name&quot;).as(&quot;directorName&quot;);
+    select(&quot;directors&quot;, &quot;image&quot;).as(&quot;directorImage&quot;);
+    join(&quot;people&quot;, &quot;directorId&quot;).as(&quot;directors&quot;);
+    [1, 2, 3].forEach((billing) =&gt; {
+      const castJoin = `cast${billing}`;
+      join(&quot;cast&quot;, (_, movieId) =&gt; `${movieId}/${billing}`).as(castJoin);
+      select(castJoin, &quot;castId&quot;).as(`castId${billing}`);
+      const actorJoin = `actors${billing}`;
+      join(&quot;people&quot;, castJoin, &quot;castId&quot;).as(actorJoin);
+      select(actorJoin, &quot;name&quot;).as(`castName${billing}`);
+      select(actorJoin, &quot;image&quot;).as(`castImage${billing}`);
+    });
+  });
+  queries.setQueryDefinition(&quot;years&quot;, &quot;movies&quot;, ({ select, group }) =&gt; {
+    select(&quot;year&quot;);
+    select((_, rowId) =&gt; rowId).as(&quot;movieId&quot;);
+    group(&quot;movieId&quot;, &quot;count&quot;).as(&quot;movieCount&quot;);
+  });
+  queries.setQueryDefinition(&quot;genres&quot;, &quot;movies&quot;, ({ select, join, group }) =&gt; {
+    select(&quot;genreId&quot;);
+    select((_, rowId) =&gt; rowId).as(&quot;movieId&quot;);
+    join(&quot;genres&quot;, &quot;genreId&quot;);
+    select(&quot;genres&quot;, &quot;name&quot;).as(&quot;genreName&quot;);
+    group(&quot;movieId&quot;, &quot;count&quot;).as(&quot;movieCount&quot;);
+  });
+  queries.setQueryDefinition(&quot;directors&quot;, &quot;movies&quot;, ({ select, join, group }) =&gt; {
+    select(&quot;directorId&quot;);
+    select((_, rowId) =&gt; rowId).as(&quot;movieId&quot;);
+    select(&quot;people&quot;, &quot;name&quot;).as(&quot;directorName&quot;);
+    select(&quot;people&quot;, &quot;image&quot;).as(&quot;directorImage&quot;);
+    select(&quot;people&quot;, &quot;gender&quot;);
+    select(&quot;people&quot;, &quot;popularity&quot;);
+    join(&quot;people&quot;, &quot;directorId&quot;);
+    group(&quot;movieId&quot;, &quot;count&quot;).as(&quot;movieCount&quot;);
+  });
+  queries.setQueryDefinition(&quot;cast&quot;, &quot;cast&quot;, ({ select, join, group }) =&gt; {
+    select(&quot;castId&quot;);
+    select(&quot;movieId&quot;);
+    select(&quot;people&quot;, &quot;name&quot;).as(&quot;castName&quot;);
+    select(&quot;people&quot;, &quot;image&quot;).as(&quot;castImage&quot;);
+    select(&quot;people&quot;, &quot;gender&quot;);
+    select(&quot;people&quot;, &quot;popularity&quot;);
+    join(&quot;people&quot;, &quot;castId&quot;);
+    group(&quot;movieId&quot;, &quot;count&quot;).as(&quot;movieCount&quot;);
+  });
+  queries.setQueryDefinition(
+    &quot;yearGenreMovies&quot;,
+    &quot;movies&quot;,
+    ({ select, join, where, param }) =&gt; {
+      queryMovieBasics({ select, join });
+      if (param(&quot;year&quot;)) {
+        where(&quot;year&quot;, param(&quot;year&quot;));
+      }
+      if (param(&quot;genreId&quot;)) {
+        where(&quot;genreId&quot;, param(&quot;genreId&quot;));
+      }
+    },
+    { year: null, genreId: null }
+  );
+  queries.setQueryDefinition(
+    &quot;directedMovies&quot;,
+    &quot;movies&quot;,
+    ({ select, join, where, param }) =&gt; {
+      queryMovieBasics({ select, join });
+      where(&quot;directorId&quot;, param(&quot;personId&quot;));
+    },
+    { personId: null }
+  );
+  queries.setQueryDefinition(
+    &quot;appearedMovies&quot;,
+    &quot;cast&quot;,
+    ({ select, join, where, param }) =&gt; {
+      select(&quot;movieId&quot;);
+      select(&quot;movies&quot;, &quot;name&quot;).as(&quot;movieName&quot;);
+      select(&quot;movies&quot;, &quot;image&quot;).as(&quot;movieImage&quot;);
+      select(&quot;movies&quot;, &quot;year&quot;);
+      select(&quot;movies&quot;, &quot;rating&quot;);
+      select(&quot;movies&quot;, &quot;genreId&quot;);
+      select(&quot;genres&quot;, &quot;name&quot;).as(&quot;genreName&quot;);
+      join(&quot;movies&quot;, &quot;movieId&quot;);
+      join(&quot;genres&quot;, &quot;movies&quot;, &quot;genreId&quot;);
+      where(&quot;castId&quot;, param(&quot;personId&quot;));
+    },
+    { personId: null }
+  );
+  return queries;
+};
+var useSetYearGenre = ({ year, genreId }) =&gt; useSetParamValuesCallback(
+  &quot;yearGenreMovies&quot;,
+  (yearGenre) =&gt; yearGenre
+)({ year, genreId });
+var useSetPersonMovies = (personId) =&gt; {
+  useSetParamValuesCallback(&quot;directedMovies&quot;, (person) =&gt; person)({ personId });
+  useSetParamValuesCallback(&quot;appearedMovies&quot;, (person) =&gt; person)({ personId });
+};
+var MovieLink = ({ queryId, rowId }) =&gt; {
+  const movieId = useResultCell(queryId, rowId, &quot;movieId&quot;);
+  return jsxs(&quot;a&quot;, { onClick: useSetRouteCallback(&quot;movies&quot;, movieId), children: [
+    jsx(ImageFromQuery, { queryId, rowId, cellId: &quot;movieImage&quot; }),
+    jsx(ResultCellView, { queryId, rowId, cellId: &quot;movieName&quot; })
+  ] });
+};
+var YearLink = ({ queryId, rowId }) =&gt; {
+  const year = useResultCell(queryId, rowId, &quot;year&quot;);
+  return jsx(&quot;a&quot;, { onClick: useSetRouteCallback(&quot;years&quot;, year), children: jsx(ResultCellView, { queryId, rowId, cellId: &quot;year&quot; }) });
+};
+var GenreLink = ({ queryId, rowId }) =&gt; {
+  const genreId = useResultCell(queryId, rowId, &quot;genreId&quot;);
+  return jsx(&quot;a&quot;, { onClick: useSetRouteCallback(&quot;genres&quot;, genreId), children: jsx(ResultCellView, { queryId, rowId, cellId: &quot;genreName&quot; }) });
+};
+var DirectorLink = ({ queryId, rowId }) =&gt; {
+  const personId = useResultCell(queryId, rowId, &quot;directorId&quot;);
+  return jsxs(&quot;a&quot;, { onClick: useSetRouteCallback(&quot;people&quot;, personId), children: [
+    jsx(ImageFromQuery, { queryId, rowId, cellId: &quot;directorImage&quot; }),
+    jsx(ResultCellView, { queryId, rowId, cellId: &quot;directorName&quot; })
+  ] });
+};
+var CastLink = ({ queryId, rowId, billing = &quot;&quot; }) =&gt; {
+  const personId = useResultCell(queryId, rowId, `castId${billing}`);
+  return personId == null ? null : jsxs(&quot;a&quot;, { onClick: useSetRouteCallback(&quot;people&quot;, personId), children: [
+    jsx(
+      ImageFromQuery,
+      {
+        queryId,
+        rowId,
+        cellId: `castImage${billing}`
+      }
+    ),
+    jsx(
+      ResultCellView,
+      {
+        queryId,
+        rowId,
+        cellId: `castName${billing}`
+      }
+    )
+  ] });
+};
+var GenderFromQuery = ({ queryId, rowId }) =&gt; genderString(useResultCell(queryId, rowId, &quot;gender&quot;));
+var GenderFromTable = ({ tableId, rowId }) =&gt; genderString(useCell(tableId, rowId, &quot;gender&quot;));
+var genderString = (genderId) =&gt; {
+  switch (genderId) {
+    case 1:
+      return &quot;Female&quot;;
+    case 2:
+      return &quot;Male&quot;;
+    case 3:
+      return &quot;Non-binary&quot;;
+    default:
+      return &quot;Unknown&quot;;
+  }
+};
+var ImageFromQuery = ({ queryId, rowId, cellId, isLarge }) =&gt; jsx(Image, { imageFile: useResultCell(queryId, rowId, cellId), isLarge });
+var ImageFromTable = ({ tableId, rowId, cellId, isLarge }) =&gt; jsx(Image, { imageFile: useCell(tableId, rowId, cellId), isLarge });
+var Image = ({ imageFile, isLarge }) =&gt; jsx(
+  &quot;img&quot;,
+  {
+    src: `https://image.tmdb.org/t/p/w${isLarge ? 92 : 45}${imageFile}`,
+    className: isLarge ? &quot;large&quot; : &quot;&quot;
+  }
+);
+var Page = ({ title, children }) =&gt; jsxs(Fragment, { children: [
+  jsx(&quot;h1&quot;, { children: title }),
+  children
+] });
+var MoviesOverview = () =&gt; jsx(Page, { title: &quot;Rated movies&quot;, children: jsx(
+  ResultSortedTableInHtmlTable,
+  {
+    queryId: &quot;movies&quot;,
+    customCells: customCellsForMoviesOverview,
+    cellId: &quot;rating&quot;,
+    descending: true,
+    limit: 20,
+    sortOnClick: true,
+    paginator: true,
+    idColumn: false
+  }
+) });
+var customCellsForMoviesOverview = {
+  movieName: { label: &quot;Movie&quot;, component: MovieLink },
+  year: { label: &quot;Year&quot;, component: YearLink },
+  rating: { label: &quot;Rating&quot; },
+  genreName: { label: &quot;Genre&quot;, component: GenreLink }
+};
+var YearsOverview = () =&gt; jsx(Page, { title: &quot;Years&quot;, children: jsx(
+  ResultSortedTableInHtmlTable,
+  {
+    queryId: &quot;years&quot;,
+    customCells: customCellsForYearsOverview,
+    cellId: &quot;year&quot;,
+    limit: 20,
+    descending: true,
+    sortOnClick: true,
+    paginator: true,
+    idColumn: false
+  }
+) });
+var customCellsForYearsOverview = {
+  year: { label: &quot;Year&quot;, component: YearLink },
+  movieCount: { label: &quot;Rated movies&quot; }
+};
+var GenresOverview = () =&gt; jsx(Page, { title: &quot;Genres&quot;, children: jsx(
+  ResultSortedTableInHtmlTable,
+  {
+    queryId: &quot;genres&quot;,
+    customCells: customCellsForGenresOverview,
+    cellId: &quot;movieCount&quot;,
+    descending: true,
+    limit: 20,
+    sortOnClick: true,
+    paginator: true,
+    idColumn: false
+  }
+) });
+var customCellsForGenresOverview = {
+  genreName: { label: &quot;Genre&quot;, component: GenreLink },
+  movieCount: { label: &quot;Rated movies&quot; }
+};
+var PeopleOverview = () =&gt; jsxs(Page, { title: &quot;People&quot;, children: [
+  jsx(&quot;h2&quot;, { children: &quot;Directors&quot; }),
+  jsx(
+    ResultSortedTableInHtmlTable,
+    {
+      queryId: &quot;directors&quot;,
+      customCells: customCellsForDirectorsOverview,
+      cellId: &quot;popularity&quot;,
+      descending: true,
+      limit: 20,
+      sortOnClick: true,
+      paginator: true,
+      idColumn: false
+    }
+  ),
+  jsx(&quot;h2&quot;, { children: &quot;Cast&quot; }),
+  jsx(
+    ResultSortedTableInHtmlTable,
+    {
+      queryId: &quot;cast&quot;,
+      customCells: customCellsForCastOverview,
+      cellId: &quot;popularity&quot;,
+      descending: true,
+      limit: 20,
+      sortOnClick: true,
+      paginator: true,
+      idColumn: false
+    }
+  )
+] });
+var customCellsForDirectorsOverview = {
+  directorName: { label: &quot;Director&quot;, component: DirectorLink },
+  gender: { label: &quot;Gender&quot;, component: GenderFromQuery },
+  popularity: { label: &quot;Popularity&quot; },
+  movieCount: { label: &quot;Rated movies&quot; }
+};
+var customCellsForCastOverview = {
+  castName: { label: &quot;Cast&quot;, component: CastLink },
+  gender: { label: &quot;Gender&quot;, component: GenderFromQuery },
+  popularity: { label: &quot;Popularity&quot; },
+  movieCount: { label: &quot;Rated movies&quot; }
+};
+var MovieDetail = ({ movieId }) =&gt; {
+  const props = { queryId: &quot;movies&quot;, rowId: movieId };
+  const name = useResultCell(&quot;movies&quot;, movieId, &quot;movieName&quot;);
+  return name == null ? null : jsxs(Page, { title: name, children: [
+    jsx(ImageFromQuery, { ...props, cellId: &quot;movieImage&quot;, isLarge: true }),
+    jsxs(&quot;ul&quot;, { children: [
+      jsxs(&quot;li&quot;, { children: [
+        &quot;Year: &quot;,
+        jsx(YearLink, { ...props })
+      ] }),
+      jsxs(&quot;li&quot;, { children: [
+        &quot;Genre: &quot;,
+        jsx(GenreLink, { ...props })
+      ] }),
+      jsxs(&quot;li&quot;, { children: [
+        &quot;Rating: &quot;,
+        jsx(ResultCellView, { ...props, cellId: &quot;rating&quot; })
+      ] })
+    ] }),
+    jsx(&quot;p&quot;, { children: jsx(ResultCellView, { ...props, cellId: &quot;overview&quot; }) }),
+    jsx(&quot;h2&quot;, { children: &quot;Credits&quot; }),
+    jsxs(&quot;ul&quot;, { children: [
+      jsxs(&quot;li&quot;, { children: [
+        jsx(DirectorLink, { ...props }),
+        &quot;, director&quot;
+      ] }),
+      jsx(&quot;li&quot;, { children: jsx(CastLink, { ...props, billing: 1 }) }),
+      jsx(&quot;li&quot;, { children: jsx(CastLink, { ...props, billing: 2 }) }),
+      jsx(&quot;li&quot;, { children: jsx(CastLink, { ...props, billing: 3 }) })
+    ] })
+  ] });
+};
+var YearDetail = ({ year }) =&gt; {
+  useSetYearGenre({ year });
+  return jsx(Page, { title: `Movies from ${year}`, children: jsx(
+    ResultSortedTableInHtmlTable,
+    {
+      queryId: &quot;yearGenreMovies&quot;,
+      customCells: customCellsForMoviesInYear,
+      cellId: &quot;rating&quot;,
+      descending: true,
+      limit: 20,
+      sortOnClick: true,
+      paginator: true,
+      idColumn: false
+    }
+  ) });
+};
+var customCellsForMoviesInYear = {
+  movieName: { label: &quot;Movie&quot;, component: MovieLink },
+  rating: { label: &quot;Rating&quot; },
+  genreName: { label: &quot;Genre&quot;, component: GenreLink }
+};
+var GenreDetail = ({ genreId }) =&gt; {
+  useSetYearGenre({ genreId });
+  const name = useCell(&quot;genres&quot;, genreId, &quot;name&quot;);
+  return name == null ? null : jsx(Page, { title: `${name} movies`, children: jsx(
+    ResultSortedTableInHtmlTable,
+    {
+      queryId: &quot;yearGenreMovies&quot;,
+      customCells: customCellsForMoviesInGenre,
+      cellId: &quot;rating&quot;,
+      descending: true,
+      limit: 20,
+      sortOnClick: true,
+      paginator: true,
+      idColumn: false
+    }
+  ) });
+};
+var customCellsForMoviesInGenre = {
+  movieName: { label: &quot;Movie&quot;, component: MovieLink },
+  year: { label: &quot;Year&quot;, component: YearLink },
+  rating: { label: &quot;Rating&quot; }
+};
+var PersonDetail = ({ personId }) =&gt; {
+  useSetPersonMovies(personId);
+  const props = { tableId: &quot;people&quot;, rowId: personId };
+  const name = useCell(&quot;people&quot;, personId, &quot;name&quot;);
+  const died = useCell(&quot;people&quot;, personId, &quot;died&quot;);
+  const directedMovies = useResultRowIds(&quot;directedMovies&quot;);
+  const appearedMovies = useResultRowIds(&quot;appearedMovies&quot;);
+  return name == null ? null : jsxs(Page, { title: name, children: [
+    jsx(ImageFromTable, { ...props, cellId: &quot;image&quot;, isLarge: true }),
+    jsxs(&quot;ul&quot;, { children: [
+      jsxs(&quot;li&quot;, { children: [
+        &quot;Gender: &quot;,
+        jsx(GenderFromTable, { ...props })
+      ] }),
+      jsxs(&quot;li&quot;, { children: [
+        &quot;Born: &quot;,
+        jsx(CellView, { ...props, cellId: &quot;born&quot; }),
+        died &amp;&amp; jsxs(Fragment, { children: [
+          &quot;; died: &quot;,
+          jsx(CellView, { ...props, cellId: &quot;died&quot; })
+        ] })
+      ] }),
+      jsxs(&quot;li&quot;, { children: [
+        &quot;Popularity: &quot;,
+        jsx(CellView, { ...props, cellId: &quot;popularity&quot; })
+      ] })
+    ] }),
+    jsx(&quot;p&quot;, { children: jsx(CellView, { ...props, cellId: &quot;biography&quot; }) }),
+    directedMovies.length == 0 ? null : jsxs(Fragment, { children: [
+      jsx(&quot;h2&quot;, { children: &quot;As director:&quot; }),
+      jsx(
+        ResultSortedTableInHtmlTable,
+        {
+          queryId: &quot;directedMovies&quot;,
+          customCells: customCellsForMoviesWithPeople,
+          cellId: &quot;rating&quot;,
+          descending: true,
+          limit: 20,
+          sortOnClick: true,
+          paginator: true,
+          idColumn: false
+        }
+      )
+    ] }),
+    appearedMovies.length == 0 ? null : jsxs(Fragment, { children: [
+      jsx(&quot;h2&quot;, { children: &quot;As cast:&quot; }),
+      jsx(
+        ResultSortedTableInHtmlTable,
+        {
+          queryId: &quot;appearedMovies&quot;,
+          customCells: customCellsForMoviesWithPeople,
+          cellId: &quot;rating&quot;,
+          descending: true,
+          limit: 20,
+          sortOnClick: true,
+          paginator: true,
+          idColumn: false
+        }
+      )
+    ] })
+  ] });
+};
+var customCellsForMoviesWithPeople = {
+  movieName: { label: &quot;Movie&quot;, component: MovieLink },
+  year: { label: &quot;Year&quot;, component: YearLink },
+  rating: { label: &quot;Rating&quot; },
+  genreName: { label: &quot;Genre&quot;, component: GenreLink }
+};&lt;/script&gt;
+    &lt;/html&gt;"></iframe><p>In this demo, we build an app that showcases the relational query capabilities of TinyBase v2.0, joining together information about movies, directors, and actors.</p><p>We&#x27;ve also updated it to use parameterized queries to take advantage of TinyBase v7.2.</p><p><img src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c.svg" alt="TMDB" title="Inline logo for TMDB"> - we use The Movie Database as the source of the movie information in this app. Thank you for a great data set to demonstrate TinyBase!</p><h3 id="an-overview-of-the-data">An Overview Of The Data</h3><p>Before looking at code, let&#x27;s familiarize ourselves with the data used in this application.</p><h4 id="tables"><a href="/api/store/type-aliases/store/tables/"><code>Tables</code></a></h4><p>The raw data is loaded into four normalized <a href="/api/store/type-aliases/store/table/"><code>Table</code></a> objects: <code>movies</code> (the top 250 movies on TMDB), <code>genres</code> (the styles of those movies), <code>people</code> (actors and directors), and <code>cast</code> (how the actors are associated with the movies).</p><p>Naturally, there are relationships between these. For example, the <code>directorId</code> <a href="/api/store/type-aliases/store/cell/"><code>Cell</code></a> of the <code>movies</code> <a href="/api/store/type-aliases/store/table/"><code>Table</code></a> references a person in the <code>people</code> table, and the <code>genreId</code> <a href="/api/store/type-aliases/store/cell/"><code>Cell</code></a> references the <code>genre</code> <a href="/api/store/type-aliases/store/table/"><code>Table</code></a>. The <code>cast</code> <a href="/api/store/type-aliases/store/table/"><code>Table</code></a> is a many-to-many join that contains all the <code>movieId</code>/<code>castId</code> pairs for the top three billed actors of each movie.</p><div class="table"><table><thead><tr><th><a href="/api/store/type-aliases/store/table/"><code>Table</code></a></th><th><a href="/api/store/type-aliases/store/cell/"><code>Cell</code></a> <a href="/api/common/type-aliases/identity/ids/"><code>Ids</code></a></th></tr></thead><tbody><tr><td><code>movies</code></td><td><code>id</code>, <code>name</code>, <code>genreId</code>, <code>directorId</code>, <code>year</code>, <code>rating</code>, <code>overview</code>, <code>image</code></td></tr><tr><td><code>genres</code></td><td><code>id</code>, <code>name</code></td></tr><tr><td><code>people</code></td><td><code>id</code>, <code>name</code>, <code>gender</code>, <code>born</code>, <code>died</code>, <code>popularity</code>, <code>biography</code>, <code>image</code></td></tr><tr><td><code>cast</code></td><td><code>id</code>, <code>movieId</code>, <code>castId</code></td></tr></tbody></table></div><p>Because the data is normalized (and fetched as TSV over the wire), it loads quickly. But generally this data isn&#x27;t suited to render directly into the application: the user doesn&#x27;t want to see the movie&#x27;s <code>directorId</code>. They want to see the director&#x27;s <code>name</code>!</p><h4 id="queries"><a href="/api/queries/interfaces/queries/queries/"><code>Queries</code></a></h4><p>The app therefore uses a set of queries against these underlying <a href="/api/store/type-aliases/store/table/"><code>Table</code></a> objects. These act as de-normalized &#x27;views&#x27; of the underlying normalized data and make it easy for the application to render &#x27;virtual&#x27; rows comprised of <a href="/api/store/type-aliases/store/cell/"><code>Cell</code></a> values from multiple joined <a href="/api/store/type-aliases/store/table/"><code>Table</code></a> objects in the <a href="/api/the-essentials/creating-stores/store/"><code>Store</code></a>.</p><p>The following queries are set up for the lifetime of the application:</p><div class="table"><table><thead><tr><th>Query</th><th>From <a href="/api/store/type-aliases/store/tables/"><code>Tables</code></a></th><th><a href="/api/store/type-aliases/store/cell/"><code>Cell</code></a> <a href="/api/common/type-aliases/identity/ids/"><code>Ids</code></a></th></tr></thead><tbody><tr><td><code>movies</code></td><td><code>movies</code>, <code>genres</code>, <code>people</code></td><td><code>movieId</code>, <code>movieName</code>, <code>movieImage</code>, <code>year</code>, <code>rating</code>, <code>genreId</code>, <code>genreName</code>, <code>overview</code>, <code>directorId</code>, <code>directorName</code>, <code>directorImage</code>, <code>castId1</code>, <code>castName1</code>, <code>castImage1</code>, <code>castId2</code>, <code>castName2</code>, <code>castImage2</code>, <code>castId3</code>, <code>castName3</code>, <code>castImage3</code></td></tr><tr><td><code>years</code></td><td><code>movies</code></td><td><code>year</code>, <code>movieCount</code></td></tr><tr><td><code>genres</code></td><td><code>movies</code></td><td><code>genreId</code>, <code>genreName</code>, <code>movieCount</code></td></tr><tr><td><code>directors</code></td><td><code>movies</code>, <code>people</code></td><td><code>directorId</code>, <code>directorName</code>, <code>directorImage</code>, <code>gender</code>, <code>popularity</code>, <code>movieCount</code></td></tr><tr><td><code>cast</code></td><td><code>cast</code>, <code>people</code></td><td><code>castId</code>, <code>castName</code>, <code>castImage</code>, <code>gender</code>, <code>popularity</code>, <code>movieCount</code></td></tr><tr><td><code>yearGenreMovies</code></td><td><code>movies</code>, <code>genres</code></td><td><code>movieId</code>, <code>movieName</code>, <code>movieImage</code>, <code>year</code>, <code>rating</code>, <code>genreId</code>, <code>genreName</code></td></tr><tr><td><code>directedMovies</code></td><td><code>movies</code>, <code>genres</code></td><td><code>movieId</code>, <code>movieName</code>, <code>movieImage</code>, <code>year</code>, <code>rating</code>, <code>genreId</code>, <code>genreName</code></td></tr><tr><td><code>appearedMovies</code></td><td><code>cast</code>, <code>movies</code>, <code>genres</code></td><td><code>movieId</code>, <code>movieName</code>, <code>movieImage</code>, <code>year</code>, <code>rating</code>, <code>genreId</code>, <code>genreName</code></td></tr></tbody></table></div><p>The final three queries are interesting since they are parameterized. <code>yearGenreMovies</code> query accepts optional <code>year</code> and <code>genreId</code> params to filter movies dynamically. Similarly, the <code>directedMovies</code> and <code>appearedMovies</code> queries accept a <code>personId</code> param. This means we can set up these queries once, but update them with different params to get different results as the user drills into different pages.</p><p>You might notice that many of these queries share the same selected <a href="/api/store/type-aliases/store/cell/"><code>Cell</code></a> <a href="/api/common/type-aliases/identity/ids/"><code>Ids</code></a>. You&#x27;ll discover that TinyBase lets you compose queries programmatically, so we&#x27;ll be able to build these queries without much repetition: the common <code>queryMovieBasics</code> function is used to select the same <a href="/api/store/type-aliases/store/cell/"><code>Cell</code></a> <a href="/api/common/type-aliases/identity/ids/"><code>Ids</code></a> into most of these query views.</p><p>Refer back to this section when we start <a href="#loading-the-data">loading the data</a>, <a href="#querying-the-data">querying the data</a>, and rendering them into the user interface. Otherwise, that&#x27;s enough preamble... let&#x27;s get to some code!</p><h3 id="boilerplate">Boilerplate</h3><p>First, we create the import aliases for TinyBase and React modules we&#x27;ll need:</p><pre><code><span class="tag"><span class="tag"><span class="punctuation">&lt;</span>script</span> <span class="attr-name">type</span><span class="attr-value"><span class="punctuation">=</span><span class="punctuation">"</span>importmap<span class="punctuation">"</span></span><span class="punctuation">></span></span><span class="script"><span class="language-javascript">
   <span class="punctuation">{</span>
     <span class="string-property">"imports"</span><span class="operator">:</span> <span class="punctuation">{</span>
-      <span class="string-property">"tinybase"</span><span class="operator">:</span> <span class="string">"https://esm.sh/tinybase@6.6.0"</span><span class="punctuation">,</span>
-      <span class="string-property">"tinybase/ui-react"</span><span class="operator">:</span> <span class="string">"https://esm.sh/tinybase@6.6.0/ui-react"</span><span class="punctuation">,</span>
-      <span class="string-property">"tinybase/ui-react-dom"</span><span class="operator">:</span> <span class="string">"https://esm.sh/tinybase@6.6.0/ui-react-dom"</span><span class="punctuation">,</span>
-      <span class="string-property">"tinybase/ui-react-inspector"</span><span class="operator">:</span> <span class="string">"https://esm.sh/tinybase@6.6.0/ui-react-inspector"</span><span class="punctuation">,</span>
-      <span class="string-property">"react"</span><span class="operator">:</span> <span class="string">"https://esm.sh/react@^19.0.0"</span><span class="punctuation">,</span>
-      <span class="string-property">"react/jsx-runtime"</span><span class="operator">:</span> <span class="string">"https://esm.sh/react@^19.0.0/jsx-runtime"</span><span class="punctuation">,</span>
-      <span class="string-property">"react-dom/client"</span><span class="operator">:</span> <span class="string">"https://esm.sh/react-dom@^19.0.0/client"</span>
+      <span class="string-property">"tinybase"</span><span class="operator">:</span> <span class="string">"https://esm.sh/tinybase@10.0.0"</span><span class="punctuation">,</span>
+      <span class="string-property">"tinybase/ui-react"</span><span class="operator">:</span> <span class="string">"https://esm.sh/tinybase@10.0.0/ui-react"</span><span class="punctuation">,</span>
+      <span class="string-property">"tinybase/ui-react-dom"</span><span class="operator">:</span> <span class="string">"https://esm.sh/tinybase@10.0.0/ui-react-dom"</span><span class="punctuation">,</span>
+      <span class="string-property">"tinybase/ui-react-inspector"</span><span class="operator">:</span> <span class="string">"https://esm.sh/tinybase@10.0.0/ui-react-inspector"</span><span class="punctuation">,</span>
+      <span class="string-property">"react"</span><span class="operator">:</span> <span class="string">"https://esm.sh/react@^19.3.0"</span><span class="punctuation">,</span>
+      <span class="string-property">"react/jsx-runtime"</span><span class="operator">:</span> <span class="string">"https://esm.sh/react@^19.3.0/jsx-runtime"</span><span class="punctuation">,</span>
+      <span class="string-property">"react-dom/client"</span><span class="operator">:</span> <span class="string">"https://esm.sh/react-dom@^19.3.0/client"</span>
     <span class="punctuation">}</span>
   <span class="punctuation">}</span>
 </span></span><span class="tag"><span class="tag"><span class="punctuation">&lt;/</span>script</span><span class="punctuation">></span></span>
-</code></pre><p>We&#x27;re using the <a href="/api/the-essentials/using-react/inspector/"><code>Inspector</code></a> component for the purposes of seeing how the data is structured.</p><p>We need the following parts of the TinyBase API, the <a href="/api/ui-react/"><code>ui-react</code></a> module, and React itself:</p><pre><code><span class="keyword">import</span> <span class="punctuation">{</span>useMemo<span class="punctuation">,</span> useState<span class="punctuation">}</span> <span class="keyword">from</span> <span class="string">'react'</span><span class="punctuation">;</span>
+</code></pre><p>We&#x27;re using the <a href="/api/the-essentials/using-react/inspector/"><code>Inspector</code></a> component for the purposes of seeing how the data is structured.</p><p>We need the following parts of the TinyBase <a href="/api/">API</a>, the <a href="/api/ui-react/"><code>ui-react</code></a> module, and React itself:</p><pre><code><span class="keyword">import</span> <span class="punctuation">{</span>useMemo<span class="punctuation">,</span> useState<span class="punctuation">}</span> <span class="keyword">from</span> <span class="string">'react'</span><span class="punctuation">;</span>
 <span class="keyword">import</span> React <span class="keyword">from</span> <span class="string">'react'</span><span class="punctuation">;</span>
 <span class="keyword">import</span> <span class="punctuation">{</span>createRoot<span class="punctuation">}</span> <span class="keyword">from</span> <span class="string">'react-dom/client'</span><span class="punctuation">;</span>
 <span class="keyword">import</span> <span class="punctuation">{</span>createQueries<span class="punctuation">,</span> createStore<span class="punctuation">}</span> <span class="keyword">from</span> <span class="string">'tinybase'</span><span class="punctuation">;</span>
@@ -36,6 +556,7 @@
   useQueries<span class="punctuation">,</span>
   useResultCell<span class="punctuation">,</span>
   useResultRowIds<span class="punctuation">,</span>
+  useSetParamValuesCallback<span class="punctuation">,</span>
   useSetValuesCallback<span class="punctuation">,</span>
   useValues<span class="punctuation">,</span>
 <span class="punctuation">}</span> <span class="keyword">from</span> <span class="string">'tinybase/ui-react'</span><span class="punctuation">;</span>
@@ -45,7 +566,7 @@
   <span class="keyword">const</span> store <span class="operator">=</span> <span class="function"><a href="/api/the-essentials/using-react/usecreatestore/">useCreateStore</a></span><span class="punctuation">(</span>createStore<span class="punctuation">)</span><span class="punctuation">;</span>
 
   <span class="keyword">const</span> viewStore <span class="operator">=</span> <span class="function"><a href="/api/the-essentials/using-react/usecreatestore/">useCreateStore</a></span><span class="punctuation">(</span><span class="punctuation">(</span><span class="punctuation">)</span> <span class="operator">=></span>
-    <span class="function"><a href="/api/the-essentials/creating-stores/createstore/">createStore</a></span><span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">.</span><span class="function"><a href="/api/store/interfaces/store/store/methods/setter/setvalues/">setValues</a></span><span class="punctuation">(</span><span class="punctuation">{</span><span class="literal-property">currentSection</span><span class="operator">:</span> <span class="string">'movies'</span><span class="punctuation">}</span><span class="punctuation">)</span><span class="punctuation">,</span>
+    <span class="function"><a href="/api/the-essentials/creating-stores/createstore/">createStore</a></span><span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">.</span><span class="function"><a href="/api/mergeable-store/interfaces/mergeable/mergeablestore/methods/setter/setvalues/">setValues</a></span><span class="punctuation">(</span><span class="punctuation">{</span><span class="literal-property">currentSection</span><span class="operator">:</span> <span class="string">'movies'</span><span class="punctuation">}</span><span class="punctuation">)</span><span class="punctuation">,</span>
   <span class="punctuation">)</span><span class="punctuation">;</span>
 
   <span class="keyword">const</span> queries <span class="operator">=</span> <span class="function"><a href="/api/ui-react/functions/queries-hooks/usecreatequeries/">useCreateQueries</a></span><span class="punctuation">(</span>store<span class="punctuation">,</span> createAndInitQueries<span class="punctuation">,</span> <span class="punctuation">[</span><span class="punctuation">]</span><span class="punctuation">)</span><span class="punctuation">;</span>
@@ -110,7 +631,7 @@
     <span class="punctuation">[</span>currentSection<span class="punctuation">,</span> currentDetailId<span class="punctuation">]</span><span class="punctuation">,</span>
     <span class="string">'viewStore'</span><span class="punctuation">,</span>
   <span class="punctuation">)</span><span class="punctuation">;</span>
-</code></pre><p>Note that we&#x27;re not doing anything fancy here like updating the browser&#x27;s URL address or history state as the user navigates around, but we would add that in this method if we did.</p><p>(Another easy, but interesting, exercise for the reader would be to use the <a href="/api/checkpoints/interfaces/checkpoints/checkpoints/"><code>Checkpoints</code></a> API on the <code>viewStore</code> to create an in-app history stack for the pages viewed!)</p><h4 id="application-header">Application Header</h4><p>The header component simply renders all the links for the <code>SECTIONS</code> object and highlights the one that matches the current route.</p><pre><code><span class="keyword">const</span> <span class="function-variable">Header</span> <span class="operator">=</span> <span class="punctuation">(</span><span class="punctuation">)</span> <span class="operator">=></span> <span class="punctuation">{</span>
+</code></pre><p>Note that we&#x27;re not doing anything fancy here like updating the browser&#x27;s URL address or history state as the user navigates around, but we would add that in this method if we did.</p><p>(Another easy, but interesting, exercise for the reader would be to use the <a href="/api/checkpoints/interfaces/checkpoints/checkpoints/"><code>Checkpoints</code></a> <a href="/api/">API</a> on the <code>viewStore</code> to create an in-app history stack for the pages viewed!)</p><h4 id="application-header">Application Header</h4><p>The header component simply renders all the links for the <code>SECTIONS</code> object and highlights the one that matches the current route.</p><pre><code><span class="keyword">const</span> <span class="function-variable">Header</span> <span class="operator">=</span> <span class="punctuation">(</span><span class="punctuation">)</span> <span class="operator">=></span> <span class="punctuation">{</span>
   <span class="keyword">const</span> <span class="punctuation">{</span>currentSection<span class="punctuation">}</span> <span class="operator">=</span> <span class="function">useRoute</span><span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">;</span>
   <span class="keyword">return</span> <span class="punctuation">(</span>
     <span class="tag"><span class="tag"><span class="punctuation">&lt;</span>nav</span><span class="punctuation">></span></span><span class="plain-text">
@@ -176,13 +697,13 @@
   <span class="punctuation">}</span><span class="punctuation">)</span><span class="punctuation">;</span>
 <span class="punctuation">}</span><span class="punctuation">;</span>
 </code></pre><p>There are four raw tables used in this application, as described in our opening section. We wait for all four to load (again, asynchronously) wrapped in a single <a href="/api/the-essentials/creating-stores/store/"><code>Store</code></a> transaction.</p><pre><code><span class="keyword">const</span> <span class="function-variable">loadStore</span> <span class="operator">=</span> <span class="keyword">async</span> <span class="punctuation">(</span><span class="parameter">store</span><span class="punctuation">)</span> <span class="operator">=></span> <span class="punctuation">{</span>
-  store<span class="punctuation">.</span><span class="function"><a href="/api/store/interfaces/store/store/methods/transaction/starttransaction/">startTransaction</a></span><span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">;</span>
+  store<span class="punctuation">.</span><span class="function"><a href="/api/mergeable-store/interfaces/mergeable/mergeablestore/methods/transaction/starttransaction/">startTransaction</a></span><span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">;</span>
   <span class="keyword">await</span> Promise<span class="punctuation">.</span><span class="function">all</span><span class="punctuation">(</span>
     <span class="punctuation">[</span><span class="string">'movies'</span><span class="punctuation">,</span> <span class="string">'genres'</span><span class="punctuation">,</span> <span class="string">'people'</span><span class="punctuation">,</span> <span class="string">'cast'</span><span class="punctuation">]</span><span class="punctuation">.</span><span class="function">map</span><span class="punctuation">(</span><span class="punctuation">(</span><span class="parameter">tableId</span><span class="punctuation">)</span> <span class="operator">=></span>
       <span class="function">loadTable</span><span class="punctuation">(</span>store<span class="punctuation">,</span> tableId<span class="punctuation">)</span><span class="punctuation">,</span>
     <span class="punctuation">)</span><span class="punctuation">,</span>
   <span class="punctuation">)</span><span class="punctuation">;</span>
-  store<span class="punctuation">.</span><span class="function"><a href="/api/store/interfaces/store/store/methods/transaction/finishtransaction/">finishTransaction</a></span><span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">;</span>
+  store<span class="punctuation">.</span><span class="function"><a href="/api/mergeable-store/interfaces/mergeable/mergeablestore/methods/transaction/finishtransaction/">finishTransaction</a></span><span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">;</span>
 <span class="punctuation">}</span><span class="punctuation">;</span>
 </code></pre><p><code>loadStore</code> was the function referenced in the <a href="#initializing-the-application">main <code>App</code> component</a>, so once this completes, the data is loaded and we&#x27;re ready to go.</p><h3 id="querying-the-data">Querying The Data</h3><p>As described <a href="#queries">at the start of this article</a>, there are a number of queries that are set up at the beginning of the app and which are used throughout its lifetime. These include the list of all movies with de-normalized genre, director, and cast names (a query called <code>movies</code>); and queries that group counts of movies by genre, year, and so on.</p><p>Since many queries throughout the app re-use the same set of fields - such as movie name, image, year, and genre - we can first create a re-usable function that specifies those <a href="/api/store/type-aliases/store/cell/"><code>Cell</code></a> <a href="/api/common/type-aliases/identity/ids/"><code>Ids</code></a>. This can be used whenever the <code>movies</code> <a href="/api/store/type-aliases/store/table/"><code>Table</code></a> is the root of the query. When provided a <code>select</code> and <code>join</code> function, it selects those common columns:</p><pre><code><span class="keyword">const</span> <span class="function-variable">queryMovieBasics</span> <span class="operator">=</span> <span class="punctuation">(</span><span class="parameter"><span class="punctuation">{</span>select<span class="punctuation">,</span> join<span class="punctuation">}</span></span><span class="punctuation">)</span> <span class="operator">=></span> <span class="punctuation">{</span>
   <span class="function">select</span><span class="punctuation">(</span><span class="punctuation">(</span><span class="parameter">_<span class="punctuation">,</span> movieId</span><span class="punctuation">)</span> <span class="operator">=></span> movieId<span class="punctuation">)</span><span class="punctuation">.</span><span class="function">as</span><span class="punctuation">(</span><span class="string">'movieId'</span><span class="punctuation">)</span><span class="punctuation">;</span>
@@ -256,46 +777,100 @@ queries<span class="punctuation">.</span><span class="function"><a href="/api/qu
       <span class="keyword">ON</span> cast3<span class="punctuation">.</span>_rowId <span class="operator">=</span> CONCAT<span class="punctuation">(</span>movies<span class="punctuation">.</span>movieId<span class="punctuation">,</span> <span class="string">'/3'</span><span class="punctuation">)</span>
       <span class="keyword">LEFT</span> <span class="keyword">JOIN</span> people <span class="keyword">AS</span> actors3
         <span class="keyword">ON</span> actors3<span class="punctuation">.</span>_rowId <span class="operator">=</span> cast3<span class="punctuation">.</span>castId
-</code></pre><p>(Except the results in our case are reactive - not something you usually get to benefit from with a SQL-based database!)</p><p>We also create query definitions for the other persistent queries. These use the <code>group</code> function to count the number of movies per year, genre, and so on, used in the overview components of each of the main sections of the app.</p><pre><code>  <span class="comment">// ...</span>
-  queries<span class="punctuation">.</span><span class="function"><a href="/api/queries/interfaces/queries/queries/methods/configuration/setquerydefinition/">setQueryDefinition</a></span><span class="punctuation">(</span><span class="string">'years'</span><span class="punctuation">,</span> <span class="string">'movies'</span><span class="punctuation">,</span> <span class="punctuation">(</span><span class="parameter"><span class="punctuation">{</span>select<span class="punctuation">,</span> group<span class="punctuation">}</span></span><span class="punctuation">)</span> <span class="operator">=></span> <span class="punctuation">{</span>
-    <span class="function">select</span><span class="punctuation">(</span><span class="string">'year'</span><span class="punctuation">)</span><span class="punctuation">;</span>
-    <span class="function">select</span><span class="punctuation">(</span><span class="punctuation">(</span><span class="parameter">_<span class="punctuation">,</span> rowId</span><span class="punctuation">)</span> <span class="operator">=></span> rowId<span class="punctuation">)</span><span class="punctuation">.</span><span class="function">as</span><span class="punctuation">(</span><span class="string">'movieId'</span><span class="punctuation">)</span><span class="punctuation">;</span>
-    <span class="function">group</span><span class="punctuation">(</span><span class="string">'movieId'</span><span class="punctuation">,</span> <span class="string">'count'</span><span class="punctuation">)</span><span class="punctuation">.</span><span class="function">as</span><span class="punctuation">(</span><span class="string">'movieCount'</span><span class="punctuation">)</span><span class="punctuation">;</span>
-  <span class="punctuation">}</span><span class="punctuation">)</span><span class="punctuation">;</span>
+</code></pre><p>(Except the results in our case are reactive - not something you usually get to benefit from with a SQL-based database!)</p><p>We also create query definitions for the other persistent queries. These use the <code>group</code> function to count the number of movies per year, genre, and so on, used in the overview components of each of the main sections of the app.</p><pre><code><span class="comment">// ...</span>
+queries<span class="punctuation">.</span><span class="function"><a href="/api/queries/interfaces/queries/queries/methods/configuration/setquerydefinition/">setQueryDefinition</a></span><span class="punctuation">(</span><span class="string">'years'</span><span class="punctuation">,</span> <span class="string">'movies'</span><span class="punctuation">,</span> <span class="punctuation">(</span><span class="parameter"><span class="punctuation">{</span>select<span class="punctuation">,</span> group<span class="punctuation">}</span></span><span class="punctuation">)</span> <span class="operator">=></span> <span class="punctuation">{</span>
+  <span class="function">select</span><span class="punctuation">(</span><span class="string">'year'</span><span class="punctuation">)</span><span class="punctuation">;</span>
+  <span class="function">select</span><span class="punctuation">(</span><span class="punctuation">(</span><span class="parameter">_<span class="punctuation">,</span> rowId</span><span class="punctuation">)</span> <span class="operator">=></span> rowId<span class="punctuation">)</span><span class="punctuation">.</span><span class="function">as</span><span class="punctuation">(</span><span class="string">'movieId'</span><span class="punctuation">)</span><span class="punctuation">;</span>
+  <span class="function">group</span><span class="punctuation">(</span><span class="string">'movieId'</span><span class="punctuation">,</span> <span class="string">'count'</span><span class="punctuation">)</span><span class="punctuation">.</span><span class="function">as</span><span class="punctuation">(</span><span class="string">'movieCount'</span><span class="punctuation">)</span><span class="punctuation">;</span>
+<span class="punctuation">}</span><span class="punctuation">)</span><span class="punctuation">;</span>
 
-  queries<span class="punctuation">.</span><span class="function"><a href="/api/queries/interfaces/queries/queries/methods/configuration/setquerydefinition/">setQueryDefinition</a></span><span class="punctuation">(</span><span class="string">'genres'</span><span class="punctuation">,</span> <span class="string">'movies'</span><span class="punctuation">,</span> <span class="punctuation">(</span><span class="parameter"><span class="punctuation">{</span>select<span class="punctuation">,</span> join<span class="punctuation">,</span> group<span class="punctuation">}</span></span><span class="punctuation">)</span> <span class="operator">=></span> <span class="punctuation">{</span>
-    <span class="function">select</span><span class="punctuation">(</span><span class="string">'genreId'</span><span class="punctuation">)</span><span class="punctuation">;</span>
-    <span class="function">select</span><span class="punctuation">(</span><span class="punctuation">(</span><span class="parameter">_<span class="punctuation">,</span> rowId</span><span class="punctuation">)</span> <span class="operator">=></span> rowId<span class="punctuation">)</span><span class="punctuation">.</span><span class="function">as</span><span class="punctuation">(</span><span class="string">'movieId'</span><span class="punctuation">)</span><span class="punctuation">;</span>
-    <span class="function">join</span><span class="punctuation">(</span><span class="string">'genres'</span><span class="punctuation">,</span> <span class="string">'genreId'</span><span class="punctuation">)</span><span class="punctuation">;</span>
-    <span class="function">select</span><span class="punctuation">(</span><span class="string">'genres'</span><span class="punctuation">,</span> <span class="string">'name'</span><span class="punctuation">)</span><span class="punctuation">.</span><span class="function">as</span><span class="punctuation">(</span><span class="string">'genreName'</span><span class="punctuation">)</span><span class="punctuation">;</span>
-    <span class="function">group</span><span class="punctuation">(</span><span class="string">'movieId'</span><span class="punctuation">,</span> <span class="string">'count'</span><span class="punctuation">)</span><span class="punctuation">.</span><span class="function">as</span><span class="punctuation">(</span><span class="string">'movieCount'</span><span class="punctuation">)</span><span class="punctuation">;</span>
-  <span class="punctuation">}</span><span class="punctuation">)</span><span class="punctuation">;</span>
+queries<span class="punctuation">.</span><span class="function"><a href="/api/queries/interfaces/queries/queries/methods/configuration/setquerydefinition/">setQueryDefinition</a></span><span class="punctuation">(</span><span class="string">'genres'</span><span class="punctuation">,</span> <span class="string">'movies'</span><span class="punctuation">,</span> <span class="punctuation">(</span><span class="parameter"><span class="punctuation">{</span>select<span class="punctuation">,</span> join<span class="punctuation">,</span> group<span class="punctuation">}</span></span><span class="punctuation">)</span> <span class="operator">=></span> <span class="punctuation">{</span>
+  <span class="function">select</span><span class="punctuation">(</span><span class="string">'genreId'</span><span class="punctuation">)</span><span class="punctuation">;</span>
+  <span class="function">select</span><span class="punctuation">(</span><span class="punctuation">(</span><span class="parameter">_<span class="punctuation">,</span> rowId</span><span class="punctuation">)</span> <span class="operator">=></span> rowId<span class="punctuation">)</span><span class="punctuation">.</span><span class="function">as</span><span class="punctuation">(</span><span class="string">'movieId'</span><span class="punctuation">)</span><span class="punctuation">;</span>
+  <span class="function">join</span><span class="punctuation">(</span><span class="string">'genres'</span><span class="punctuation">,</span> <span class="string">'genreId'</span><span class="punctuation">)</span><span class="punctuation">;</span>
+  <span class="function">select</span><span class="punctuation">(</span><span class="string">'genres'</span><span class="punctuation">,</span> <span class="string">'name'</span><span class="punctuation">)</span><span class="punctuation">.</span><span class="function">as</span><span class="punctuation">(</span><span class="string">'genreName'</span><span class="punctuation">)</span><span class="punctuation">;</span>
+  <span class="function">group</span><span class="punctuation">(</span><span class="string">'movieId'</span><span class="punctuation">,</span> <span class="string">'count'</span><span class="punctuation">)</span><span class="punctuation">.</span><span class="function">as</span><span class="punctuation">(</span><span class="string">'movieCount'</span><span class="punctuation">)</span><span class="punctuation">;</span>
+<span class="punctuation">}</span><span class="punctuation">)</span><span class="punctuation">;</span>
 
-  queries<span class="punctuation">.</span><span class="function"><a href="/api/queries/interfaces/queries/queries/methods/configuration/setquerydefinition/">setQueryDefinition</a></span><span class="punctuation">(</span><span class="string">'directors'</span><span class="punctuation">,</span> <span class="string">'movies'</span><span class="punctuation">,</span> <span class="punctuation">(</span><span class="parameter"><span class="punctuation">{</span>select<span class="punctuation">,</span> join<span class="punctuation">,</span> group<span class="punctuation">}</span></span><span class="punctuation">)</span> <span class="operator">=></span> <span class="punctuation">{</span>
-    <span class="function">select</span><span class="punctuation">(</span><span class="string">'directorId'</span><span class="punctuation">)</span><span class="punctuation">;</span>
-    <span class="function">select</span><span class="punctuation">(</span><span class="punctuation">(</span><span class="parameter">_<span class="punctuation">,</span> rowId</span><span class="punctuation">)</span> <span class="operator">=></span> rowId<span class="punctuation">)</span><span class="punctuation">.</span><span class="function">as</span><span class="punctuation">(</span><span class="string">'movieId'</span><span class="punctuation">)</span><span class="punctuation">;</span>
-    <span class="function">select</span><span class="punctuation">(</span><span class="string">'people'</span><span class="punctuation">,</span> <span class="string">'name'</span><span class="punctuation">)</span><span class="punctuation">.</span><span class="function">as</span><span class="punctuation">(</span><span class="string">'directorName'</span><span class="punctuation">)</span><span class="punctuation">;</span>
-    <span class="function">select</span><span class="punctuation">(</span><span class="string">'people'</span><span class="punctuation">,</span> <span class="string">'image'</span><span class="punctuation">)</span><span class="punctuation">.</span><span class="function">as</span><span class="punctuation">(</span><span class="string">'directorImage'</span><span class="punctuation">)</span><span class="punctuation">;</span>
-    <span class="function">select</span><span class="punctuation">(</span><span class="string">'people'</span><span class="punctuation">,</span> <span class="string">'gender'</span><span class="punctuation">)</span><span class="punctuation">;</span>
-    <span class="function">select</span><span class="punctuation">(</span><span class="string">'people'</span><span class="punctuation">,</span> <span class="string">'popularity'</span><span class="punctuation">)</span><span class="punctuation">;</span>
-    <span class="function">join</span><span class="punctuation">(</span><span class="string">'people'</span><span class="punctuation">,</span> <span class="string">'directorId'</span><span class="punctuation">)</span><span class="punctuation">;</span>
-    <span class="function">group</span><span class="punctuation">(</span><span class="string">'movieId'</span><span class="punctuation">,</span> <span class="string">'count'</span><span class="punctuation">)</span><span class="punctuation">.</span><span class="function">as</span><span class="punctuation">(</span><span class="string">'movieCount'</span><span class="punctuation">)</span><span class="punctuation">;</span>
-  <span class="punctuation">}</span><span class="punctuation">)</span><span class="punctuation">;</span>
+queries<span class="punctuation">.</span><span class="function"><a href="/api/queries/interfaces/queries/queries/methods/configuration/setquerydefinition/">setQueryDefinition</a></span><span class="punctuation">(</span><span class="string">'directors'</span><span class="punctuation">,</span> <span class="string">'movies'</span><span class="punctuation">,</span> <span class="punctuation">(</span><span class="parameter"><span class="punctuation">{</span>select<span class="punctuation">,</span> join<span class="punctuation">,</span> group<span class="punctuation">}</span></span><span class="punctuation">)</span> <span class="operator">=></span> <span class="punctuation">{</span>
+  <span class="function">select</span><span class="punctuation">(</span><span class="string">'directorId'</span><span class="punctuation">)</span><span class="punctuation">;</span>
+  <span class="function">select</span><span class="punctuation">(</span><span class="punctuation">(</span><span class="parameter">_<span class="punctuation">,</span> rowId</span><span class="punctuation">)</span> <span class="operator">=></span> rowId<span class="punctuation">)</span><span class="punctuation">.</span><span class="function">as</span><span class="punctuation">(</span><span class="string">'movieId'</span><span class="punctuation">)</span><span class="punctuation">;</span>
+  <span class="function">select</span><span class="punctuation">(</span><span class="string">'people'</span><span class="punctuation">,</span> <span class="string">'name'</span><span class="punctuation">)</span><span class="punctuation">.</span><span class="function">as</span><span class="punctuation">(</span><span class="string">'directorName'</span><span class="punctuation">)</span><span class="punctuation">;</span>
+  <span class="function">select</span><span class="punctuation">(</span><span class="string">'people'</span><span class="punctuation">,</span> <span class="string">'image'</span><span class="punctuation">)</span><span class="punctuation">.</span><span class="function">as</span><span class="punctuation">(</span><span class="string">'directorImage'</span><span class="punctuation">)</span><span class="punctuation">;</span>
+  <span class="function">select</span><span class="punctuation">(</span><span class="string">'people'</span><span class="punctuation">,</span> <span class="string">'gender'</span><span class="punctuation">)</span><span class="punctuation">;</span>
+  <span class="function">select</span><span class="punctuation">(</span><span class="string">'people'</span><span class="punctuation">,</span> <span class="string">'popularity'</span><span class="punctuation">)</span><span class="punctuation">;</span>
+  <span class="function">join</span><span class="punctuation">(</span><span class="string">'people'</span><span class="punctuation">,</span> <span class="string">'directorId'</span><span class="punctuation">)</span><span class="punctuation">;</span>
+  <span class="function">group</span><span class="punctuation">(</span><span class="string">'movieId'</span><span class="punctuation">,</span> <span class="string">'count'</span><span class="punctuation">)</span><span class="punctuation">.</span><span class="function">as</span><span class="punctuation">(</span><span class="string">'movieCount'</span><span class="punctuation">)</span><span class="punctuation">;</span>
+<span class="punctuation">}</span><span class="punctuation">)</span><span class="punctuation">;</span>
 
-  queries<span class="punctuation">.</span><span class="function"><a href="/api/queries/interfaces/queries/queries/methods/configuration/setquerydefinition/">setQueryDefinition</a></span><span class="punctuation">(</span><span class="string">'cast'</span><span class="punctuation">,</span> <span class="string">'cast'</span><span class="punctuation">,</span> <span class="punctuation">(</span><span class="parameter"><span class="punctuation">{</span>select<span class="punctuation">,</span> join<span class="punctuation">,</span> group<span class="punctuation">}</span></span><span class="punctuation">)</span> <span class="operator">=></span> <span class="punctuation">{</span>
-    <span class="function">select</span><span class="punctuation">(</span><span class="string">'castId'</span><span class="punctuation">)</span><span class="punctuation">;</span>
-    <span class="function">select</span><span class="punctuation">(</span><span class="string">'movieId'</span><span class="punctuation">)</span><span class="punctuation">;</span>
-    <span class="function">select</span><span class="punctuation">(</span><span class="string">'people'</span><span class="punctuation">,</span> <span class="string">'name'</span><span class="punctuation">)</span><span class="punctuation">.</span><span class="function">as</span><span class="punctuation">(</span><span class="string">'castName'</span><span class="punctuation">)</span><span class="punctuation">;</span>
-    <span class="function">select</span><span class="punctuation">(</span><span class="string">'people'</span><span class="punctuation">,</span> <span class="string">'image'</span><span class="punctuation">)</span><span class="punctuation">.</span><span class="function">as</span><span class="punctuation">(</span><span class="string">'castImage'</span><span class="punctuation">)</span><span class="punctuation">;</span>
-    <span class="function">select</span><span class="punctuation">(</span><span class="string">'people'</span><span class="punctuation">,</span> <span class="string">'gender'</span><span class="punctuation">)</span><span class="punctuation">;</span>
-    <span class="function">select</span><span class="punctuation">(</span><span class="string">'people'</span><span class="punctuation">,</span> <span class="string">'popularity'</span><span class="punctuation">)</span><span class="punctuation">;</span>
-    <span class="function">join</span><span class="punctuation">(</span><span class="string">'people'</span><span class="punctuation">,</span> <span class="string">'castId'</span><span class="punctuation">)</span><span class="punctuation">;</span>
-    <span class="function">group</span><span class="punctuation">(</span><span class="string">'movieId'</span><span class="punctuation">,</span> <span class="string">'count'</span><span class="punctuation">)</span><span class="punctuation">.</span><span class="function">as</span><span class="punctuation">(</span><span class="string">'movieCount'</span><span class="punctuation">)</span><span class="punctuation">;</span>
-  <span class="punctuation">}</span><span class="punctuation">)</span><span class="punctuation">;</span>
+queries<span class="punctuation">.</span><span class="function"><a href="/api/queries/interfaces/queries/queries/methods/configuration/setquerydefinition/">setQueryDefinition</a></span><span class="punctuation">(</span><span class="string">'cast'</span><span class="punctuation">,</span> <span class="string">'cast'</span><span class="punctuation">,</span> <span class="punctuation">(</span><span class="parameter"><span class="punctuation">{</span>select<span class="punctuation">,</span> join<span class="punctuation">,</span> group<span class="punctuation">}</span></span><span class="punctuation">)</span> <span class="operator">=></span> <span class="punctuation">{</span>
+  <span class="function">select</span><span class="punctuation">(</span><span class="string">'castId'</span><span class="punctuation">)</span><span class="punctuation">;</span>
+  <span class="function">select</span><span class="punctuation">(</span><span class="string">'movieId'</span><span class="punctuation">)</span><span class="punctuation">;</span>
+  <span class="function">select</span><span class="punctuation">(</span><span class="string">'people'</span><span class="punctuation">,</span> <span class="string">'name'</span><span class="punctuation">)</span><span class="punctuation">.</span><span class="function">as</span><span class="punctuation">(</span><span class="string">'castName'</span><span class="punctuation">)</span><span class="punctuation">;</span>
+  <span class="function">select</span><span class="punctuation">(</span><span class="string">'people'</span><span class="punctuation">,</span> <span class="string">'image'</span><span class="punctuation">)</span><span class="punctuation">.</span><span class="function">as</span><span class="punctuation">(</span><span class="string">'castImage'</span><span class="punctuation">)</span><span class="punctuation">;</span>
+  <span class="function">select</span><span class="punctuation">(</span><span class="string">'people'</span><span class="punctuation">,</span> <span class="string">'gender'</span><span class="punctuation">)</span><span class="punctuation">;</span>
+  <span class="function">select</span><span class="punctuation">(</span><span class="string">'people'</span><span class="punctuation">,</span> <span class="string">'popularity'</span><span class="punctuation">)</span><span class="punctuation">;</span>
+  <span class="function">join</span><span class="punctuation">(</span><span class="string">'people'</span><span class="punctuation">,</span> <span class="string">'castId'</span><span class="punctuation">)</span><span class="punctuation">;</span>
+  <span class="function">group</span><span class="punctuation">(</span><span class="string">'movieId'</span><span class="punctuation">,</span> <span class="string">'count'</span><span class="punctuation">)</span><span class="punctuation">.</span><span class="function">as</span><span class="punctuation">(</span><span class="string">'movieCount'</span><span class="punctuation">)</span><span class="punctuation">;</span>
+<span class="punctuation">}</span><span class="punctuation">)</span><span class="punctuation">;</span>
+<span class="comment">// ...</span>
+</code></pre><p>And finally the parameterized queries. The <code>yearGenreMovies</code> query definition is re-used across the app, so note that it takes optional params for <code>year</code> and <code>genreId</code> so that different views can show movies by year or genre if required. Similarly, the <code>directedMovies</code> and <code>appearedMovies</code> queries take a <code>personId</code> param to show movies for a specific director or actor.</p><pre><code>  <span class="comment">// ...</span>
+  queries<span class="punctuation">.</span><span class="function"><a href="/api/queries/interfaces/queries/queries/methods/configuration/setquerydefinition/">setQueryDefinition</a></span><span class="punctuation">(</span>
+    <span class="string">'yearGenreMovies'</span><span class="punctuation">,</span>
+    <span class="string">'movies'</span><span class="punctuation">,</span>
+    <span class="punctuation">(</span><span class="parameter"><span class="punctuation">{</span>select<span class="punctuation">,</span> join<span class="punctuation">,</span> where<span class="punctuation">,</span> param<span class="punctuation">}</span></span><span class="punctuation">)</span> <span class="operator">=></span> <span class="punctuation">{</span>
+      <span class="function">queryMovieBasics</span><span class="punctuation">(</span><span class="punctuation">{</span>select<span class="punctuation">,</span> join<span class="punctuation">}</span><span class="punctuation">)</span><span class="punctuation">;</span>
+      <span class="keyword">if</span> <span class="punctuation">(</span><span class="function">param</span><span class="punctuation">(</span><span class="string">'year'</span><span class="punctuation">)</span><span class="punctuation">)</span> <span class="punctuation">{</span>
+        <span class="function">where</span><span class="punctuation">(</span><span class="string">'year'</span><span class="punctuation">,</span> <span class="function">param</span><span class="punctuation">(</span><span class="string">'year'</span><span class="punctuation">)</span><span class="punctuation">)</span><span class="punctuation">;</span>
+      <span class="punctuation">}</span>
+      <span class="keyword">if</span> <span class="punctuation">(</span><span class="function">param</span><span class="punctuation">(</span><span class="string">'genreId'</span><span class="punctuation">)</span><span class="punctuation">)</span> <span class="punctuation">{</span>
+        <span class="function">where</span><span class="punctuation">(</span><span class="string">'genreId'</span><span class="punctuation">,</span> <span class="function">param</span><span class="punctuation">(</span><span class="string">'genreId'</span><span class="punctuation">)</span><span class="punctuation">)</span><span class="punctuation">;</span>
+      <span class="punctuation">}</span>
+    <span class="punctuation">}</span><span class="punctuation">,</span>
+    <span class="punctuation">{</span><span class="literal-property">year</span><span class="operator">:</span> <span class="keyword">null</span><span class="punctuation">,</span> <span class="literal-property">genreId</span><span class="operator">:</span> <span class="keyword">null</span><span class="punctuation">}</span><span class="punctuation">,</span>
+  <span class="punctuation">)</span><span class="punctuation">;</span>
+
+  queries<span class="punctuation">.</span><span class="function"><a href="/api/queries/interfaces/queries/queries/methods/configuration/setquerydefinition/">setQueryDefinition</a></span><span class="punctuation">(</span>
+    <span class="string">'directedMovies'</span><span class="punctuation">,</span>
+    <span class="string">'movies'</span><span class="punctuation">,</span>
+    <span class="punctuation">(</span><span class="parameter"><span class="punctuation">{</span>select<span class="punctuation">,</span> join<span class="punctuation">,</span> where<span class="punctuation">,</span> param<span class="punctuation">}</span></span><span class="punctuation">)</span> <span class="operator">=></span> <span class="punctuation">{</span>
+      <span class="function">queryMovieBasics</span><span class="punctuation">(</span><span class="punctuation">{</span>select<span class="punctuation">,</span> join<span class="punctuation">}</span><span class="punctuation">)</span><span class="punctuation">;</span>
+      <span class="function">where</span><span class="punctuation">(</span><span class="string">'directorId'</span><span class="punctuation">,</span> <span class="function">param</span><span class="punctuation">(</span><span class="string">'personId'</span><span class="punctuation">)</span><span class="punctuation">)</span><span class="punctuation">;</span>
+    <span class="punctuation">}</span><span class="punctuation">,</span>
+    <span class="punctuation">{</span><span class="literal-property">personId</span><span class="operator">:</span> <span class="keyword">null</span><span class="punctuation">}</span><span class="punctuation">,</span>
+  <span class="punctuation">)</span><span class="punctuation">;</span>
+
+  queries<span class="punctuation">.</span><span class="function"><a href="/api/queries/interfaces/queries/queries/methods/configuration/setquerydefinition/">setQueryDefinition</a></span><span class="punctuation">(</span>
+    <span class="string">'appearedMovies'</span><span class="punctuation">,</span>
+    <span class="string">'cast'</span><span class="punctuation">,</span>
+    <span class="punctuation">(</span><span class="parameter"><span class="punctuation">{</span>select<span class="punctuation">,</span> join<span class="punctuation">,</span> where<span class="punctuation">,</span> param<span class="punctuation">}</span></span><span class="punctuation">)</span> <span class="operator">=></span> <span class="punctuation">{</span>
+      <span class="function">select</span><span class="punctuation">(</span><span class="string">'movieId'</span><span class="punctuation">)</span><span class="punctuation">;</span>
+      <span class="function">select</span><span class="punctuation">(</span><span class="string">'movies'</span><span class="punctuation">,</span> <span class="string">'name'</span><span class="punctuation">)</span><span class="punctuation">.</span><span class="function">as</span><span class="punctuation">(</span><span class="string">'movieName'</span><span class="punctuation">)</span><span class="punctuation">;</span>
+      <span class="function">select</span><span class="punctuation">(</span><span class="string">'movies'</span><span class="punctuation">,</span> <span class="string">'image'</span><span class="punctuation">)</span><span class="punctuation">.</span><span class="function">as</span><span class="punctuation">(</span><span class="string">'movieImage'</span><span class="punctuation">)</span><span class="punctuation">;</span>
+      <span class="function">select</span><span class="punctuation">(</span><span class="string">'movies'</span><span class="punctuation">,</span> <span class="string">'year'</span><span class="punctuation">)</span><span class="punctuation">;</span>
+      <span class="function">select</span><span class="punctuation">(</span><span class="string">'movies'</span><span class="punctuation">,</span> <span class="string">'rating'</span><span class="punctuation">)</span><span class="punctuation">;</span>
+      <span class="function">select</span><span class="punctuation">(</span><span class="string">'movies'</span><span class="punctuation">,</span> <span class="string">'genreId'</span><span class="punctuation">)</span><span class="punctuation">;</span>
+      <span class="function">select</span><span class="punctuation">(</span><span class="string">'genres'</span><span class="punctuation">,</span> <span class="string">'name'</span><span class="punctuation">)</span><span class="punctuation">.</span><span class="function">as</span><span class="punctuation">(</span><span class="string">'genreName'</span><span class="punctuation">)</span><span class="punctuation">;</span>
+      <span class="function">join</span><span class="punctuation">(</span><span class="string">'movies'</span><span class="punctuation">,</span> <span class="string">'movieId'</span><span class="punctuation">)</span><span class="punctuation">;</span>
+      <span class="function">join</span><span class="punctuation">(</span><span class="string">'genres'</span><span class="punctuation">,</span> <span class="string">'movies'</span><span class="punctuation">,</span> <span class="string">'genreId'</span><span class="punctuation">)</span><span class="punctuation">;</span>
+      <span class="function">where</span><span class="punctuation">(</span><span class="string">'castId'</span><span class="punctuation">,</span> <span class="function">param</span><span class="punctuation">(</span><span class="string">'personId'</span><span class="punctuation">)</span><span class="punctuation">)</span><span class="punctuation">;</span>
+    <span class="punctuation">}</span><span class="punctuation">,</span>
+    <span class="punctuation">{</span><span class="literal-property">personId</span><span class="operator">:</span> <span class="keyword">null</span><span class="punctuation">}</span><span class="punctuation">,</span>
+  <span class="punctuation">)</span><span class="punctuation">;</span>
 
   <span class="keyword">return</span> queries<span class="punctuation">;</span>
 <span class="punctuation">}</span>
-</code></pre><p>That&#x27;s it for the main persistent queries that power most of the major views of the app. We&#x27;ll refer to these by their query <a href="/api/common/type-aliases/identity/id/"><code>Id</code></a> when we actually bind them to components.</p><h3 id="the-resultsortedtableinhtmltable-component">The <a href="/api/ui-react-dom/functions/queries-components/resultsortedtableinhtmltable/"><code>ResultSortedTableInHtmlTable</code></a> Component</h3><p>Most of the movies app is built from tabular data views, and it&#x27;s nice to have a re-usable <code>&lt;table&gt;</code> rendering, complete with sorting, pagination, and formatting.</p><p>Previously there was a whole table implementation in this demo, but as of TinyBase v4.1, we just use the <a href="/api/ui-react-dom/functions/queries-components/resultsortedtableinhtmltable/"><code>ResultSortedTableInHtmlTable</code></a> component from the new <a href="/api/ui-react-dom/"><code>ui-react-dom</code></a> module straight out of the box! You&#x27;ll see we use it throughout the app.</p><p>This component also benefits from some light styling for the pagination buttons and the table itself:</p><pre><code><span class="selector">table</span> <span class="punctuation">{</span>
+</code></pre><p>That&#x27;s it for the main persistent queries that power all the different views of the app. We&#x27;ll refer to these by their query <a href="/api/common/type-aliases/identity/id/"><code>Id</code></a> when we actually bind them to components.</p><p>Finally, let&#x27;s create a convenient hook that will allow us to parameterize the <code>yearGenreMovies</code> query, and one to parameterize both the <code>directedMovies</code> and <code>appearedMovies</code> queries for a given person:</p><pre><code><span class="keyword">const</span> <span class="function-variable">useSetYearGenre</span> <span class="operator">=</span> <span class="punctuation">(</span><span class="parameter"><span class="punctuation">{</span>year<span class="punctuation">,</span> genreId<span class="punctuation">}</span></span><span class="punctuation">)</span> <span class="operator">=></span>
+  <span class="function"><a href="/api/ui-react/functions/queries-hooks/usesetparamvaluescallback/">useSetParamValuesCallback</a></span><span class="punctuation">(</span>
+    <span class="string">'yearGenreMovies'</span><span class="punctuation">,</span>
+    <span class="punctuation">(</span><span class="parameter">yearGenre</span><span class="punctuation">)</span> <span class="operator">=></span> yearGenre<span class="punctuation">,</span>
+  <span class="punctuation">)</span><span class="punctuation">(</span><span class="punctuation">{</span>year<span class="punctuation">,</span> genreId<span class="punctuation">}</span><span class="punctuation">)</span><span class="punctuation">;</span>
+
+<span class="keyword">const</span> <span class="function-variable">useSetPersonMovies</span> <span class="operator">=</span> <span class="punctuation">(</span><span class="parameter">personId</span><span class="punctuation">)</span> <span class="operator">=></span> <span class="punctuation">{</span>
+  <span class="function"><a href="/api/ui-react/functions/queries-hooks/usesetparamvaluescallback/">useSetParamValuesCallback</a></span><span class="punctuation">(</span><span class="string">'directedMovies'</span><span class="punctuation">,</span> <span class="punctuation">(</span><span class="parameter">person</span><span class="punctuation">)</span> <span class="operator">=></span> person<span class="punctuation">)</span><span class="punctuation">(</span><span class="punctuation">{</span>personId<span class="punctuation">}</span><span class="punctuation">)</span><span class="punctuation">;</span>
+  <span class="function"><a href="/api/ui-react/functions/queries-hooks/usesetparamvaluescallback/">useSetParamValuesCallback</a></span><span class="punctuation">(</span><span class="string">'appearedMovies'</span><span class="punctuation">,</span> <span class="punctuation">(</span><span class="parameter">person</span><span class="punctuation">)</span> <span class="operator">=></span> person<span class="punctuation">)</span><span class="punctuation">(</span><span class="punctuation">{</span>personId<span class="punctuation">}</span><span class="punctuation">)</span><span class="punctuation">;</span>
+<span class="punctuation">}</span><span class="punctuation">;</span>
+</code></pre><h3 id="the-resultsortedtableinhtmltable-component">The <a href="/api/ui-react-dom/functions/queries-components/resultsortedtableinhtmltable/"><code>ResultSortedTableInHtmlTable</code></a> Component</h3><p>Most of the movies app is built from tabular data views, and it&#x27;s nice to have a re-usable <code>&lt;table&gt;</code> rendering, complete with sorting, pagination, and formatting.</p><p>Previously there was a whole table implementation in this demo, but as of TinyBase v4.1, we just use the <a href="/api/ui-react-dom/functions/queries-components/resultsortedtableinhtmltable/"><code>ResultSortedTableInHtmlTable</code></a> component from the new <a href="/api/ui-react-dom/"><code>ui-react-dom</code></a> module straight out of the box! You&#x27;ll see we use it throughout the app.</p><p>This component also benefits from some light styling for the pagination buttons and the table itself:</p><pre><code><span class="selector">table</span> <span class="punctuation">{</span>
   <span class="property">border-collapse</span><span class="punctuation">:</span> collapse<span class="punctuation">;</span>
   <span class="property">font-size</span><span class="punctuation">:</span> inherit<span class="punctuation">;</span>
   <span class="property">line-height</span><span class="punctuation">:</span> inherit<span class="punctuation">;</span>
@@ -438,7 +1013,7 @@ queries<span class="punctuation">.</span><span class="function"><a href="/api/qu
     </span><span class="punctuation">{</span>children<span class="punctuation">}</span><span class="plain-text">
   </span><span class="tag"><span class="tag"><span class="punctuation">&lt;/</span></span><span class="punctuation">></span></span>
 <span class="punctuation">)</span><span class="punctuation">;</span>
-</code></pre><p>With these helper components out of the way, let&#x27;s move on to the main parts of the app.</p><h3 id="overview-components">Overview Components</h3><p>We now use the <a href="/api/ui-react-dom/functions/queries-components/resultsortedtableinhtmltable/"><code>ResultSortedTableInHtmlTable</code></a> component and these linker components to create the major views of the application.</p><p>First, the overview of all the rated movies in the database (which displays on the &#x27;Movies&#x27; tab when the app first loads), comprising a <code>ResultSortedTableInHtmlTable</code> that renders the <code>movies</code> query with four columns, sorted by rating.</p><pre><code><span class="keyword">const</span> <span class="function-variable">MoviesOverview</span> <span class="operator">=</span> <span class="punctuation">(</span><span class="punctuation">)</span> <span class="operator">=></span> <span class="punctuation">(</span>
+</code></pre><p>With these helper components out of the way, let&#x27;s move on to the main parts of the app.</p><h3 id="overview-components">Overview Components</h3><p>We now use the <a href="/api/ui-react-dom/functions/queries-components/resultsortedtableinhtmltable/"><code>ResultSortedTableInHtmlTable</code></a> component and these linker components to create the major views of the application.</p><p>First, the overview of all the rated movies in the database (which displays on the &#x27;Movies&#x27; tab when the app first loads), comprising a <a href="/api/ui-react-dom/functions/queries-components/resultsortedtableinhtmltable/"><code>ResultSortedTableInHtmlTable</code></a> component that renders the <code>movies</code> query with four columns, sorted by rating.</p><pre><code><span class="keyword">const</span> <span class="function-variable">MoviesOverview</span> <span class="operator">=</span> <span class="punctuation">(</span><span class="punctuation">)</span> <span class="operator">=></span> <span class="punctuation">(</span>
   <span class="tag"><span class="tag"><span class="punctuation">&lt;</span><span class="class-name">Page</span></span> <span class="attr-name">title</span><span class="attr-value"><span class="punctuation">=</span><span class="punctuation">"</span>Rated movies<span class="punctuation">"</span></span><span class="punctuation">></span></span><span class="plain-text">
     </span><span class="tag"><span class="tag"><span class="punctuation">&lt;</span><span class="class-name"><a href="/api/ui-react-dom/functions/queries-components/resultsortedtableinhtmltable/">ResultSortedTableInHtmlTable</a></span></span>
       <span class="attr-name">queryId</span><span class="attr-value"><span class="punctuation">=</span><span class="punctuation">"</span>movies<span class="punctuation">"</span></span>
@@ -575,24 +1150,12 @@ queries<span class="punctuation">.</span><span class="function"><a href="/api/qu
     </span><span class="tag"><span class="tag"><span class="punctuation">&lt;/</span><span class="class-name">Page</span></span><span class="punctuation">></span></span>
   <span class="punctuation">)</span><span class="punctuation">;</span>
 <span class="punctuation">}</span><span class="punctuation">;</span>
-</code></pre><p>Again, note how we are often using custom components that take the <a href="/api/store/type-aliases/store/cell/"><code>Cell</code></a> values from this result <a href="/api/store/type-aliases/store/row/"><code>Row</code></a> to make links to other parts of the app. We&#x27;ll describe those shortly.</p><p>Moving on, the detail for a specific year is just a sorted table of the movies from that year.</p><p>But here is a case where we need to run the query within the component (rather than globally across the app). The <code>moviesInYear</code> query is constructed whenever the <code>year</code> prop changes, and uses the <code>where</code> function to show the basic movie data for just those movies matching that year. We get to benefit from the <code>queryMovieBasics</code> function again since we just need movie <a href="/api/common/type-aliases/identity/id/"><code>Id</code></a>, name, rating and genre.</p><pre><code><span class="keyword">const</span> <span class="function-variable">YearDetail</span> <span class="operator">=</span> <span class="punctuation">(</span><span class="parameter"><span class="punctuation">{</span>year<span class="punctuation">}</span></span><span class="punctuation">)</span> <span class="operator">=></span> <span class="punctuation">{</span>
-  <span class="keyword">const</span> queries <span class="operator">=</span> <span class="function"><a href="/api/ui-react/functions/queries-hooks/usequeries/">useQueries</a></span><span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">;</span>
-  <span class="function">useMemo</span><span class="punctuation">(</span>
-    <span class="punctuation">(</span><span class="punctuation">)</span> <span class="operator">=></span>
-      queries<span class="punctuation">.</span><span class="function"><a href="/api/queries/interfaces/queries/queries/methods/configuration/setquerydefinition/">setQueryDefinition</a></span><span class="punctuation">(</span>
-        <span class="string">'moviesInYear'</span><span class="punctuation">,</span>
-        <span class="string">'movies'</span><span class="punctuation">,</span>
-        <span class="punctuation">(</span><span class="parameter"><span class="punctuation">{</span>select<span class="punctuation">,</span> join<span class="punctuation">,</span> where<span class="punctuation">}</span></span><span class="punctuation">)</span> <span class="operator">=></span> <span class="punctuation">{</span>
-          <span class="function">queryMovieBasics</span><span class="punctuation">(</span><span class="punctuation">{</span>select<span class="punctuation">,</span> join<span class="punctuation">}</span><span class="punctuation">)</span><span class="punctuation">;</span>
-          <span class="function">where</span><span class="punctuation">(</span><span class="string">'year'</span><span class="punctuation">,</span> year<span class="punctuation">)</span><span class="punctuation">;</span>
-        <span class="punctuation">}</span><span class="punctuation">,</span>
-      <span class="punctuation">)</span><span class="punctuation">,</span>
-    <span class="punctuation">[</span>year<span class="punctuation">]</span><span class="punctuation">,</span>
-  <span class="punctuation">)</span><span class="punctuation">;</span>
+</code></pre><p>Again, note how we are often using custom components that take the <a href="/api/store/type-aliases/store/cell/"><code>Cell</code></a> values from this result <a href="/api/store/type-aliases/store/row/"><code>Row</code></a> to make links to other parts of the app. We&#x27;ll describe those shortly.</p><p>Moving on, the detail for a specific year is just a sorted table of the movies from that year.</p><p>Here is a case where we can use a parameterized query, introduced in TinyBase v7.2. The <code>yearGenreMovies</code> query was set up once in the app initialization, so we use the <a href="/api/ui-react/functions/queries-hooks/usesetparamvaluescallback/"><code>useSetParamValuesCallback</code></a> hook to update its params whenever the <code>year</code> prop changes. This is more efficient and ergonomic than rebuilding the query definition every time.</p><pre><code><span class="keyword">const</span> <span class="function-variable">YearDetail</span> <span class="operator">=</span> <span class="punctuation">(</span><span class="parameter"><span class="punctuation">{</span>year<span class="punctuation">}</span></span><span class="punctuation">)</span> <span class="operator">=></span> <span class="punctuation">{</span>
+  <span class="function">useSetYearGenre</span><span class="punctuation">(</span><span class="punctuation">{</span>year<span class="punctuation">}</span><span class="punctuation">)</span><span class="punctuation">;</span>
   <span class="keyword">return</span> <span class="punctuation">(</span>
     <span class="tag"><span class="tag"><span class="punctuation">&lt;</span><span class="class-name">Page</span></span> <span class="attr-name">title</span><span class="script"><span class="script-punctuation">=</span><span class="punctuation">{</span><span class="template-string"><span class="template-punctuation">`</span><span class="string">Movies from </span><span class="interpolation"><span class="interpolation-punctuation">${</span>year<span class="interpolation-punctuation">}</span></span><span class="template-punctuation">`</span></span><span class="punctuation">}</span></span><span class="punctuation">></span></span><span class="plain-text">
       </span><span class="tag"><span class="tag"><span class="punctuation">&lt;</span><span class="class-name"><a href="/api/ui-react-dom/functions/queries-components/resultsortedtableinhtmltable/">ResultSortedTableInHtmlTable</a></span></span>
-        <span class="attr-name">queryId</span><span class="attr-value"><span class="punctuation">=</span><span class="punctuation">"</span>moviesInYear<span class="punctuation">"</span></span>
+        <span class="attr-name">queryId</span><span class="attr-value"><span class="punctuation">=</span><span class="punctuation">"</span>yearGenreMovies<span class="punctuation">"</span></span>
         <span class="attr-name">customCells</span><span class="script"><span class="script-punctuation">=</span><span class="punctuation">{</span>customCellsForMoviesInYear<span class="punctuation">}</span></span>
         <span class="attr-name">cellId</span><span class="attr-value"><span class="punctuation">=</span><span class="punctuation">"</span>rating<span class="punctuation">"</span></span>
         <span class="attr-name">descending</span><span class="script"><span class="script-punctuation">=</span><span class="punctuation">{</span><span class="boolean">true</span><span class="punctuation">}</span></span>
@@ -610,25 +1173,13 @@ queries<span class="punctuation">.</span><span class="function"><a href="/api/qu
   <span class="literal-property">rating</span><span class="operator">:</span> <span class="punctuation">{</span><span class="literal-property">label</span><span class="operator">:</span> <span class="string">'Rating'</span><span class="punctuation">}</span><span class="punctuation">,</span>
   <span class="literal-property">genreName</span><span class="operator">:</span> <span class="punctuation">{</span><span class="literal-property">label</span><span class="operator">:</span> <span class="string">'Genre'</span><span class="punctuation">,</span> <span class="literal-property">component</span><span class="operator">:</span> GenreLink<span class="punctuation">}</span><span class="punctuation">,</span>
 <span class="punctuation">}</span><span class="punctuation">;</span>
-</code></pre><p>The genre detail page is very similar, with a <code>where</code> clause to match the genre&#x27;s <a href="/api/common/type-aliases/identity/id/"><code>Id</code></a>:</p><pre><code><span class="keyword">const</span> <span class="function-variable">GenreDetail</span> <span class="operator">=</span> <span class="punctuation">(</span><span class="parameter"><span class="punctuation">{</span>genreId<span class="punctuation">}</span></span><span class="punctuation">)</span> <span class="operator">=></span> <span class="punctuation">{</span>
-  <span class="keyword">const</span> queries <span class="operator">=</span> <span class="function"><a href="/api/ui-react/functions/queries-hooks/usequeries/">useQueries</a></span><span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">;</span>
-  <span class="function">useMemo</span><span class="punctuation">(</span>
-    <span class="punctuation">(</span><span class="punctuation">)</span> <span class="operator">=></span>
-      queries<span class="punctuation">.</span><span class="function"><a href="/api/queries/interfaces/queries/queries/methods/configuration/setquerydefinition/">setQueryDefinition</a></span><span class="punctuation">(</span>
-        <span class="string">'moviesInGenre'</span><span class="punctuation">,</span>
-        <span class="string">'movies'</span><span class="punctuation">,</span>
-        <span class="punctuation">(</span><span class="parameter"><span class="punctuation">{</span>select<span class="punctuation">,</span> join<span class="punctuation">,</span> where<span class="punctuation">}</span></span><span class="punctuation">)</span> <span class="operator">=></span> <span class="punctuation">{</span>
-          <span class="function">queryMovieBasics</span><span class="punctuation">(</span><span class="punctuation">{</span>select<span class="punctuation">,</span> join<span class="punctuation">}</span><span class="punctuation">)</span><span class="punctuation">;</span>
-          <span class="function">where</span><span class="punctuation">(</span><span class="string">'genreId'</span><span class="punctuation">,</span> genreId<span class="punctuation">)</span><span class="punctuation">;</span>
-        <span class="punctuation">}</span><span class="punctuation">,</span>
-      <span class="punctuation">)</span><span class="punctuation">,</span>
-    <span class="punctuation">[</span>genreId<span class="punctuation">]</span><span class="punctuation">,</span>
-  <span class="punctuation">)</span><span class="punctuation">;</span>
+</code></pre><p>The genre detail page is very similar, using the same parameterized query but setting the <code>genreId</code> param instead:</p><pre><code><span class="keyword">const</span> <span class="function-variable">GenreDetail</span> <span class="operator">=</span> <span class="punctuation">(</span><span class="parameter"><span class="punctuation">{</span>genreId<span class="punctuation">}</span></span><span class="punctuation">)</span> <span class="operator">=></span> <span class="punctuation">{</span>
+  <span class="function">useSetYearGenre</span><span class="punctuation">(</span><span class="punctuation">{</span>genreId<span class="punctuation">}</span><span class="punctuation">)</span><span class="punctuation">;</span>
   <span class="keyword">const</span> name <span class="operator">=</span> <span class="function"><a href="/api/the-essentials/using-react/usecell/">useCell</a></span><span class="punctuation">(</span><span class="string">'genres'</span><span class="punctuation">,</span> genreId<span class="punctuation">,</span> <span class="string">'name'</span><span class="punctuation">)</span><span class="punctuation">;</span>
   <span class="keyword">return</span> name <span class="operator">==</span> <span class="keyword">null</span> <span class="operator">?</span> <span class="keyword">null</span> <span class="operator">:</span> <span class="punctuation">(</span>
     <span class="tag"><span class="tag"><span class="punctuation">&lt;</span><span class="class-name">Page</span></span> <span class="attr-name">title</span><span class="script"><span class="script-punctuation">=</span><span class="punctuation">{</span><span class="template-string"><span class="template-punctuation">`</span><span class="interpolation"><span class="interpolation-punctuation">${</span>name<span class="interpolation-punctuation">}</span></span><span class="string"> movies</span><span class="template-punctuation">`</span></span><span class="punctuation">}</span></span><span class="punctuation">></span></span><span class="plain-text">
       </span><span class="tag"><span class="tag"><span class="punctuation">&lt;</span><span class="class-name"><a href="/api/ui-react-dom/functions/queries-components/resultsortedtableinhtmltable/">ResultSortedTableInHtmlTable</a></span></span>
-        <span class="attr-name">queryId</span><span class="attr-value"><span class="punctuation">=</span><span class="punctuation">"</span>moviesInGenre<span class="punctuation">"</span></span>
+        <span class="attr-name">queryId</span><span class="attr-value"><span class="punctuation">=</span><span class="punctuation">"</span>yearGenreMovies<span class="punctuation">"</span></span>
         <span class="attr-name">customCells</span><span class="script"><span class="script-punctuation">=</span><span class="punctuation">{</span>customCellsForMoviesInGenre<span class="punctuation">}</span></span>
         <span class="attr-name">cellId</span><span class="attr-value"><span class="punctuation">=</span><span class="punctuation">"</span>rating<span class="punctuation">"</span></span>
         <span class="attr-name">descending</span><span class="script"><span class="script-punctuation">=</span><span class="punctuation">{</span><span class="boolean">true</span><span class="punctuation">}</span></span>
@@ -646,43 +1197,14 @@ queries<span class="punctuation">.</span><span class="function"><a href="/api/qu
   <span class="literal-property">year</span><span class="operator">:</span> <span class="punctuation">{</span><span class="literal-property">label</span><span class="operator">:</span> <span class="string">'Year'</span><span class="punctuation">,</span> <span class="literal-property">component</span><span class="operator">:</span> YearLink<span class="punctuation">}</span><span class="punctuation">,</span>
   <span class="literal-property">rating</span><span class="operator">:</span> <span class="punctuation">{</span><span class="literal-property">label</span><span class="operator">:</span> <span class="string">'Rating'</span><span class="punctuation">}</span><span class="punctuation">,</span>
 <span class="punctuation">}</span><span class="punctuation">;</span>
-</code></pre><p>Finally, we build the detail page for a person. We create two queries on the fly here, one for those movies for which the person is the director, and one for those in which they are cast.</p><p>The latter is slightly more complex since it needs to use the many-to-many <code>cast</code> <a href="/api/store/type-aliases/store/table/"><code>Table</code></a> as its root, from where it joins to the <code>movies</code> <a href="/api/store/type-aliases/store/table/"><code>Table</code></a> and <code>genres</code> <a href="/api/store/type-aliases/store/table/"><code>Table</code></a> in turn. Nevertheless, the result <a href="/api/store/type-aliases/store/cell/"><code>Cell</code></a> <a href="/api/common/type-aliases/identity/ids/"><code>Ids</code></a> are named to be consistent with the other queries, so that we can use the same custom components to render each part of the HTML table.</p><p>This component is also slightly more complex that the others because it is also rendering some parts of its content directly from the <code>people</code> <a href="/api/store/type-aliases/store/table/"><code>Table</code></a> (rather than via a query) - hence the use of the basic <code>useCell</code> hook and <code>CellView</code> component, for example.</p><pre><code><span class="keyword">const</span> <span class="function-variable">PersonDetail</span> <span class="operator">=</span> <span class="punctuation">(</span><span class="parameter"><span class="punctuation">{</span>personId<span class="punctuation">}</span></span><span class="punctuation">)</span> <span class="operator">=></span> <span class="punctuation">{</span>
-  <span class="keyword">const</span> queries <span class="operator">=</span> <span class="function"><a href="/api/ui-react/functions/queries-hooks/usequeries/">useQueries</a></span><span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">;</span>
-  <span class="function">useMemo</span><span class="punctuation">(</span>
-    <span class="punctuation">(</span><span class="punctuation">)</span> <span class="operator">=></span>
-      queries
-        <span class="punctuation">.</span><span class="function"><a href="/api/queries/interfaces/queries/queries/methods/configuration/setquerydefinition/">setQueryDefinition</a></span><span class="punctuation">(</span>
-          <span class="string">'moviesWithDirector'</span><span class="punctuation">,</span>
-          <span class="string">'movies'</span><span class="punctuation">,</span>
-          <span class="punctuation">(</span><span class="parameter"><span class="punctuation">{</span>select<span class="punctuation">,</span> join<span class="punctuation">,</span> where<span class="punctuation">}</span></span><span class="punctuation">)</span> <span class="operator">=></span> <span class="punctuation">{</span>
-            <span class="function">queryMovieBasics</span><span class="punctuation">(</span><span class="punctuation">{</span>select<span class="punctuation">,</span> join<span class="punctuation">}</span><span class="punctuation">)</span><span class="punctuation">;</span>
-            <span class="function">where</span><span class="punctuation">(</span><span class="string">'directorId'</span><span class="punctuation">,</span> personId<span class="punctuation">)</span><span class="punctuation">;</span>
-          <span class="punctuation">}</span><span class="punctuation">,</span>
-        <span class="punctuation">)</span>
-        <span class="punctuation">.</span><span class="function"><a href="/api/queries/interfaces/queries/queries/methods/configuration/setquerydefinition/">setQueryDefinition</a></span><span class="punctuation">(</span>
-          <span class="string">'moviesWithCast'</span><span class="punctuation">,</span>
-          <span class="string">'cast'</span><span class="punctuation">,</span>
-          <span class="punctuation">(</span><span class="parameter"><span class="punctuation">{</span>select<span class="punctuation">,</span> join<span class="punctuation">,</span> where<span class="punctuation">}</span></span><span class="punctuation">)</span> <span class="operator">=></span> <span class="punctuation">{</span>
-            <span class="function">select</span><span class="punctuation">(</span><span class="string">'movieId'</span><span class="punctuation">)</span><span class="punctuation">;</span>
-            <span class="function">select</span><span class="punctuation">(</span><span class="string">'movies'</span><span class="punctuation">,</span> <span class="string">'name'</span><span class="punctuation">)</span><span class="punctuation">.</span><span class="function">as</span><span class="punctuation">(</span><span class="string">'movieName'</span><span class="punctuation">)</span><span class="punctuation">;</span>
-            <span class="function">select</span><span class="punctuation">(</span><span class="string">'movies'</span><span class="punctuation">,</span> <span class="string">'image'</span><span class="punctuation">)</span><span class="punctuation">.</span><span class="function">as</span><span class="punctuation">(</span><span class="string">'movieImage'</span><span class="punctuation">)</span><span class="punctuation">;</span>
-            <span class="function">select</span><span class="punctuation">(</span><span class="string">'movies'</span><span class="punctuation">,</span> <span class="string">'year'</span><span class="punctuation">)</span><span class="punctuation">;</span>
-            <span class="function">select</span><span class="punctuation">(</span><span class="string">'movies'</span><span class="punctuation">,</span> <span class="string">'rating'</span><span class="punctuation">)</span><span class="punctuation">;</span>
-            <span class="function">select</span><span class="punctuation">(</span><span class="string">'movies'</span><span class="punctuation">,</span> <span class="string">'genreId'</span><span class="punctuation">)</span><span class="punctuation">;</span>
-            <span class="function">select</span><span class="punctuation">(</span><span class="string">'genres'</span><span class="punctuation">,</span> <span class="string">'name'</span><span class="punctuation">)</span><span class="punctuation">.</span><span class="function">as</span><span class="punctuation">(</span><span class="string">'genreName'</span><span class="punctuation">)</span><span class="punctuation">;</span>
-            <span class="function">join</span><span class="punctuation">(</span><span class="string">'movies'</span><span class="punctuation">,</span> <span class="string">'movieId'</span><span class="punctuation">)</span><span class="punctuation">;</span>
-            <span class="function">join</span><span class="punctuation">(</span><span class="string">'genres'</span><span class="punctuation">,</span> <span class="string">'movies'</span><span class="punctuation">,</span> <span class="string">'genreId'</span><span class="punctuation">)</span><span class="punctuation">;</span>
-            <span class="function">where</span><span class="punctuation">(</span><span class="string">'castId'</span><span class="punctuation">,</span> personId<span class="punctuation">)</span><span class="punctuation">;</span>
-          <span class="punctuation">}</span><span class="punctuation">,</span>
-        <span class="punctuation">)</span><span class="punctuation">,</span>
-    <span class="punctuation">[</span>personId<span class="punctuation">]</span><span class="punctuation">,</span>
-  <span class="punctuation">)</span><span class="punctuation">;</span>
+</code></pre><p>Finally, we build the detail page for a person. Again, we use parameterized queries to get the movies they have directed and the movies in which they have appeared without having to re-define the whole query each time.</p><p>This component is slightly more complex than the others because it is also rendering some parts of its content directly from the <code>people</code> <a href="/api/store/type-aliases/store/table/"><code>Table</code></a> (rather than via a query) - hence the use of the basic <code>useCell</code> hook and <code>CellView</code> component, for example.</p><pre><code><span class="keyword">const</span> <span class="function-variable">PersonDetail</span> <span class="operator">=</span> <span class="punctuation">(</span><span class="parameter"><span class="punctuation">{</span>personId<span class="punctuation">}</span></span><span class="punctuation">)</span> <span class="operator">=></span> <span class="punctuation">{</span>
+  <span class="function">useSetPersonMovies</span><span class="punctuation">(</span>personId<span class="punctuation">)</span><span class="punctuation">;</span>
 
   <span class="keyword">const</span> props <span class="operator">=</span> <span class="punctuation">{</span><span class="literal-property">tableId</span><span class="operator">:</span> <span class="string">'people'</span><span class="punctuation">,</span> <span class="literal-property">rowId</span><span class="operator">:</span> personId<span class="punctuation">}</span><span class="punctuation">;</span>
   <span class="keyword">const</span> name <span class="operator">=</span> <span class="function"><a href="/api/the-essentials/using-react/usecell/">useCell</a></span><span class="punctuation">(</span><span class="string">'people'</span><span class="punctuation">,</span> personId<span class="punctuation">,</span> <span class="string">'name'</span><span class="punctuation">)</span><span class="punctuation">;</span>
   <span class="keyword">const</span> died <span class="operator">=</span> <span class="function"><a href="/api/the-essentials/using-react/usecell/">useCell</a></span><span class="punctuation">(</span><span class="string">'people'</span><span class="punctuation">,</span> personId<span class="punctuation">,</span> <span class="string">'died'</span><span class="punctuation">)</span><span class="punctuation">;</span>
-  <span class="keyword">const</span> moviesWithDirector <span class="operator">=</span> <span class="function"><a href="/api/ui-react/functions/queries-hooks/useresultrowids/">useResultRowIds</a></span><span class="punctuation">(</span><span class="string">'moviesWithDirector'</span><span class="punctuation">)</span><span class="punctuation">;</span>
-  <span class="keyword">const</span> moviesWithCast <span class="operator">=</span> <span class="function"><a href="/api/ui-react/functions/queries-hooks/useresultrowids/">useResultRowIds</a></span><span class="punctuation">(</span><span class="string">'moviesWithCast'</span><span class="punctuation">)</span><span class="punctuation">;</span>
+  <span class="keyword">const</span> directedMovies <span class="operator">=</span> <span class="function"><a href="/api/ui-react/functions/queries-hooks/useresultrowids/">useResultRowIds</a></span><span class="punctuation">(</span><span class="string">'directedMovies'</span><span class="punctuation">)</span><span class="punctuation">;</span>
+  <span class="keyword">const</span> appearedMovies <span class="operator">=</span> <span class="function"><a href="/api/ui-react/functions/queries-hooks/useresultrowids/">useResultRowIds</a></span><span class="punctuation">(</span><span class="string">'appearedMovies'</span><span class="punctuation">)</span><span class="punctuation">;</span>
 
   <span class="keyword">return</span> name <span class="operator">==</span> <span class="keyword">null</span> <span class="operator">?</span> <span class="keyword">null</span> <span class="operator">:</span> <span class="punctuation">(</span>
     <span class="tag"><span class="tag"><span class="punctuation">&lt;</span><span class="class-name">Page</span></span> <span class="attr-name">title</span><span class="script"><span class="script-punctuation">=</span><span class="punctuation">{</span>name<span class="punctuation">}</span></span><span class="punctuation">></span></span><span class="plain-text">
@@ -707,11 +1229,11 @@ queries<span class="punctuation">.</span><span class="function"><a href="/api/qu
         </span><span class="tag"><span class="tag"><span class="punctuation">&lt;</span><span class="class-name"><a href="/api/ui-react/functions/store-components/cellview/">CellView</a></span></span> <span class="spread"><span class="punctuation">{</span><span class="operator">...</span>props<span class="punctuation">}</span></span> <span class="attr-name">cellId</span><span class="attr-value"><span class="punctuation">=</span><span class="punctuation">"</span>biography<span class="punctuation">"</span></span> <span class="punctuation">/></span></span><span class="plain-text">
       </span><span class="tag"><span class="tag"><span class="punctuation">&lt;/</span>p</span><span class="punctuation">></span></span><span class="plain-text">
 
-      </span><span class="punctuation">{</span>moviesWithDirector<span class="punctuation">.</span>length <span class="operator">==</span> <span class="number">0</span> <span class="operator">?</span> <span class="keyword">null</span> <span class="operator">:</span> <span class="punctuation">(</span>
+      </span><span class="punctuation">{</span>directedMovies<span class="punctuation">.</span>length <span class="operator">==</span> <span class="number">0</span> <span class="operator">?</span> <span class="keyword">null</span> <span class="operator">:</span> <span class="punctuation">(</span>
         <span class="tag"><span class="tag"><span class="punctuation">&lt;</span></span><span class="punctuation">></span></span><span class="plain-text">
           </span><span class="tag"><span class="tag"><span class="punctuation">&lt;</span>h2</span><span class="punctuation">></span></span><span class="plain-text">As director:</span><span class="tag"><span class="tag"><span class="punctuation">&lt;/</span>h2</span><span class="punctuation">></span></span><span class="plain-text">
           </span><span class="tag"><span class="tag"><span class="punctuation">&lt;</span><span class="class-name"><a href="/api/ui-react-dom/functions/queries-components/resultsortedtableinhtmltable/">ResultSortedTableInHtmlTable</a></span></span>
-            <span class="attr-name">queryId</span><span class="attr-value"><span class="punctuation">=</span><span class="punctuation">"</span>moviesWithDirector<span class="punctuation">"</span></span>
+            <span class="attr-name">queryId</span><span class="attr-value"><span class="punctuation">=</span><span class="punctuation">"</span>directedMovies<span class="punctuation">"</span></span>
             <span class="attr-name">customCells</span><span class="script"><span class="script-punctuation">=</span><span class="punctuation">{</span>customCellsForMoviesWithPeople<span class="punctuation">}</span></span>
             <span class="attr-name">cellId</span><span class="attr-value"><span class="punctuation">=</span><span class="punctuation">"</span>rating<span class="punctuation">"</span></span>
             <span class="attr-name">descending</span><span class="script"><span class="script-punctuation">=</span><span class="punctuation">{</span><span class="boolean">true</span><span class="punctuation">}</span></span>
@@ -723,11 +1245,11 @@ queries<span class="punctuation">.</span><span class="function"><a href="/api/qu
         </span><span class="tag"><span class="tag"><span class="punctuation">&lt;/</span></span><span class="punctuation">></span></span>
       <span class="punctuation">)</span><span class="punctuation">}</span><span class="plain-text">
 
-      </span><span class="punctuation">{</span>moviesWithCast<span class="punctuation">.</span>length <span class="operator">==</span> <span class="number">0</span> <span class="operator">?</span> <span class="keyword">null</span> <span class="operator">:</span> <span class="punctuation">(</span>
+      </span><span class="punctuation">{</span>appearedMovies<span class="punctuation">.</span>length <span class="operator">==</span> <span class="number">0</span> <span class="operator">?</span> <span class="keyword">null</span> <span class="operator">:</span> <span class="punctuation">(</span>
         <span class="tag"><span class="tag"><span class="punctuation">&lt;</span></span><span class="punctuation">></span></span><span class="plain-text">
           </span><span class="tag"><span class="tag"><span class="punctuation">&lt;</span>h2</span><span class="punctuation">></span></span><span class="plain-text">As cast:</span><span class="tag"><span class="tag"><span class="punctuation">&lt;/</span>h2</span><span class="punctuation">></span></span><span class="plain-text">
           </span><span class="tag"><span class="tag"><span class="punctuation">&lt;</span><span class="class-name"><a href="/api/ui-react-dom/functions/queries-components/resultsortedtableinhtmltable/">ResultSortedTableInHtmlTable</a></span></span>
-            <span class="attr-name">queryId</span><span class="attr-value"><span class="punctuation">=</span><span class="punctuation">"</span>moviesWithCast<span class="punctuation">"</span></span>
+            <span class="attr-name">queryId</span><span class="attr-value"><span class="punctuation">=</span><span class="punctuation">"</span>appearedMovies<span class="punctuation">"</span></span>
             <span class="attr-name">customCells</span><span class="script"><span class="script-punctuation">=</span><span class="punctuation">{</span>customCellsForMoviesWithPeople<span class="punctuation">}</span></span>
             <span class="attr-name">cellId</span><span class="attr-value"><span class="punctuation">=</span><span class="punctuation">"</span>rating<span class="punctuation">"</span></span>
             <span class="attr-name">descending</span><span class="script"><span class="script-punctuation">=</span><span class="punctuation">{</span><span class="boolean">true</span><span class="punctuation">}</span></span>
@@ -801,4 +1323,4 @@ queries<span class="punctuation">.</span><span class="function"><a href="/api/qu
 <span class="selector">p</span> <span class="punctuation">{</span>
   <span class="property">line-height</span><span class="punctuation">:</span> 1.2rem<span class="punctuation">;</span>
 <span class="punctuation">}</span>
-</code></pre><h3 id="conclusion">Conclusion</h3><p>And that&#x27;s it! There is quite a lot going on here, but this is arguably a complete and legitimate application that pulls in a decent amount of normalized relational data and renders it in a useful and navigable fashion.</p><p>One thing that might be easy to forget (because the movie data does not change) is that every single view rendered in this application is reactive! Were any aspect of the data dynamic, it would be automatically updated in the user interface. It&#x27;s left as an exercise to the reader to explore how this might work, perhaps with movie favorite lists, or pulling dynamic data directly from TMDB.</p><p>In the meantime, as they say in the movies, that&#x27;s a wrap!</p></section></article><aside></aside></main><footer><nav><a id="gh" href="https://github.com/tinyplex/tinybase" target="_blank">GitHub</a><a id="bs" href="https://bsky.app/profile/tinybase.bsky.social" target="_blank">Bluesky</a><a id="tw" href="https://x.com/tinybasejs" target="_blank">X / Twitter</a><a id="dc" href="https://discord.com/invite/mGz3mevwP8" target="_blank">Discord</a></nav><nav><a href="/">TinyBase <span id="version"></span></a> © 2022-</nav></footer><script>window.dataLayer=window.dataLayer||[];function g(){dataLayer.push(arguments);}g('js',new Date());g('config','G-D1MGR8VRWJ');</script></body></html>
+</code></pre><h3 id="conclusion">Conclusion</h3><p>And that&#x27;s it! There is quite a lot going on here, but this is arguably a complete and legitimate application that pulls in a decent amount of normalized relational data and renders it in a useful and navigable fashion.</p><p>One thing that might be easy to forget (because the movie data does not change) is that every single view rendered in this application is reactive! Were any aspect of the data dynamic, it would be automatically updated in the user interface. It&#x27;s left as an exercise to the reader to explore how this might work, perhaps with movie favorite lists, or pulling dynamic data directly from TMDB.</p><p>In the meantime, as they say in the movies, that&#x27;s a wrap!</p></section></article><aside aria-label="On this page"></aside></main><footer><nav><a id="gh" href="https://github.com/tinyplex/tinybase" target="_blank">GitHub</a><a id="bs" href="https://bsky.app/profile/tinybase.bsky.social" target="_blank">Bluesky</a><a id="tw" href="https://x.com/tinybasejs" target="_blank">X / Twitter</a><a id="dc" href="https://discord.com/invite/mGz3mevwP8" target="_blank">Discord</a></nav><nav><a href="/">TinyBase <span id="version"></span></a> © 2022-2026</nav></footer><script>window.dataLayer=window.dataLayer||[];function g(){dataLayer.push(arguments);}g('js',new Date());g('config','G-D1MGR8VRWJ');</script></body></html>

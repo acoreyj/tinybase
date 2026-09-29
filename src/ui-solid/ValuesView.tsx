@@ -1,0 +1,28 @@
+/* @jsxImportSource solid-js */
+import type {JSXElement} from 'solid-js';
+import type {Id} from '../@types/index.d.ts';
+import type {ValuesProps} from '../@types/ui-solid/index.d.ts';
+import {arrayMap} from '../common/array.ts';
+import {getProps, getValue} from '../common/solid.ts';
+import {wrap} from './common/wrap.tsx';
+import {useValueIds} from './primitives.ts';
+import {ValueView} from './ValueView.tsx';
+
+export const ValuesView = (props: ValuesProps): JSXElement => {
+  const valueIds = useValueIds(() => props.store);
+  const content = () => {
+    const Value = props.valueComponent ?? ValueView;
+    return wrap(
+      arrayMap(getValue(valueIds) as Id[], (valueId: Id) => (
+        <Value
+          {...getProps(props.getValueComponentProps, valueId)}
+          valueId={valueId}
+          store={props.store}
+          debugIds={props.debugIds}
+        />
+      )),
+      props.separator,
+    );
+  };
+  return <>{content()}</>;
+};

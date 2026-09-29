@@ -1,3 +1,5 @@
+import {beforeEach, describe, expect, test} from 'vitest';
+
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import type {
   Cell,
@@ -6,6 +8,7 @@ import type {
   Tables,
   TablesSchema,
   Value,
+  ValuesSchema,
 } from 'tinybase/with-schemas';
 import {createMergeableStore, createStore} from 'tinybase/with-schemas';
 import {
@@ -163,6 +166,212 @@ describe.each([
       expectNoChanges(listener);
     });
 
+    test('Set tablesSchema with required Cells', () => {
+      store.setTablesSchema({
+        t1: {
+          c1: {type: 'number', required: true},
+          c2: {type: 'string', default: '', required: true},
+        },
+      });
+      expect(JSON.parse(store.getTablesSchemaJson())).toEqual({
+        t1: {
+          c1: {type: 'number', required: true},
+          c2: {type: 'string', default: '', required: true},
+        },
+      });
+      store.setRow('t1', 'r1', {});
+      expect(store.getRow('t1', 'r1')).toEqual({});
+      expectChangesNoJson(listener, 'invalids', {
+        t1: {r1: {c1: [undefined]}},
+      });
+      store.setRow('t1', 'r1', {c1: 1});
+      expect(store.getRow('t1', 'r1')).toEqual({c1: 1, c2: ''});
+      store.setRow('t1', 'r2', {c1: '1'});
+      expect(store.getRow('t1', 'r2')).toEqual({});
+      expectChanges(listener, 'invalids', {
+        t1: {r2: {c1: ['1']}},
+      });
+      expect(store.addRow('t1', {c2: '2'})).toBeUndefined();
+      expect(store.getTable('t1')).toEqual({r1: {c1: 1, c2: ''}});
+      expectChangesNoJson(listener, 'invalids', {
+        t1: {undefined: {c1: [undefined]}},
+      });
+      store.setTables({t1: {r2: {c2: '2'}}});
+      expect(store.getTable('t1')).toEqual({r1: {c1: 1, c2: ''}});
+      expectChangesNoJson(listener, 'invalids', {
+        t1: {r2: {c1: [undefined]}},
+      });
+      expectNoChanges(listener);
+    });
+
+    test('Set tablesSchema with enum Cells', () => {
+      store.setTablesSchema({
+        pets: {
+          status: {enum: ['draft', 'live'], default: 'draft'},
+          rating: {enum: [1, 2, true], required: true},
+          name: {enum: ['fido'], allowNull: true},
+        },
+      });
+      expect(JSON.parse(store.getTablesSchemaJson())).toEqual({
+        pets: {
+          status: {enum: ['draft', 'live'], default: 'draft'},
+          rating: {enum: [1, 2, true], required: true},
+          name: {enum: ['fido'], allowNull: true},
+        },
+      });
+
+      store.setRow('pets', 'pet1', {rating: 1, name: null});
+      store.setCell('pets', 'pet1', 'status', 'live');
+      store.setCell('pets', 'pet1', 'rating', true);
+      store.setCell('pets', 'pet1', 'name', 'fido');
+      expect(store.getRow('pets', 'pet1')).toEqual({
+        status: 'live',
+        rating: true,
+        name: 'fido',
+      });
+
+      store.setCell('pets', 'pet1', 'status', 'archived');
+      store.setCell('pets', 'pet1', 'rating', false);
+      store.setCell('pets', 'pet1', 'name', null);
+      store.setCell('pets', 'pet1', 'name', 'felix');
+      expect(store.getRow('pets', 'pet1')).toEqual({
+        status: 'draft',
+        rating: true,
+        name: null,
+      });
+      expectChanges(
+        listener,
+        'invalids',
+        {pets: {pet1: {status: ['archived']}}},
+        {pets: {pet1: {rating: [false]}}},
+        {pets: {pet1: {name: ['felix']}}},
+      );
+    });
+
+    test('Validate enum Cell schemas', () => {
+      store.setTablesSchema({
+        pets: {status: {enum: ['draft', 'live'], default: 'other'}},
+      } as TablesSchema);
+      expect(JSON.parse(store.getTablesSchemaJson())).toEqual({
+        pets: {status: {enum: ['draft', 'live']}},
+      });
+
+      for (const status of [
+        {enum: []},
+        {enum: [null]},
+        {enum: [null], allowNull: true},
+        {enum: [{}]},
+        {enum: [Infinity]},
+        {type: 'string', enum: ['draft']},
+        {enum: ['draft'], default: null},
+        {},
+      ]) {
+        store.setTablesSchema({pets: {status}} as any);
+        expect(JSON.parse(store.getTablesSchemaJson())).toEqual({
+          pets: {status: {enum: ['draft', 'live']}},
+        });
+      }
+    });
+
+    test('Set tablesSchema with union type Cells', () => {
+      const tablesSchema = {
+        pets: {
+          answer: {type: ['string', 'number'], default: 'unknown'},
+          payload: {type: ['object', 'array'], required: true},
+          score: {type: ['number', 'boolean'], allowNull: true},
+          single: {type: ['string']},
+          repeated: {type: ['string', 'string']},
+          status: {enum: ['draft', 'live']},
+        },
+      } as const;
+      store.setTablesSchema(tablesSchema);
+      expect(JSON.parse(store.getTablesSchemaJson())).toEqual(tablesSchema);
+
+      store.setRow('pets', 'pet1', {
+        payload: {likes: ['walks']},
+        score: null,
+        single: 'initial',
+        repeated: 'initial',
+        status: 'draft',
+      });
+      expect(store.getRow('pets', 'pet1')).toEqual({
+        answer: 'unknown',
+        payload: {likes: ['walks']},
+        score: null,
+        single: 'initial',
+        repeated: 'initial',
+        status: 'draft',
+      });
+
+      store.setCell('pets', 'pet1', 'answer', 42);
+      store.setCell('pets', 'pet1', 'payload', ['walks']);
+      store.setCell('pets', 'pet1', 'score', true);
+      store.setCell('pets', 'pet1', 'single', 'one');
+      store.setCell('pets', 'pet1', 'repeated', 'two');
+      expect(store.getRow('pets', 'pet1')).toEqual({
+        answer: 42,
+        payload: ['walks'],
+        score: true,
+        single: 'one',
+        repeated: 'two',
+        status: 'draft',
+      });
+
+      store.setCell('pets', 'pet1', 'answer', false);
+      store.setCell('pets', 'pet1', 'payload', null);
+      store.setCell('pets', 'pet1', 'score', 'high');
+      store.setCell('pets', 'pet1', 'single', 1);
+      store.setCell('pets', 'pet1', 'repeated', false);
+      store.setCell('pets', 'pet1', 'status', 'other');
+      expect(store.getRow('pets', 'pet1')).toEqual({
+        answer: 'unknown',
+        payload: ['walks'],
+        score: true,
+        single: 'one',
+        repeated: 'two',
+        status: 'draft',
+      });
+      expectChanges(
+        listener,
+        'invalids',
+        {pets: {pet1: {answer: [false]}}},
+        {pets: {pet1: {payload: [null]}}},
+        {pets: {pet1: {score: ['high']}}},
+        {pets: {pet1: {single: [1]}}},
+        {pets: {pet1: {repeated: [false]}}},
+        {pets: {pet1: {status: ['other']}}},
+      );
+
+      const otherStore = createStore().setTablesSchema(tablesSchema);
+      otherStore.setTablesJson(store.getTablesJson());
+      expect(otherStore.getTables()).toEqual(store.getTables());
+    });
+
+    test('Validate union type Cell schemas', () => {
+      store.setTablesSchema({
+        pets: {
+          answer: {type: ['string', 'boolean'], default: 1},
+        },
+      } as any);
+      expect(JSON.parse(store.getTablesSchemaJson())).toEqual({
+        pets: {answer: {type: ['string', 'boolean']}},
+      });
+
+      for (const answer of [
+        {type: []},
+        {type: ['string', 'null']},
+        {type: ['string', 'date']},
+        {type: ['string', 'boolean'], enum: ['draft']},
+        {type: ['string', 'boolean'], default: null},
+        {},
+      ]) {
+        store.setTablesSchema({pets: {answer}} as any);
+        expect(JSON.parse(store.getTablesSchemaJson())).toEqual({
+          pets: {answer: {type: ['string', 'boolean']}},
+        });
+      }
+    });
+
     test('Set tablesSchema after creation', () => {
       store.setCell('t1', 'r1', 'c1', '1');
       expect(store.getTables()).toEqual({t1: {r1: {c1: '1'}}});
@@ -233,6 +442,19 @@ describe.each([
       expectNoChanges(listener);
     });
 
+    test('Ignore invalid tablesSchema replacement', () => {
+      store.setTablesSchema({
+        t1: {c1: {type: 'number', default: 1}},
+      });
+      store.setTablesSchema({t1: {c1: {type: 'invalid'}}} as any);
+      expect(store.hasTablesSchema()).toBe(true);
+      expect(JSON.parse(store.getTablesSchemaJson())).toEqual({
+        t1: {c1: {type: 'number', default: 1}},
+      });
+      store.setCell('t1', 'r1', 'c1', '1');
+      expect(store.getTables()).toEqual({t1: {r1: {c1: 1}}});
+    });
+
     test('Remove tablesSchema after creation', () => {
       const listenerId = addAllowCellMutator(store, 't1', 'c1', [2, 3]);
       store.setTablesSchema({t1: {c1: {type: 'number', default: 1}}});
@@ -270,6 +492,206 @@ describe.each([
       expect(store.getValues()).toEqual({v1: 2});
       expectChanges(listener, 'invalids', {v1: ['2']});
       expectNoChanges(listener);
+    });
+
+    test('Set valuesSchema with required Values', () => {
+      store.setValuesSchema({
+        v1: {type: 'number', required: true},
+        v2: {type: 'string', default: '', required: true},
+      });
+      expect(JSON.parse(store.getValuesSchemaJson())).toEqual({
+        v1: {type: 'number', required: true},
+        v2: {type: 'string', default: '', required: true},
+      });
+      expect(store.getValues()).toEqual({});
+      expectChangesNoJson(listener, 'invalids', {v1: [undefined]});
+      store.setValues({});
+      expect(store.getValues()).toEqual({});
+      expectChangesNoJson(listener, 'invalids', {v1: [undefined]});
+      store.setValues({v1: 1});
+      expect(store.getValues()).toEqual({v1: 1, v2: ''});
+      store.setValues({v1: '1'});
+      expect(store.getValues()).toEqual({v1: 1, v2: ''});
+      expectChanges(listener, 'invalids', {v1: ['1']});
+      store.setValues({v2: '2'});
+      expect(store.getValues()).toEqual({v1: 1, v2: ''});
+      expectChangesNoJson(listener, 'invalids', {v1: [undefined]});
+      expectNoChanges(listener);
+    });
+
+    test('Set valuesSchema with enum Values', () => {
+      store.setValuesSchema({
+        status: {enum: ['draft', 'live'], default: 'draft'},
+        rating: {enum: [1, 2, true], required: true},
+        name: {enum: ['fido'], allowNull: true},
+      });
+      expectChangesNoJson(
+        listener,
+        'invalids',
+        {rating: [undefined]},
+        {name: [undefined]},
+      );
+      expect(JSON.parse(store.getValuesSchemaJson())).toEqual({
+        status: {enum: ['draft', 'live'], default: 'draft'},
+        rating: {enum: [1, 2, true], required: true},
+        name: {enum: ['fido'], allowNull: true},
+      });
+
+      store.setValues({rating: 1, name: null});
+      store.setValue('status', 'live');
+      store.setValue('rating', true);
+      store.setValue('name', 'fido');
+      expect(store.getValues()).toEqual({
+        status: 'live',
+        rating: true,
+        name: 'fido',
+      });
+
+      store.setValue('status', 'archived');
+      store.setValue('rating', false);
+      store.setValue('name', null);
+      store.setValue('name', 'felix');
+      expect(store.getValues()).toEqual({
+        status: 'draft',
+        rating: true,
+        name: null,
+      });
+      expectChanges(
+        listener,
+        'invalids',
+        {status: ['archived']},
+        {rating: [false]},
+        {name: ['felix']},
+      );
+    });
+
+    test('Validate enum Value schemas', () => {
+      store.setValuesSchema({
+        status: {enum: ['draft', 'live'], default: 'other'},
+      } as ValuesSchema);
+      expect(JSON.parse(store.getValuesSchemaJson())).toEqual({
+        status: {enum: ['draft', 'live']},
+      });
+
+      for (const status of [
+        {enum: []},
+        {enum: [null]},
+        {enum: [null], allowNull: true},
+        {enum: [[]]},
+        {enum: [NaN]},
+        {type: 'string', enum: ['draft']},
+        {enum: ['draft'], default: null},
+        {},
+      ]) {
+        store.setValuesSchema({status} as any);
+        expect(JSON.parse(store.getValuesSchemaJson())).toEqual({
+          status: {enum: ['draft', 'live']},
+        });
+      }
+    });
+
+    test('Set valuesSchema with union types', () => {
+      const valuesSchema = {
+        answer: {type: ['string', 'number'], default: 'unknown'},
+        payload: {type: ['object', 'array'], required: true},
+        score: {type: ['number', 'boolean'], allowNull: true},
+        single: {type: ['string']},
+        repeated: {type: ['string', 'string']},
+        status: {enum: ['draft', 'live']},
+      } as const;
+      store.setValuesSchema(valuesSchema);
+      expectChangesNoJson(
+        listener,
+        'invalids',
+        {payload: [undefined]},
+        {score: [undefined]},
+        {single: [undefined]},
+        {repeated: [undefined]},
+        {status: [undefined]},
+      );
+      expect(JSON.parse(store.getValuesSchemaJson())).toEqual(valuesSchema);
+
+      store.setValues({
+        payload: {likes: ['walks']},
+        score: null,
+        single: 'initial',
+        repeated: 'initial',
+        status: 'draft',
+      });
+      expect(store.getValues()).toEqual({
+        answer: 'unknown',
+        payload: {likes: ['walks']},
+        score: null,
+        single: 'initial',
+        repeated: 'initial',
+        status: 'draft',
+      });
+
+      store.setValue('answer', 42);
+      store.setValue('payload', ['walks']);
+      store.setValue('score', true);
+      store.setValue('single', 'one');
+      store.setValue('repeated', 'two');
+      expect(store.getValues()).toEqual({
+        answer: 42,
+        payload: ['walks'],
+        score: true,
+        single: 'one',
+        repeated: 'two',
+        status: 'draft',
+      });
+
+      store.setValue('answer', false);
+      store.setValue('payload', null);
+      store.setValue('score', 'high');
+      store.setValue('single', 1);
+      store.setValue('repeated', false);
+      store.setValue('status', 'other');
+      expect(store.getValues()).toEqual({
+        answer: 'unknown',
+        payload: ['walks'],
+        score: true,
+        single: 'one',
+        repeated: 'two',
+        status: 'draft',
+      });
+      expectChanges(
+        listener,
+        'invalids',
+        {answer: [false]},
+        {payload: [null]},
+        {score: ['high']},
+        {single: [1]},
+        {repeated: [false]},
+        {status: ['other']},
+      );
+
+      const otherStore = createStore().setValuesSchema(valuesSchema);
+      otherStore.setValuesJson(store.getValuesJson());
+      expect(otherStore.getValues()).toEqual(store.getValues());
+    });
+
+    test('Validate union type Value schemas', () => {
+      store.setValuesSchema({
+        answer: {type: ['string', 'boolean'], default: 1},
+      } as any);
+      expect(JSON.parse(store.getValuesSchemaJson())).toEqual({
+        answer: {type: ['string', 'boolean']},
+      });
+
+      for (const answer of [
+        {type: []},
+        {type: ['string', 'null']},
+        {type: ['string', 'date']},
+        {type: ['string', 'boolean'], enum: ['draft']},
+        {type: ['string', 'boolean'], default: null},
+        {},
+      ]) {
+        store.setValuesSchema({answer} as any);
+        expect(JSON.parse(store.getValuesSchemaJson())).toEqual({
+          answer: {type: ['string', 'boolean']},
+        });
+      }
     });
 
     test('Set valuesSchema after creation', () => {
@@ -312,6 +734,17 @@ describe.each([
       expect(store.getValues()).toEqual({v1: '1'});
       expectChanges(listener, 'invalids', {v1: ['1']}, {v1: [1]}, {v1: [2]});
       expectNoChanges(listener);
+    });
+
+    test('Ignore invalid valuesSchema replacement', () => {
+      store.setValuesSchema({v1: {type: 'number', default: 1}});
+      store.setValuesSchema({v1: {type: 'invalid'}} as any);
+      expect(store.hasValuesSchema()).toBe(true);
+      expect(JSON.parse(store.getValuesSchemaJson())).toEqual({
+        v1: {type: 'number', default: 1},
+      });
+      store.setValue('v1', '1');
+      expect(store.getValues()).toEqual({v1: 1});
     });
 
     test('Remove valuesSchema after creation', () => {
@@ -1807,6 +2240,98 @@ describe.each([
           expectNoChanges(listener);
         });
 
+        test('to object', () => {
+          const store = createStore();
+          store.setTablesSchema({
+            t1: {c1: {type: 'object'}},
+          });
+          const listener = createStoreListener(store);
+          listener.listenToCell('/t1/r1/c1', 't1', 'r1', 'c1');
+          listener.listenToCell('/t1/r2/c1', 't1', 'r2', 'c1');
+          listener.listenToCell('/t1/r3/c1', 't1', 'r3', 'c1');
+          listener.listenToCell('/t1/r4/c1', 't1', 'r4', 'c1');
+          listener.listenToCell('/t*/r*/c*', null, null, null);
+          listener.listenToInvalidCell('invalids', null, null, null);
+          store
+            // @ts-ignore
+            .setCell('t1', 'r1', 'c1', 1)
+            // @ts-ignore
+            .setCell('t1', 'r2', 'c1', [1, 2])
+            .setCell('t1', 'r3', 'c1', {a: 1})
+            .setCell('t1', 'r4', 'c1', {b: 'two'});
+          expect(store.getTables()).toEqual({
+            t1: {r3: {c1: {a: 1}}, r4: {c1: {b: 'two'}}},
+          });
+          expectChanges(listener, '/t1/r3/c1', {t1: {r3: {c1: {a: 1}}}});
+          expectChanges(listener, '/t1/r4/c1', {t1: {r4: {c1: {b: 'two'}}}});
+          expectChanges(
+            listener,
+            '/t*/r*/c*',
+            {t1: {r3: {c1: {a: 1}}}},
+            {t1: {r4: {c1: {b: 'two'}}}},
+          );
+          expectChanges(
+            listener,
+            'invalids',
+            {t1: {r1: {c1: [1]}}},
+            {t1: {r2: {c1: [[1, 2]]}}},
+          );
+          expectNoChanges(listener);
+        });
+
+        test('to array', () => {
+          const store = createStore();
+          store.setTablesSchema({
+            t1: {c1: {type: 'array'}},
+          });
+          const listener = createStoreListener(store);
+          listener.listenToCell('/t1/r1/c1', 't1', 'r1', 'c1');
+          listener.listenToCell('/t1/r2/c1', 't1', 'r2', 'c1');
+          listener.listenToCell('/t1/r3/c1', 't1', 'r3', 'c1');
+          listener.listenToCell('/t1/r4/c1', 't1', 'r4', 'c1');
+          listener.listenToCell('/t*/r*/c*', null, null, null);
+          listener.listenToInvalidCell('invalids', null, null, null);
+          store
+            // @ts-ignore
+            .setCell('t1', 'r1', 'c1', 1)
+            // @ts-ignore
+            .setCell('t1', 'r2', 'c1', {a: 1})
+            .setCell('t1', 'r3', 'c1', [])
+            .setCell('t1', 'r4', 'c1', [1, 2]);
+          expect(store.getTables()).toEqual({
+            t1: {r3: {c1: []}, r4: {c1: [1, 2]}},
+          });
+          expectChanges(listener, '/t1/r3/c1', {t1: {r3: {c1: []}}});
+          expectChanges(listener, '/t1/r4/c1', {t1: {r4: {c1: [1, 2]}}});
+          expectChanges(
+            listener,
+            '/t*/r*/c*',
+            {t1: {r3: {c1: []}}},
+            {t1: {r4: {c1: [1, 2]}}},
+          );
+          expectChanges(
+            listener,
+            'invalids',
+            {t1: {r1: {c1: [1]}}},
+            {t1: {r2: {c1: [{a: 1}]}}},
+          );
+          expectNoChanges(listener);
+        });
+
+        test('to object with reserved json string', () => {
+          const store = createStore();
+          store.setTablesSchema({t1: {c1: {type: 'object'}}});
+          const listener = createStoreListener(store);
+          listener.listenToInvalidCell('invalids', null, null, null);
+          // @ts-ignore
+          store.setCell('t1', 'r1', 'c1', '\uFFFD{"a":1}');
+          expect(store.getCell('t1', 'r1', 'c1')).toBeUndefined();
+          expectChanges(listener, 'invalids', {
+            t1: {r1: {c1: ['\uFFFD{"a":1}']}},
+          });
+          expectNoChanges(listener);
+        });
+
         test('to string', () => {
           const store = createStore();
           store.setTablesSchema({
@@ -2008,6 +2533,92 @@ describe.each([
             'invalids',
             {t1: {r1: {c1: [1]}}},
             {t1: {r3: {c1: ['true']}}},
+          );
+          expectNoChanges(listener);
+        });
+
+        test('to object', () => {
+          const store = createStore();
+          store.setTablesSchema({
+            t1: {c1: {type: 'object', default: {x: 0}}},
+          });
+          const listener = createStoreListener(store);
+          listener.listenToCell('/t1/r1/c1', 't1', 'r1', 'c1');
+          listener.listenToCell('/t1/r2/c1', 't1', 'r2', 'c1');
+          listener.listenToCell('/t1/r3/c1', 't1', 'r3', 'c1');
+          listener.listenToCell('/t*/r*/c*', null, null, null);
+          listener.listenToInvalidCell('invalids', null, null, null);
+          store
+            // @ts-ignore
+            .setCell('t1', 'r1', 'c1', 1)
+            // @ts-ignore
+            .setCell('t1', 'r2', 'c1', [1, 2])
+            .setCell('t1', 'r3', 'c1', {a: 1});
+          expect(store.getTables()).toEqual({
+            t1: {
+              r1: {c1: {x: 0}},
+              r2: {c1: {x: 0}},
+              r3: {c1: {a: 1}},
+            },
+          });
+          expectChanges(listener, '/t1/r1/c1', {t1: {r1: {c1: {x: 0}}}});
+          expectChanges(listener, '/t1/r2/c1', {t1: {r2: {c1: {x: 0}}}});
+          expectChanges(listener, '/t1/r3/c1', {t1: {r3: {c1: {a: 1}}}});
+          expectChanges(
+            listener,
+            '/t*/r*/c*',
+            {t1: {r1: {c1: {x: 0}}}},
+            {t1: {r2: {c1: {x: 0}}}},
+            {t1: {r3: {c1: {a: 1}}}},
+          );
+          expectChanges(
+            listener,
+            'invalids',
+            {t1: {r1: {c1: [1]}}},
+            {t1: {r2: {c1: [[1, 2]]}}},
+          );
+          expectNoChanges(listener);
+        });
+
+        test('to array', () => {
+          const store = createStore();
+          store.setTablesSchema({
+            t1: {c1: {type: 'array', default: [0]}},
+          });
+          const listener = createStoreListener(store);
+          listener.listenToCell('/t1/r1/c1', 't1', 'r1', 'c1');
+          listener.listenToCell('/t1/r2/c1', 't1', 'r2', 'c1');
+          listener.listenToCell('/t1/r3/c1', 't1', 'r3', 'c1');
+          listener.listenToCell('/t*/r*/c*', null, null, null);
+          listener.listenToInvalidCell('invalids', null, null, null);
+          store
+            // @ts-ignore
+            .setCell('t1', 'r1', 'c1', 1)
+            // @ts-ignore
+            .setCell('t1', 'r2', 'c1', {a: 1})
+            .setCell('t1', 'r3', 'c1', [1, 2]);
+          expect(store.getTables()).toEqual({
+            t1: {
+              r1: {c1: [0]},
+              r2: {c1: [0]},
+              r3: {c1: [1, 2]},
+            },
+          });
+          expectChanges(listener, '/t1/r1/c1', {t1: {r1: {c1: [0]}}});
+          expectChanges(listener, '/t1/r2/c1', {t1: {r2: {c1: [0]}}});
+          expectChanges(listener, '/t1/r3/c1', {t1: {r3: {c1: [1, 2]}}});
+          expectChanges(
+            listener,
+            '/t*/r*/c*',
+            {t1: {r1: {c1: [0]}}},
+            {t1: {r2: {c1: [0]}}},
+            {t1: {r3: {c1: [1, 2]}}},
+          );
+          expectChanges(
+            listener,
+            'invalids',
+            {t1: {r1: {c1: [1]}}},
+            {t1: {r2: {c1: [{a: 1}]}}},
           );
           expectNoChanges(listener);
         });
@@ -2601,10 +3212,138 @@ describe.each([
         expectChanges(listener, 'invalids', {v1: ['a']}, {v1: [true]});
         expectNoChanges(listener);
       });
+
+      test('to object', () => {
+        const store = createStore();
+        store.setValuesSchema({v1: {type: 'object'}});
+        const listener = createStoreListener(store);
+        listener.listenToValues('/');
+        listener.listenToValue('/v*', null);
+        listener.listenToInvalidValue('invalids', null);
+        store
+          // @ts-ignore
+          .setValue('v1', 1)
+          // @ts-ignore
+          .setValue('v1', [1, 2])
+          .setValue('v1', {a: 1})
+          // @ts-ignore - reserved internal JSON encoding
+          .setValue('v1', '\uFFFD{"b":2}')
+          .setValue('v1', {c: 3});
+        expect(store.getValues()).toEqual({v1: {c: 3}});
+        expectChanges(listener, '/', {v1: {a: 1}}, {v1: {c: 3}});
+        expectChanges(listener, '/v*', {v1: {a: 1}}, {v1: {c: 3}});
+        expectChanges(
+          listener,
+          'invalids',
+          {v1: [1]},
+          {v1: [[1, 2]]},
+          {v1: ['\uFFFD{"b":2}']},
+        );
+        expectNoChanges(listener);
+      });
+
+      test('to array', () => {
+        const store = createStore();
+        store.setValuesSchema({v1: {type: 'array'}});
+        const listener = createStoreListener(store);
+        listener.listenToValues('/');
+        listener.listenToValue('/v*', null);
+        listener.listenToInvalidValue('invalids', null);
+        store
+          // @ts-ignore
+          .setValue('v1', 1)
+          // @ts-ignore
+          .setValue('v1', {a: 1})
+          .setValue('v1', [])
+          // @ts-ignore - reserved internal JSON encoding
+          .setValue('v1', '\uFFFD[1,2]')
+          .setValue('v1', [3, 4]);
+        expect(store.getValues()).toEqual({v1: [3, 4]});
+        expectChanges(listener, '/', {v1: []}, {v1: [3, 4]});
+        expectChanges(listener, '/v*', {v1: []}, {v1: [3, 4]});
+        expectChanges(
+          listener,
+          'invalids',
+          {v1: [1]},
+          {v1: [{a: 1}]},
+          {v1: ['\uFFFD[1,2]']},
+        );
+        expectNoChanges(listener);
+      });
     });
   });
 
   describe('Miscellaneous', () => {
+    test('Schema defaults are private and reusable', () => {
+      const tablesSchema: TablesSchema = {
+        t1: {
+          c1: {type: 'object', default: {a: 1}},
+          c2: {type: 'array', default: [2, 3]},
+          c3: {type: 'object', default: null, allowNull: true},
+          c4: {type: 'array', default: null, allowNull: true},
+        },
+      };
+      const valuesSchema: ValuesSchema = {
+        v1: {type: 'object', default: {a: 1}},
+        v2: {type: 'array', default: [2, 3]},
+        v3: {
+          type: 'object',
+          default: null,
+          allowNull: true,
+        },
+        v4: {type: 'array', default: null, allowNull: true},
+      };
+      const expectedTablesSchema = structuredClone(tablesSchema);
+      const expectedValuesSchema = structuredClone(valuesSchema);
+      const store1 = createStore().setSchema(tablesSchema, valuesSchema);
+
+      expect(tablesSchema).toEqual(expectedTablesSchema);
+      expect(valuesSchema).toEqual(expectedValuesSchema);
+      expect(JSON.parse(store1.getTablesSchemaJson())).toEqual(
+        expectedTablesSchema,
+      );
+      expect(JSON.parse(store1.getValuesSchemaJson())).toEqual(
+        expectedValuesSchema,
+      );
+      expect(JSON.parse(store1.getSchemaJson())).toEqual([
+        expectedTablesSchema,
+        expectedValuesSchema,
+      ]);
+
+      const store2 = createStore().setSchema(tablesSchema, valuesSchema);
+      expect(JSON.parse(store1.getSchemaJson())).toEqual([
+        expectedTablesSchema,
+        expectedValuesSchema,
+      ]);
+      expect(JSON.parse(store2.getSchemaJson())).toEqual([
+        expectedTablesSchema,
+        expectedValuesSchema,
+      ]);
+    });
+
+    test('Frozen schemas can be used', () => {
+      const tablesSchema = Object.freeze({
+        t1: Object.freeze({
+          c1: Object.freeze({
+            type: 'object' as const,
+            default: Object.freeze({a: 1}),
+          }),
+        }),
+      });
+      const valuesSchema = Object.freeze({
+        v1: Object.freeze({
+          type: 'object' as const,
+          default: Object.freeze({a: 1}),
+        }),
+      });
+      const store = createStore().setSchema(tablesSchema, valuesSchema);
+
+      expect(JSON.parse(store.getSchemaJson())).toEqual([
+        {t1: {c1: {type: 'object', default: {a: 1}}}},
+        {v1: {type: 'object', default: {a: 1}}},
+      ]);
+    });
+
     test('Both TablesSchema and ValuesSchema', () => {
       const store = createStore()
         .setTablesSchema({

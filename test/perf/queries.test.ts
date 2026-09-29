@@ -1,5 +1,6 @@
 import type {Store} from 'tinybase';
 import {createQueries, createStore} from 'tinybase';
+import {beforeEach} from 'vitest';
 import {repeatRows} from './common.ts';
 
 let store: Store;
@@ -44,6 +45,31 @@ repeatRows(
   () =>
     createQueries(store).setQueryDefinition('q1', 't1', ({select}) =>
       select((getTableCell) => (getTableCell('c1') as number) + 1).as('c1'),
+    ),
+);
+
+repeatRows(
+  'Grow store, same table as query, select all cells',
+  (n) => store.setRow('t1', 'r' + n, {c1: n, c2: n + 1}),
+  90,
+  () =>
+    createQueries(store).setQueryDefinition('q1', 't1', ({selectAll}) =>
+      selectAll(),
+    ),
+);
+
+repeatRows(
+  'Grow store, select all cells with sum group',
+  (n) => store.setRow('t1', 'r' + n, {c1: n % 2, c2: n}),
+  90,
+  () =>
+    createQueries(store).setQueryDefinition(
+      'q1',
+      't1',
+      ({selectAll, group}) => {
+        selectAll();
+        group('c2', 'sum');
+      },
     ),
 );
 

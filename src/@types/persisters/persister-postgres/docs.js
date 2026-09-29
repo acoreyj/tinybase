@@ -30,7 +30,7 @@
    * This example creates a Persister object against a newly-created Store and
    * then gets the database connection back out again.
    *
-   * ```js
+   * ```js server
    * import postgres from 'postgres';
    * import {createStore} from 'tinybase';
    * import {createPostgresPersister} from 'tinybase/persisters/persister-postgres';
@@ -73,6 +73,10 @@
  * See the documentation for the DpcJson and DpcTabular types for more
  * information on how both of those modes can be configured.
  *
+ * Note: When using tabular mode, SQL NULL values are loaded as TinyBase null
+ * values, making tables dense (every Row has every Cell). See the Database
+ * Persistence guide for details.
+ *
  * This method is asynchronous because it will await the creation of dedicated
  * new connections to the database. You will need to `await` a call to this
  * function or handle the return type natively as a Promise.
@@ -94,7 +98,7 @@
  * table. It makes a change to the database directly and then reloads it back
  * into the Store.
  *
- * ```js
+ * ```js server
  * import postgres from 'postgres';
  * import {createStore} from 'tinybase';
  * import {createPostgresPersister} from 'tinybase/persisters/persister-postgres';
@@ -123,7 +127,7 @@
  * This example creates a PostgresPersister object and persists the Store to a
  * local PostgreSQL database with tabular mapping.
  *
- * ```js
+ * ```js server
  * import postgres from 'postgres';
  * import {createStore} from 'tinybase';
  * import {createPostgresPersister} from 'tinybase/persisters/persister-postgres';

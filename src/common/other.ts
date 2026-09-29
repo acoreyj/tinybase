@@ -1,10 +1,25 @@
-import {BOOLEAN, FUNCTION, STRING, getTypeOf} from './strings.ts';
+import {BOOLEAN, FUNCTION, NUMBER, STRING, getTypeOf} from './strings.ts';
 
 const promise = Promise;
+const math = Math;
+const date = Date;
+
+const getIfNotFunction =
+  (predicate: (value: unknown) => value is unknown) =>
+  <Value, Return>(
+    value: Value | null | undefined,
+    then: (value: Value) => Return,
+    otherwise?: () => Return,
+  ): Return | undefined =>
+    predicate(value) ? /* istanbul ignore next */ otherwise?.() : then(value);
 
 export const GLOBAL = globalThis;
 export const WINDOW = GLOBAL.window;
 export const THOUSAND = 1000;
+
+export const number = Number;
+export const string = String;
+export const boolean = Boolean;
 
 export const startInterval = (
   callback: () => void,
@@ -16,32 +31,92 @@ export const startInterval = (
   }
   return setInterval(callback, sec * THOUSAND);
 };
-export const stopInterval = clearInterval;
+export const stopInterval = (
+  interval: number | NodeJS.Timeout | undefined,
+): void => clearInterval(interval as number | undefined);
 
 export const startTimeout = (callback: () => void, sec: number = 0) =>
   setTimeout(callback, sec * THOUSAND);
-export const stopTimeout = clearTimeout;
+export const stopTimeout = (
+  timeout: number | NodeJS.Timeout | undefined,
+): void => clearTimeout(timeout as number | undefined);
 
-export const math = Math;
+export const addEventListener = (
+  target: any,
+  event: string,
+  listener: (...args: any[]) => void,
+) => {
+  target.addEventListener(event, listener);
+  return () => target.removeEventListener(event, listener);
+};
+
+export const addEmitterListener = (
+  target: any,
+  event: string,
+  listener: (...args: any[]) => void,
+) => {
+  target.on(event, listener);
+  return () => target.off(event, listener);
+};
+
 export const mathMax = math.max;
 export const mathMin = math.min;
+export const mathCeil = math.ceil;
 export const mathFloor = math.floor;
+export const mathPow = math.pow;
+export const mathRound = math.round;
+export const mathAbs = math.abs;
+export const mathLog10 = math.log10;
+export const mathRandom = math.random;
+export const dateUtc = date.UTC;
+export const infinity = Infinity;
+export const epsilon = Number.EPSILON;
 
 export const isFiniteNumber: (num: any) => boolean = isFinite;
+export const isInteger = number.isInteger;
 
 export const isInstanceOf = (
   thing: unknown,
   cls: MapConstructor | SetConstructor | ObjectConstructor,
 ): boolean => thing instanceof cls;
 
-export const isUndefined = (thing: unknown): thing is undefined | null =>
-  thing == undefined;
+export const isNullish = (thing: unknown): thing is undefined | null =>
+  thing == null;
 
-export const ifNotUndefined = <Value, Return>(
-  value: Value | null | undefined,
-  then: (value: Value) => Return,
-  otherwise?: () => Return,
-): Return | undefined => (isUndefined(value) ? otherwise?.() : then(value));
+export const isUndefined = (thing: unknown): thing is undefined =>
+  thing === undefined;
+
+export const dateNew = (value?: any): Date =>
+  isUndefined(value) ? new date() : new date(value);
+
+export const dateGetUTCFullYear = (dateObj: Date): number =>
+  dateObj.getUTCFullYear();
+
+export const dateGetUTCMonth = (dateObj: Date): number => dateObj.getUTCMonth();
+
+export const dateGetUTCDate = (dateObj: Date): number => dateObj.getUTCDate();
+
+export const dateGetUTCDay = (dateObj: Date): number => dateObj.getUTCDay();
+
+export const dateGetUTCHours = (dateObj: Date): number => dateObj.getUTCHours();
+
+export const dateGetUTCMinutes = (dateObj: Date): number =>
+  dateObj.getUTCMinutes();
+
+export const dateGetUTCSeconds = (dateObj: Date): number =>
+  dateObj.getUTCSeconds();
+
+export const hasWindow = (): boolean => !isUndefined(GLOBAL.window);
+
+export const isNull = (thing: unknown): thing is null => thing === null;
+
+export const isTrue = (thing: unknown): thing is true => thing === true;
+
+export const isFalse = (thing: unknown): thing is false => thing === false;
+
+export const ifNotNullish = getIfNotFunction(isNullish);
+
+export const ifNotUndefined = getIfNotFunction(isUndefined);
 
 export const isTypeStringOrBoolean = (
   type: string,
@@ -50,10 +125,14 @@ export const isTypeStringOrBoolean = (
 export const isString = (thing: unknown): thing is string =>
   getTypeOf(thing) == STRING;
 
+export const isNumber = (thing: unknown): thing is number =>
+  getTypeOf(thing) == NUMBER;
+
 export const isFunction = (thing: unknown): thing is (...args: any[]) => any =>
   getTypeOf(thing) == FUNCTION;
 
-export const isArray = (thing: unknown): thing is any[] => Array.isArray(thing);
+export const isArray = (thing: unknown): thing is unknown[] =>
+  Array.isArray(thing);
 
 export const slice = <ArrayOrString extends string | any[]>(
   arrayOrString: ArrayOrString,
@@ -61,8 +140,10 @@ export const slice = <ArrayOrString extends string | any[]>(
   end?: number,
 ): ArrayOrString => arrayOrString.slice(start, end) as ArrayOrString;
 
-export const size = (arrayOrString: string | any[]): number =>
-  arrayOrString.length;
+export const size = (thing: {readonly length: number}): number => thing.length;
+
+export const isEmpty = (thing: {readonly length: number}): boolean =>
+  size(thing) == 0;
 
 export const test = (regex: RegExp, subject: string): boolean =>
   regex.test(subject);
@@ -70,6 +151,8 @@ export const test = (regex: RegExp, subject: string): boolean =>
 export const getUndefined = (): undefined => undefined;
 
 export const noop = () => {};
+
+export const getArg = <T>(value: T): T => value;
 
 export const promiseNew = <Value>(
   resolver: (
@@ -81,20 +164,6 @@ export const promiseNew = <Value>(
 export const promiseAll = async (promises: Promise<any>[]) =>
   promise.all(promises);
 
-export const errorNew = (message: string) => {
-  throw new Error(message);
-};
+export const promiseResolve = (): Promise<void> => promise.resolve();
 
-export const tryCatch = async <Return>(
-  action: () => Return | Promise<Return>,
-  then1?: (error: any) => void,
-  then2?: (error: any) => void,
-): Promise<Return | void> => {
-  try {
-    return await action();
-  } catch (error) {
-    /*! istanbul ignore next */
-    then1?.(error);
-    then2?.(error);
-  }
-};
+export const structuredClone = GLOBAL.structuredClone as <T>(value: T) => T;

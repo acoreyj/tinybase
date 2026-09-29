@@ -1,47 +1,98 @@
 import {PGlite} from '@electric-sql/pglite';
 import * as SQLite from '@journeyapps/wa-sqlite';
 import SQLiteESMFactory from '@journeyapps/wa-sqlite/dist/wa-sqlite.mjs';
-import {Client, createClient} from '@libsql/client';
+import {Client, Transaction, createClient} from '@libsql/client';
 import type {
   QueryResult,
   SQLWatchOptions,
   WatchOnChangeEvent,
 } from '@powersync/common';
 import sqlite3InitModule from '@sqlite.org/sqlite-wasm';
-import initWasm, {DB} from '@vlcn.io/crsqlite-wasm';
 import {Mutex} from 'async-mutex';
-import type {ElectricClient} from 'electric-sql/client/model';
-import {DbSchema} from 'electric-sql/client/model';
-import {ElectricDatabase, electrify} from 'electric-sql/wa-sqlite';
+import BetterSqlite3, {
+  type Database as BetterSqlite3Database,
+} from 'better-sqlite3';
+import type {Database as BunDatabase} from 'bun:sqlite';
 import 'fake-indexeddb/auto';
-import 'jest-fetch-mock';
+import {ConnectionPool} from 'mssql';
+import {DatabaseSync} from 'node:sqlite';
+import type {PoolClient} from 'pg';
+import {Pool} from 'pg';
 import type {ReservedSql, Sql} from 'postgres';
 import postgres from 'postgres';
-import sqlite3, {Database} from 'sqlite3';
-import {type Store, getUniqueId} from 'tinybase';
+import {type Content, type Store, getUniqueId} from 'tinybase';
 import type {DatabasePersisterConfig, Persister} from 'tinybase/persisters';
-import {createCrSqliteWasmPersister} from 'tinybase/persisters/persister-cr-sqlite-wasm';
-import {createElectricSqlPersister} from 'tinybase/persisters/persister-electric-sql';
+import {createBetterSqlite3Persister} from 'tinybase/persisters/persister-better-sqlite3';
 import {createLibSqlPersister} from 'tinybase/persisters/persister-libsql';
+import {createMsSqlPersister} from 'tinybase/persisters/persister-mssql';
+import {createPgPersister} from 'tinybase/persisters/persister-pg';
 import {createPglitePersister} from 'tinybase/persisters/persister-pglite';
 import {createPostgresPersister} from 'tinybase/persisters/persister-postgres';
 import {createPowerSyncPersister} from 'tinybase/persisters/persister-powersync';
 import {createSqliteBunPersister} from 'tinybase/persisters/persister-sqlite-bun';
+import {createSqliteNodePersister} from 'tinybase/persisters/persister-sqlite-node';
 import {createSqliteWasmPersister} from 'tinybase/persisters/persister-sqlite-wasm';
-import {createSqlite3Persister} from 'tinybase/persisters/persister-sqlite3';
 import tmp from 'tmp';
-import {isBun, pause, suppressWarnings} from '../../common/other.ts';
-import {noop} from './other.ts';
+import {afterAll, expect} from 'vitest';
+import {
+  MSSQL_CONFIG,
+  POSTGRES_URL,
+  importBunSqlite,
+  isBun,
+  noop,
+  pause,
+  suppressWarnings,
+  waitFor,
+  withServers,
+} from '../../common/other.ts';
 
 tmp.setGracefulCleanup();
 const statementMutex = new Mutex();
 
 export type Variants = {[name: string]: DatabaseVariant<any>};
+
+// These variants each talk to a database server that has to be running
+// locally. Everything else, PGlite and the SQLite engines included, runs
+// in-process. A project runs one set or the other, never both.
+const SERVER_VARIANT_NAMES = ['postgres', 'pg', 'mssql'];
+const forProject = (variants: Variants): Variants =>
+  Object.fromEntries(
+    Object.entries(variants).filter(
+      ([name]) => SERVER_VARIANT_NAMES.includes(name) == withServers,
+    ),
+  );
 export type SqliteWasmDb = [sqlite3: any, db: any];
 export type SqlClientsAndName = [Sql, ReservedSql, string];
+export type PgClientsAndName = [Pool, PoolClient, Mutex, string];
+export type MsSqlPoolsAndName = [ConnectionPool, ConnectionPool, Mutex, string];
 
-const electricSchema = new DbSchema({}, [], []);
-type Electric = ElectricClient<typeof electricSchema>;
+const PG_ADMIN_URL = POSTGRES_URL + '/postgres';
+const PG_OPTIONS = '-c client_min_messages=warning';
+
+const pgAdmin = async (sql: string) => {
+  const adminPool = new Pool({
+    connectionString: PG_ADMIN_URL,
+    options: PG_OPTIONS,
+  });
+  await adminPool.query(sql);
+  await adminPool.end();
+};
+
+// Both servers are configured in vitest.config.ts; see `provide` there.
+const getMsSqlConfig = (database: string) => ({
+  ...MSSQL_CONFIG,
+  database,
+  pool: {max: 20},
+  options: {encrypt: false, trustServerCertificate: true},
+});
+
+const msSqlAdmin = async (sql: string) => {
+  const adminPool = await new ConnectionPool(
+    getMsSqlConfig('master'),
+  ).connect();
+  await adminPool.request().query(sql);
+  await adminPool.close();
+};
 
 type AbstractPowerSyncDatabase = {
   execute(sql: string, args: any[]): Promise<QueryResult>;
@@ -71,12 +122,47 @@ type DatabaseVariant<Database> = [
   close: (db: Database) => Promise<void>,
   autoLoadPause?: number,
   autoLoadIntervalSeconds?: number,
-  isPostgres?: boolean,
+  dialect?: DatabaseDialect,
   supportsMultipleConnections?: boolean,
   skipSqlChecks?: boolean,
 ];
 
+// Undefined means SQLite, which is the shape most of the matrix has.
+export type DatabaseDialect = 'postgresql' | 'mssql';
+
+// What INFORMATION_SCHEMA and friends report a column as.
+export const getColumnType = (dialect?: DatabaseDialect) =>
+  dialect == 'postgresql' ? 'text' : dialect == 'mssql' ? 'nvarchar' : '';
+
+// What to write in a CREATE TABLE. SQL Server needs an explicit length,
+// since a bare nvarchar means nvarchar(1), and its widest indexable one
+// is used so that the same type works for the row Id primary key too.
+export const getDdlColumnType = (dialect?: DatabaseDialect) =>
+  dialect == 'mssql' ? 'nvarchar(450)' : getColumnType(dialect);
+
+export const getPlaceholder =
+  (dialect?: DatabaseDialect) =>
+  (number: number): string =>
+    dialect == 'postgresql'
+      ? '$' + number
+      : dialect == 'mssql'
+        ? '@p' + number
+        : '?';
+
+// Both of the server dialects store Cells and Values JSON-encoded.
+export const usesJsonValues = (dialect?: DatabaseDialect) =>
+  dialect != undefined;
+
+export const getStoreContentWaiter =
+  (pauseMilliseconds: number) =>
+  (store: Store, content: Content): Promise<void> =>
+    waitFor(
+      () => expect(store.getContent()).toEqual(content),
+      pauseMilliseconds,
+    );
+
 const escapeId = (str: string) => `"${str.replace(/"/g, '""')}"`;
+const escapeString = (str: string) => `'${str.replace(/'/g, `''`)}'`;
 
 const getPowerSyncDatabase = async (
   dbFilename: string,
@@ -155,8 +241,12 @@ const getPowerSyncDatabase = async (
         while (!signal?.aborted) {
           const nextChange = await new Promise<WatchOnChangeEvent>(
             (resolve) => {
-              const observer = (_1: any, _2: any, tableName: string) => {
-                resolve({changedTables: [tableName]});
+              const observer = (
+                _1: number,
+                _2: string | null,
+                tableName: string | null,
+              ) => {
+                resolve({changedTables: tableName == null ? [] : [tableName]});
               };
               sqlite3.update_hook(db, observer);
             },
@@ -169,40 +259,77 @@ const getPowerSyncDatabase = async (
 };
 
 export const NODE_SQLITE_MERGEABLE_VARIANTS: Variants = {
-  sqlite3: [
-    async (dbAndName?: [Database, string]): Promise<[Database, string]> => {
-      const existingName = dbAndName?.[1];
-      const name = existingName ?? tmp.tmpNameSync();
-      return [new sqlite3.Database(name), name];
+  betterSqlite3: [
+    async (
+      dbAndName?: [BetterSqlite3Database, string],
+    ): Promise<[BetterSqlite3Database, string]> => {
+      const name = dbAndName?.[1] ?? tmp.tmpNameSync();
+      return [new BetterSqlite3(name), name];
     },
-    ['getDb', ([db]: [Database, string]) => db],
+    ['getDb', ([db]: [BetterSqlite3Database, string]) => db],
     (
       store: Store,
-      [db]: [Database, string],
+      [db]: [BetterSqlite3Database, string],
       storeTableOrConfig?: string | DatabasePersisterConfig,
       onSqlCommand?: (sql: string, args?: any[]) => void,
       onIgnoredError?: (error: any) => void,
     ) =>
-      (createSqlite3Persister as any)(
+      (createBetterSqlite3Persister as any)(
         store,
         db,
         storeTableOrConfig,
         onSqlCommand,
         onIgnoredError,
       ),
+    async (
+      [db]: [BetterSqlite3Database, string],
+      sql: string,
+      args: any[] = [],
+    ): Promise<{[id: string]: any}[]> => {
+      const statement = db.prepare(sql);
+      return statement.reader
+        ? (statement.all(...args) as {[id: string]: any}[])
+        : (statement.run(...args), []);
+    },
+    async ([db]: [BetterSqlite3Database, string]) => {
+      db.close();
+    },
+    20,
+    undefined,
+    undefined,
+    true,
+  ],
+  sqliteNode: [
+    async (
+      dbAndName?: [DatabaseSync, string],
+    ): Promise<[DatabaseSync, string]> => {
+      const name = dbAndName?.[1] ?? tmp.tmpNameSync();
+      return [new DatabaseSync(name), name];
+    },
+    ['getDb', ([db]: [DatabaseSync, string]) => db],
     (
-      [db]: [Database, string],
+      store: Store,
+      [db]: [DatabaseSync, string],
+      storeTableOrConfig?: string | DatabasePersisterConfig,
+      onSqlCommand?: (sql: string, args?: any[]) => void,
+      onIgnoredError?: (error: any) => void,
+    ) =>
+      (createSqliteNodePersister as any)(
+        store,
+        db,
+        storeTableOrConfig,
+        onSqlCommand,
+        onIgnoredError,
+      ),
+    async (
+      [db]: [DatabaseSync, string],
       sql: string,
       args: any[] = [],
     ): Promise<{[id: string]: any}[]> =>
-      new Promise((resolve, reject) =>
-        db.all(sql, args, (error, rows: {[id: string]: any}[]) =>
-          error
-            ? reject(error)
-            : resolve(rows.map((row: {[id: string]: any}) => ({...row}))),
-        ),
-      ),
-    async ([db]: [Database, string]) => db.close(),
+      db.prepare(sql).all(...args) as {[id: string]: any}[],
+    async ([db]: [DatabaseSync, string]) => {
+      db.close();
+    },
     20,
     undefined,
     undefined,
@@ -239,13 +366,17 @@ export const NODE_SQLITE_MERGEABLE_VARIANTS: Variants = {
   ],
 };
 
+type LibSqlClientAndTransaction = [client: Client, transaction?: Transaction];
+
 export const NODE_SQLITE_NON_MERGEABLE_VARIANTS: Variants = {
   libSql: [
-    async (): Promise<Client> => createClient({url: 'file::memory:'}),
-    ['getClient', (client: Client) => client],
+    async (): Promise<LibSqlClientAndTransaction> => [
+      createClient({url: 'file::memory:'}),
+    ],
+    ['getClient', ([client]: LibSqlClientAndTransaction) => client],
     (
       store: Store,
-      client: Client,
+      [client]: LibSqlClientAndTransaction,
       storeTableOrConfig?: string | DatabasePersisterConfig,
       onSqlCommand?: (sql: string, args?: any[]) => void,
       onIgnoredError?: (error: any) => void,
@@ -257,41 +388,28 @@ export const NODE_SQLITE_NON_MERGEABLE_VARIANTS: Variants = {
         onSqlCommand,
         onIgnoredError,
       ),
+    // A libSQL command borrows one of the client's connections for its
+    // duration, so the commands here are held open as a transaction session
+    // rather than issued as BEGIN and END statements.
     async (
-      client: Client,
+      clientAndTransaction: LibSqlClientAndTransaction,
       sql: string,
       args: any[] = [],
-    ): Promise<{[id: string]: any}[]> =>
-      (await client.execute({sql, args})).rows,
-    async (client: Client) => client.close(),
-  ],
-  electricSql: [
-    (): Promise<Electric> =>
-      suppressWarnings(
-        async () =>
-          await electrify(
-            await ElectricDatabase.init(':memory:'),
-            electricSchema,
-          ),
-      ),
-    ['getElectricClient', (electricClient: Electric) => electricClient],
-    (
-      store: Store,
-      electric: Electric,
-      storeTableOrConfig?: string | DatabasePersisterConfig,
-      onSqlCommand?: (sql: string, args?: any[]) => void,
-      onIgnoredError?: (error: any) => void,
-    ) =>
-      (createElectricSqlPersister as any)(
-        store,
-        electric,
-        storeTableOrConfig,
-        onSqlCommand,
-        onIgnoredError,
-      ),
-    (electricClient: Electric, sql: string, args: any[] = []) =>
-      electricClient.db.raw({sql, args}),
-    (electricClient: Electric) => electricClient.close(),
+    ): Promise<{[id: string]: any}[]> => {
+      const [client, transaction] = clientAndTransaction;
+      if (sql == 'BEGIN') {
+        clientAndTransaction[1] = await client.transaction('write');
+        return [];
+      }
+      if (sql == 'END') {
+        clientAndTransaction[1] = undefined;
+        await transaction!.commit();
+        transaction!.close();
+        return [];
+      }
+      return (await (transaction ?? client).execute({sql, args})).rows;
+    },
+    async ([client]: LibSqlClientAndTransaction) => client.close(),
   ],
   powerSync: [
     async (): Promise<AbstractPowerSyncDatabase> =>
@@ -320,28 +438,17 @@ export const NODE_SQLITE_NON_MERGEABLE_VARIANTS: Variants = {
     undefined,
     true,
   ],
-  crSqliteWasm: [
-    (): Promise<DB> =>
-      suppressWarnings(async () => await (await initWasm()).open()),
-    ['getDb', (db: DB) => db],
-    (
-      store: Store,
-      db: DB,
-      storeTableOrConfig?: string | DatabasePersisterConfig,
-      onSqlCommand?: (sql: string, args?: any[]) => void,
-      onIgnoredError?: (error: any) => void,
-    ) =>
-      (createCrSqliteWasmPersister as any)(
-        store,
-        db,
-        storeTableOrConfig,
-        onSqlCommand,
-        onIgnoredError,
-      ),
-    (db: DB, sql: string, args: any[] = []) => db.execO(sql, args),
-    (db: DB) => db.close(),
-  ],
 };
+
+let sharedPglite: Promise<PGlite> | undefined;
+
+afterAll(async () => {
+  if (sharedPglite) {
+    const pglite = sharedPglite;
+    sharedPglite = undefined;
+    await (await pglite).close();
+  }
+});
 
 export const NODE_POSTGRESQL_VARIANTS: Variants = {
   postgres: [
@@ -351,12 +458,12 @@ export const NODE_POSTGRESQL_VARIANTS: Variants = {
       const existingName = sqlClientsAndName?.[2];
       const name = existingName ?? 'tinybase_' + getUniqueId();
       if (!existingName) {
-        const adminSql = postgres('postgres://localhost:5432/');
+        const adminSql = postgres(PG_ADMIN_URL);
         await adminSql`CREATE DATABASE ${adminSql(name)}`;
         await adminSql.end({timeout: 0.1});
       }
 
-      const sql = postgres('postgres://localhost:5432/' + name, {
+      const sql = postgres(POSTGRES_URL + '/' + name, {
         connection: {client_min_messages: 'warning'},
       });
       const cmdSql = await sql.reserve();
@@ -383,7 +490,7 @@ export const NODE_POSTGRESQL_VARIANTS: Variants = {
       cmdSql.release();
       await sql.end({timeout: 0.1});
 
-      const adminSql = postgres('postgres://localhost:5432/', {
+      const adminSql = postgres(PG_ADMIN_URL, {
         connection: {client_min_messages: 'warning'},
       });
       await adminSql`DROP DATABASE IF EXISTS ${adminSql(name)} WITH (FORCE)`;
@@ -391,11 +498,74 @@ export const NODE_POSTGRESQL_VARIANTS: Variants = {
     },
     20,
     undefined,
+    'postgresql',
     true,
+  ],
+  pg: [
+    async (pgClientsAndName?: PgClientsAndName): Promise<PgClientsAndName> => {
+      const existingName = pgClientsAndName?.[3];
+      const name = existingName ?? 'tinybase_' + getUniqueId();
+      if (!existingName) {
+        await pgAdmin('CREATE DATABASE ' + escapeId(name));
+      }
+
+      const pool = new Pool({
+        connectionString: POSTGRES_URL + '/' + name,
+        options: PG_OPTIONS,
+        max: 20,
+      });
+      // Dropping the database below terminates connections; without this, `pg`
+      // would raise those as unhandled errors.
+      pool.on('error', noop);
+      pool.on('connect', (client) => client.on('error', noop));
+      // Commands are issued as transactions, so need one stable connection.
+      const cmdClient = await pool.connect();
+      return [pool, cmdClient, new Mutex(), name];
+    },
+    ['getPg', ([pool]: PgClientsAndName) => pool],
+    (
+      store: Store,
+      [pool]: PgClientsAndName,
+      storeTableOrConfig?: string | DatabasePersisterConfig,
+      onSqlCommand?: (sql: string, args?: any[]) => void,
+      onIgnoredError?: (error: any) => void,
+    ) =>
+      (createPgPersister as any)(
+        store,
+        pool,
+        storeTableOrConfig,
+        onSqlCommand,
+        onIgnoredError,
+      ),
+    ([, cmdClient, cmdMutex]: PgClientsAndName, sqlStr: string, args = []) =>
+      cmdMutex.runExclusive(
+        async () => (await cmdClient.query(sqlStr, args)).rows,
+      ),
+    async ([pool, cmdClient, , name]: PgClientsAndName) => {
+      cmdClient.release();
+      // Tests may leave a Persister holding a client, which would make a
+      // graceful end wait forever; the forced drop below closes them anyway.
+      await Promise.race([pool.end().catch(noop), pause(100)]);
+      await pgAdmin(`DROP DATABASE IF EXISTS ${escapeId(name)} WITH (FORCE)`);
+    },
+    20,
+    undefined,
+    'postgresql',
     true,
   ],
   pglite: [
-    (): Promise<PGlite> => suppressWarnings(() => PGlite.create()),
+    // A PGlite instance is a whole WASM Postgres; creating one per test can
+    // breach the hook timeout under load. One is shared per test file, with a
+    // schema reset giving each test an empty database.
+    async (): Promise<PGlite> => {
+      const pglite = await (sharedPglite ??= suppressWarnings(() =>
+        PGlite.create(),
+      ));
+      await pglite.exec(
+        'DROP SCHEMA IF EXISTS public CASCADE;CREATE SCHEMA public;',
+      );
+      return pglite;
+    },
     ['getPglite', (pglite: PGlite) => pglite],
     (
       store: Store,
@@ -413,26 +583,23 @@ export const NODE_POSTGRESQL_VARIANTS: Variants = {
       ),
     async (pglite: PGlite, sqlStr: string, args: any[] = []) =>
       (await pglite.query(sqlStr, args)).rows as any,
-    async (pglite: PGlite) => {
-      await pause(10);
-      await pglite.close();
-    },
+    async () => {},
     undefined,
     undefined,
-    true,
+    'postgresql',
   ],
 };
 
 export const BUN_MERGEABLE_VARIANTS: Variants = {
   bunSqlite: [
     async () => {
-      const {Database} = await import('bun:sqlite');
+      const {Database} = await importBunSqlite();
       return new Database(':memory:');
     },
-    ['getDb', (db: typeof Database) => db],
+    ['getDb', (db: BunDatabase) => db],
     (
       store: Store,
-      db: typeof Database,
+      db: BunDatabase,
       storeTableOrConfig?: string | DatabasePersisterConfig,
       onSqlCommand?: (sql: string, args?: any[]) => void,
       onIgnoredError?: (error: any) => void,
@@ -450,6 +617,64 @@ export const BUN_MERGEABLE_VARIANTS: Variants = {
   ],
 };
 
+export const NODE_MSSQL_VARIANTS: Variants = {
+  mssql: [
+    async (
+      msSqlPoolsAndName?: MsSqlPoolsAndName,
+    ): Promise<MsSqlPoolsAndName> => {
+      const existingName = msSqlPoolsAndName?.[3];
+      const name = existingName ?? 'tinybase_' + getUniqueId();
+      if (!existingName) {
+        await msSqlAdmin('CREATE DATABASE ' + escapeId(name));
+      }
+      const pool = await new ConnectionPool(getMsSqlConfig(name)).connect();
+      // Commands are issued as transactions, so they need one stable
+      // connection rather than an arbitrary one from the pool each time.
+      const cmdPool = await new ConnectionPool({
+        ...getMsSqlConfig(name),
+        pool: {min: 1, max: 1},
+      }).connect();
+      return [pool, cmdPool, new Mutex(), name];
+    },
+    ['getMsSql', ([pool]: MsSqlPoolsAndName) => pool],
+    (store, [pool], storeTableOrConfig, onSqlCommand, onIgnoredError) =>
+      (createMsSqlPersister as any)(
+        store,
+        pool,
+        storeTableOrConfig,
+        onSqlCommand,
+        onIgnoredError,
+      ),
+    (
+      [, cmdPool, cmdMutex]: MsSqlPoolsAndName,
+      sqlStr: string,
+      args: any[] = [],
+    ) =>
+      cmdMutex.runExclusive(async () => {
+        const request = cmdPool.request();
+        args.forEach((arg, index) => request.input('p' + (index + 1), arg));
+        return (await request.query(sqlStr)).recordset ?? [];
+      }),
+    async ([pool, cmdPool, , name]: MsSqlPoolsAndName) => {
+      await Promise.race([pool.close().catch(noop), pause(100)]);
+      await Promise.race([cmdPool.close().catch(noop), pause(100)]);
+      // Both handles of a two-connection test name the same database, so
+      // the second close finds it already gone. Remaining connections also
+      // have to be booted before the drop can proceed.
+      await msSqlAdmin(
+        `IF DB_ID(${escapeString(name)}) IS NOT NULL BEGIN ` +
+          `ALTER DATABASE ${escapeId(name)} ` +
+          'SET SINGLE_USER WITH ROLLBACK IMMEDIATE;' +
+          `DROP DATABASE ${escapeId(name)};END`,
+      );
+    },
+    20,
+    undefined,
+    'mssql',
+    true,
+  ],
+};
+
 export const NODE_SQLITE_VARIANTS: Variants = {
   ...NODE_SQLITE_MERGEABLE_VARIANTS,
   ...NODE_SQLITE_NON_MERGEABLE_VARIANTS,
@@ -458,6 +683,7 @@ export const NODE_SQLITE_VARIANTS: Variants = {
 export const NODE_MERGEABLE_VARIANTS: Variants = {
   ...NODE_SQLITE_MERGEABLE_VARIANTS,
   ...NODE_POSTGRESQL_VARIANTS,
+  ...NODE_MSSQL_VARIANTS,
 };
 
 export const ALL_NODE_VARIANTS: Variants = {
@@ -465,19 +691,28 @@ export const ALL_NODE_VARIANTS: Variants = {
   ...NODE_POSTGRESQL_VARIANTS,
 };
 
+// The SQL Server Persister only supports JSON serialization so far, so it
+// joins the JSON suites but not the tabular one.
+export const ALL_NODE_JSON_VARIANTS: Variants = {
+  ...ALL_NODE_VARIANTS,
+  ...NODE_MSSQL_VARIANTS,
+};
+
 export const ALL_BUN_VARIANTS: Variants = {
   ...BUN_MERGEABLE_VARIANTS,
 };
 
-export const MERGEABLE_VARIANTS = isBun
-  ? BUN_MERGEABLE_VARIANTS
-  : NODE_MERGEABLE_VARIANTS;
+export const MERGEABLE_VARIANTS = forProject(
+  isBun ? BUN_MERGEABLE_VARIANTS : NODE_MERGEABLE_VARIANTS,
+);
 
-export const ALL_VARIANTS = isBun ? ALL_BUN_VARIANTS : ALL_NODE_VARIANTS;
+export const ALL_VARIANTS = forProject(
+  isBun ? ALL_BUN_VARIANTS : ALL_NODE_VARIANTS,
+);
 
-export const ADHOC_VARIANTS: Variants = {
-  adhoc: NODE_POSTGRESQL_VARIANTS.postgres,
-};
+export const ALL_JSON_VARIANTS = forProject(
+  isBun ? ALL_BUN_VARIANTS : ALL_NODE_JSON_VARIANTS,
+);
 
 export const getDatabaseFunctions = <Database>(
   cmd: (
@@ -485,30 +720,39 @@ export const getDatabaseFunctions = <Database>(
     sql: string,
     args?: any[],
   ) => Promise<{[id: string]: any}[]>,
-  isPostgres = false,
+  dialect?: DatabaseDialect,
   jsonValues = false,
 ): [
   (db: Database) => Promise<DumpOut>,
   (db: Database, dump: DumpIn) => Promise<void>,
+  (db: Database, dump: DumpOut) => Promise<void>,
 ] => {
+  const placeholder = getPlaceholder(dialect);
+
   const getDatabase = async (db: Database): Promise<DumpOut> => {
     const dump: DumpOut = {};
     (
       await cmd(
         db,
-        isPostgres
+        dialect == 'postgresql'
           ? 'SELECT table_name tn, column_name cn, data_type ty ' +
               'FROM information_schema.columns ' +
               `WHERE table_schema='public' ` +
-              'AND table_name NOT LIKE $1 ' +
-              'AND table_name NOT LIKE $2'
-          : 'SELECT t.name tn, c.name cn, LOWER(c.type) ty ' +
+              `AND table_name NOT LIKE ${placeholder(1)}`
+          : dialect == 'mssql'
+            ? // The rowversion column that the Persister maintains for
+              // auto-loading is excluded, since it is not part of the schema
+              // that TinyBase itself manages.
+              'SELECT TABLE_NAME tn, COLUMN_NAME cn, DATA_TYPE ty ' +
+              'FROM INFORMATION_SCHEMA.COLUMNS ' +
+              `WHERE TABLE_SCHEMA=SCHEMA_NAME() AND DATA_TYPE<>'timestamp' ` +
+              `AND TABLE_NAME NOT LIKE ${placeholder(1)}`
+            : 'SELECT t.name tn, c.name cn, LOWER(c.type) ty ' +
               'FROM pragma_table_list() t, ' +
               'pragma_table_info(t.name) c ' +
               `WHERE t.schema='main' AND t.type = 'table' ` +
-              'AND t.name NOT LIKE $1 ' +
-              'AND t.name NOT LIKE $2',
-        ['%sql%', '%electric%'],
+              `AND t.name NOT LIKE ${placeholder(1)}`,
+        ['%sql%'],
       )
     ).forEach(({tn, cn, ty}) => {
       if (!dump[tn]) {
@@ -538,7 +782,13 @@ export const getDatabaseFunctions = <Database>(
   };
 
   const setDatabase = async (db: Database, dump: DumpIn) => {
-    await cmd(db, 'BEGIN');
+    // The mssql module drives transactions through its own Transaction
+    // object, so raw statements issued on pooled connections leave the
+    // transaction count unbalanced. Seeding does not need to be atomic.
+    const transactional = dialect != 'mssql';
+    if (transactional) {
+      await cmd(db, 'BEGIN');
+    }
     await Promise.all(
       Object.entries(dump).map(async ([name, [sql, rows]]) => {
         await cmd(db, sql);
@@ -561,7 +811,7 @@ export const getDatabaseFunctions = <Database>(
                   .join(',') +
                 ') VALUES (' +
                 Object.keys(row)
-                  .map((_, index) => '$' + (index + 1))
+                  .map((_, index) => placeholder(index + 1))
                   .join(',') +
                 ')',
               Object.values(row),
@@ -570,8 +820,13 @@ export const getDatabaseFunctions = <Database>(
         );
       }),
     );
-    await cmd(db, 'END');
+    if (transactional) {
+      await cmd(db, 'END');
+    }
   };
 
-  return [getDatabase, setDatabase];
+  const expectDatabaseContent = (db: Database, dump: DumpOut): Promise<void> =>
+    waitFor(async () => expect(await getDatabase(db)).toEqual(dump), 10);
+
+  return [getDatabase, setDatabase, expectDatabaseContent];
 };

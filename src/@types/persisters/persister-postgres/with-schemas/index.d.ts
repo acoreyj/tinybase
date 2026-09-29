@@ -7,20 +7,29 @@ import type {
 } from '../../../store/with-schemas/index.d.ts';
 import type {
   DatabasePersisterConfig,
+  DpcJson,
   Persister,
   Persists,
 } from '../../with-schemas/index.d.ts';
 
 /// PostgresPersister
-export interface PostgresPersister<Schemas extends OptionalSchemas>
-  extends Persister<Schemas, Persists.StoreOrMergeableStore> {
+export interface PostgresPersister<
+  Schemas extends OptionalSchemas,
+> extends Persister<Schemas, Persists.StoreOrMergeableStore> {
   /// PostgresPersister.getSql
   getSql(): Sql;
 }
 
 /// createPostgresPersister
 export function createPostgresPersister<Schemas extends OptionalSchemas>(
-  store: Store<Schemas> | MergeableStore<Schemas>,
+  store: MergeableStore<Schemas>,
+  sql: Sql,
+  configOrStoreTableName?: DpcJson | string,
+  onSqlCommand?: (sql: string, params?: any[]) => void,
+  onIgnoredError?: (error: any) => void,
+): Promise<PostgresPersister<Schemas>>;
+export function createPostgresPersister<Schemas extends OptionalSchemas>(
+  store: Store<Schemas> & {getMergeableContent?: never},
   sql: Sql,
   configOrStoreTableName?: DatabasePersisterConfig<Schemas> | string,
   onSqlCommand?: (sql: string, params?: any[]) => void,

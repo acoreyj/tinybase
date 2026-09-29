@@ -17,6 +17,12 @@ import type {
 /// Json
 export type Json = string;
 
+/// AnyObject
+export type AnyObject = {[key: string]: unknown};
+
+/// AnyArray
+export type AnyArray = unknown[] | readonly unknown[];
+
 /// Ids
 export type Ids = Id[];
 
@@ -33,7 +39,11 @@ export type ParameterizedCallback<Parameter> = (parameter?: Parameter) => void;
 export type Callback = () => void;
 
 /// SortKey
-export type SortKey = string | number | boolean;
+export type SortKey =
+  string | number | boolean | null | AnyObject | AnyArray | undefined;
+
+/// Sorter
+export type Sorter = (sortKey1: SortKey, sortKey2: SortKey) => number;
 
 /// GetNow
 export type GetNow = () => number;

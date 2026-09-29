@@ -8,7 +8,7 @@ import type {
   TableIdFromSchema,
 } from '../../_internal/store/with-schemas/index.d.ts';
 import type {Id, IdOrNull, Ids} from '../../common/with-schemas/index.d.ts';
-import type {GetIdChanges} from '../../store/index.d.ts';
+import type {Cell as BaseCell, GetIdChanges} from '../../store/index.d.ts';
 import type {
   Cell,
   CellOrUndefined,
@@ -19,6 +19,13 @@ import type {
   Store,
 } from '../../store/with-schemas/index.d.ts';
 
+/// ParamValue
+export type ParamValue =
+  string | number | boolean | null | string[] | number[] | boolean[];
+
+/// ParamValues
+export type ParamValues = {[paramId: Id]: ParamValue};
+
 /// ResultTable
 export type ResultTable = {[rowId: Id]: ResultRow};
 
@@ -26,7 +33,7 @@ export type ResultTable = {[rowId: Id]: ResultRow};
 export type ResultRow = {[cellId: Id]: ResultCell};
 
 /// ResultCell
-export type ResultCell = string | number | boolean;
+export type ResultCell = BaseCell;
 
 /// ResultCellOrUndefined
 export type ResultCellOrUndefined = ResultCell | undefined;
@@ -77,6 +84,21 @@ export type ResultCellCallback = (cellId: Id, cell: ResultCell) => void;
 /// QueryIdsListener
 export type QueryIdsListener<Schemas extends OptionalSchemas> = (
   queries: Queries<Schemas>,
+) => void;
+
+/// ParamValuesListener
+export type ParamValuesListener<Schemas extends OptionalSchemas> = (
+  queries: Queries<Schemas>,
+  queryId: Id,
+  paramValues: ParamValues,
+) => void;
+
+/// ParamValueListener
+export type ParamValueListener<Schemas extends OptionalSchemas> = (
+  queries: Queries<Schemas>,
+  queryId: Id,
+  paramId: Id,
+  paramValue: ParamValue,
 ) => void;
 
 /// ResultTableListener
@@ -177,6 +199,10 @@ export type QueriesListenerStats = {
   cellIds: number;
   /// QueriesListenerStats.cell
   cell: number;
+  /// QueriesListenerStats.paramValues
+  paramValues: number;
+  /// QueriesListenerStats.paramValue
+  paramValue: number;
 };
 
 /// GetTableCell
@@ -191,10 +217,8 @@ export type GetTableCell<
   /// GetTableCell.2
   <
     JoinedTableId extends TableIdFromSchema<Schema> | Id,
-    JoinedCellId extends JoinedCellIdOrId<
-      Schema,
-      JoinedTableId
-    > = JoinedCellIdOrId<Schema, JoinedTableId>,
+    JoinedCellId extends JoinedCellIdOrId<Schema, JoinedTableId> =
+      JoinedCellIdOrId<Schema, JoinedTableId>,
   >(
     joinedTableId: JoinedTableId,
     joinedCellId: JoinedCellId,
@@ -203,7 +227,16 @@ export type GetTableCell<
         ? Cell<Schema, JoinedTableId, JoinedCellId>
         : Cell<any, any, any>)
     | undefined;
+  /// GetTableCell.3
+  (
+    asQuery: true,
+    joinedQueryId: Id,
+    joinedCellId: Id,
+  ): Cell<any, any, any> | undefined;
 };
+
+/// Param
+export type Param = (paramId: Id) => ParamValue | undefined;
 
 /// Select
 export type Select<
@@ -220,12 +253,35 @@ export type Select<
     joinedCellId: JoinedCellIdOrId<Schema, JoinedTableId>,
   ): SelectedAs;
   /// Select.3
+  (asQuery: true, joinedQueryId: Id, joinedCellId: Id): SelectedAs;
+  /// Select.4
   (
     getCell: (
       getTableCell: GetTableCell<Schema, RootTableId>,
       rowId: Id,
     ) => ResultCellOrUndefined,
   ): SelectedAs;
+};
+
+/// CellIdMapper
+export type CellIdMapper<CellId extends Id = Id> = (cellId: CellId) => Id;
+
+/// SelectAll
+export type SelectAll<Schema extends OptionalTablesSchema> = {
+  /// SelectAll.1
+  (): void;
+  /// SelectAll.2
+  <JoinedTableId extends TableIdFromSchema<Schema> | Id>(
+    joinedTableId: JoinedTableId,
+    cellIdPrefixOrMapper?:
+      Id | CellIdMapper<JoinedCellIdOrId<Schema, JoinedTableId>>,
+  ): void;
+  /// SelectAll.3
+  (
+    asQuery: true,
+    joinedQueryId: Id,
+    cellIdPrefixOrMapper?: Id | CellIdMapper,
+  ): void;
 };
 
 /// SelectedAs
@@ -246,14 +302,25 @@ export type Join<
   ): JoinedAs;
   /// Join.2
   (
+    asQuery: true,
+    joinedQueryId: Id,
+    on: CellIdFromSchema<Schema, RootTableId>,
+  ): JoinedAs;
+  /// Join.3
+  (
     joinedTableId: TableIdFromSchema<Schema>,
     on: (getCell: GetCell<Schema, RootTableId>, rowId: Id) => Id | undefined,
   ): JoinedAs;
-  /// Join.3
+  /// Join.4
+  (
+    asQuery: true,
+    joinedQueryId: Id,
+    on: (getCell: GetCell<Schema, RootTableId>, rowId: Id) => Id | undefined,
+  ): JoinedAs;
+  /// Join.5
   <
     IntermediateJoinedTableId extends TableIdFromSchema<Schema> | Id =
-      | TableIdFromSchema<Schema>
-      | Id,
+      TableIdFromSchema<Schema> | Id,
     IntermediateJoinedCellId extends JoinedCellIdOrId<
       Schema,
       IntermediateJoinedTableId
@@ -263,17 +330,47 @@ export type Join<
     fromIntermediateJoinedTableId: IntermediateJoinedTableId,
     on: IntermediateJoinedCellId,
   ): JoinedAs;
-  /// Join.4
+  /// Join.6
   <
     IntermediateJoinedTableId extends TableIdFromSchema<Schema> | Id =
-      | TableIdFromSchema<Schema>
-      | Id,
+      TableIdFromSchema<Schema> | Id,
+    IntermediateJoinedCellId extends JoinedCellIdOrId<
+      Schema,
+      IntermediateJoinedTableId
+    > = JoinedCellIdOrId<Schema, IntermediateJoinedTableId>,
+  >(
+    asQuery: true,
+    joinedQueryId: Id,
+    fromIntermediateJoinedTableId: IntermediateJoinedTableId,
+    on: IntermediateJoinedCellId,
+  ): JoinedAs;
+  /// Join.7
+  <
+    IntermediateJoinedTableId extends TableIdFromSchema<Schema> | Id =
+      TableIdFromSchema<Schema> | Id,
   >(
     joinedTableId: TableIdFromSchema<Schema>,
     fromIntermediateJoinedTableId: IntermediateJoinedTableId,
     on: (
       // prettier-ignore
       getIntermediateJoinedCell: 
+        IntermediateJoinedTableId extends TableIdFromSchema<Schema>
+          ? GetCell<Schema, IntermediateJoinedTableId>
+          : GetCell<NoTablesSchema, Id>,
+      intermediateJoinedRowId: Id,
+    ) => Id | undefined,
+  ): JoinedAs;
+  /// Join.8
+  <
+    IntermediateJoinedTableId extends TableIdFromSchema<Schema> | Id =
+      TableIdFromSchema<Schema> | Id,
+  >(
+    asQuery: true,
+    joinedQueryId: Id,
+    fromIntermediateJoinedTableId: IntermediateJoinedTableId,
+    on: (
+      // prettier-ignore
+      getIntermediateJoinedCell:
         IntermediateJoinedTableId extends TableIdFromSchema<Schema>
           ? GetCell<Schema, IntermediateJoinedTableId>
           : GetCell<NoTablesSchema, Id>,
@@ -301,10 +398,8 @@ export type Where<
   /// Where.2
   <
     JoinedTableId extends TableIdFromSchema<Schema> | Id,
-    JoinedCellId extends JoinedCellIdOrId<
-      Schema,
-      JoinedTableId
-    > = JoinedCellIdOrId<Schema, JoinedTableId>,
+    JoinedCellId extends JoinedCellIdOrId<Schema, JoinedTableId> =
+      JoinedCellIdOrId<Schema, JoinedTableId>,
     JoinedCell extends Cell<Schema, JoinedTableId, JoinedCellId> = Cell<
       Schema,
       JoinedTableId,
@@ -316,6 +411,13 @@ export type Where<
     equals: JoinedCell,
   ): void;
   /// Where.3
+  (
+    asQuery: true,
+    joinedQueryId: Id,
+    joinedCellId: Id,
+    equals: Cell<any, any, any>,
+  ): void;
+  /// Where.4
   (
     condition: (getTableCell: GetTableCell<Schema, RootTableId>) => boolean,
   ): void;
@@ -352,15 +454,47 @@ export interface Queries<in out Schemas extends OptionalSchemas> {
     tableId: RootTableId,
     query: (keywords: {
       select: Select<Schemas[0], RootTableId>;
+      selectAll: SelectAll<Schemas[0]>;
       join: Join<Schemas[0], RootTableId>;
       where: Where<Schemas[0], RootTableId>;
       group: Group;
       having: Having;
+      param: Param;
     }) => void,
+    paramValues?: ParamValues,
+  ): Queries<Schemas>;
+
+  /// Queries.setQueryDefinition.2
+  setQueryDefinition(
+    queryId: Id,
+    asQuery: true,
+    rootQueryId: Id,
+    query: (keywords: {
+      select: Select<any, any>;
+      selectAll: SelectAll<any>;
+      join: Join<any, any>;
+      where: Where<any, any>;
+      group: Group;
+      having: Having;
+      param: Param;
+    }) => void,
+    paramValues?: ParamValues,
   ): Queries<Schemas>;
 
   /// Queries.delQueryDefinition
   delQueryDefinition(queryId: Id): Queries<Schemas>;
+
+  /// Queries.getParamValues
+  getParamValues(queryId: Id): ParamValues;
+
+  /// Queries.getParamValue
+  getParamValue(queryId: Id, paramId: Id): ParamValue | undefined;
+
+  /// Queries.setParamValues
+  setParamValues(queryId: Id, paramValues: ParamValues): Queries<Schemas>;
+
+  /// Queries.setParamValue
+  setParamValue(queryId: Id, paramId: Id, value: ParamValue): Queries<Schemas>;
 
   /// Queries.getStore
   getStore(): Store<Schemas>;
@@ -433,6 +567,19 @@ export interface Queries<in out Schemas extends OptionalSchemas> {
 
   /// Queries.addQueryIdsListener
   addQueryIdsListener(listener: QueryIdsListener<Schemas>): Id;
+
+  /// Queries.addParamValuesListener
+  addParamValuesListener(
+    queryId: IdOrNull,
+    listener: ParamValuesListener<Schemas>,
+  ): Id;
+
+  /// Queries.addParamValueListener
+  addParamValueListener(
+    queryId: IdOrNull,
+    paramId: IdOrNull,
+    listener: ParamValueListener<Schemas>,
+  ): Id;
 
   /// Queries.addResultTableListener
   addResultTableListener(

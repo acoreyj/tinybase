@@ -1,3 +1,5 @@
+import {beforeEach, describe, expect, test} from 'vitest';
+
 import type {Checkpoints, Id, Store, Tables, Values} from 'tinybase';
 import {createCheckpoints, createStore} from 'tinybase';
 import {expectChanges, expectNoChanges} from '../../common/expect.ts';
@@ -242,6 +244,52 @@ describe('Basics', () => {
     expectNoChanges(listener);
   });
 
+  test('make net-no rich changes after a checkpoint', () => {
+    store.setCell('t1', 'r1', 'c1', {species: 'dog'}).setValue('v1', ['cat']);
+    const checkpointId = checkpoints.addCheckpoint();
+
+    store.transaction(() => {
+      store
+        .setCell('t1', 'r1', 'c1', {species: 'cat'})
+        .setValue('v1', ['dog'])
+        .setCell('t1', 'r1', 'c1', {species: 'dog'})
+        .setValue('v1', ['cat']);
+    });
+
+    expect(checkpoints.getCheckpointIds()).toEqual([['0'], checkpointId, []]);
+  });
+
+  test.each([true, false])(
+    'retain mixed changes when cancelling tabular changes: %s',
+    (cancelTabular) => {
+      const id0 = checkpoints.getCheckpointIds()[1];
+      store.setCell('t1', 'r1', 'c1', 1).setValue('v1', 1);
+      expectChanges(listener, '/', [[id0], undefined, []]);
+      if (cancelTabular) {
+        store.delCell('t1', 'r1', 'c1');
+      } else {
+        store.delValue('v1');
+      }
+      expect(checkpoints.getCheckpointIds()).toEqual([[id0], undefined, []]);
+      expectNoChanges(listener);
+
+      const id1 = checkpoints.addCheckpoint();
+      expect(id1).not.toEqual(id0);
+      expectChanges(listener, '/', [[id0], id1, []]);
+      checkpoints.goBackward();
+      expect(store.getTables()).toEqual({});
+      expect(store.getValues()).toEqual({});
+      expectChanges(listener, '/', [[], id0, [id1]]);
+      checkpoints.goForward();
+      expect(store.getTables()).toEqual(
+        cancelTabular ? {} : {t1: {r1: {c1: 1}}},
+      );
+      expect(store.getValues()).toEqual(cancelTabular ? {v1: 1} : {});
+      expectChanges(listener, '/', [[id0], id1, []]);
+      expectNoChanges(listener);
+    },
+  );
+
   test('listener stats', () => {
     listener.listenToCheckpoint('/c0', '0');
     expect(checkpoints.getListenerStats()).toEqual({
@@ -261,6 +309,20 @@ describe('Moving around', () => {
     checkpoints.goBackward();
     expect(checkpoints.getCheckpointIds()).toEqual([[], '0', []]);
     expectNoChanges(listener);
+  });
+
+  test('resumes listening after Store error', () => {
+    store.setCell('t1', 'r1', 'c1', 1);
+    checkpoints.addCheckpoint();
+    store.setCell('t1', 'r1', 'c1', 2);
+    const error = new Error('listener error');
+    const listenerId = store.addWillFinishTransactionListener(() => {
+      throw error;
+    });
+    expect(() => checkpoints.goBackward()).toThrow(error);
+    store.delListener(listenerId).setCell('t1', 'r1', 'c1', 3);
+    expect(checkpoints.getCheckpointIds()[1]).toBeUndefined();
+    expect(checkpoints.getCheckpointIds()[2]).toEqual([]);
   });
 
   test('goBackward', () => {
@@ -662,8 +724,29 @@ describe('Miscellaneous', () => {
   });
 
   test('destroys', () => {
-    expect(checkpoints.getStore().getListenerStats().cell).toEqual(1);
+    expect(store.getListenerStats().cell).toEqual(1);
+    expect(store.getListenerStats().value).toEqual(1);
+    expect(createCheckpoints(store)).toBe(checkpoints);
+    expect(store.getListenerStats().cell).toEqual(1);
+    expect(store.getListenerStats().value).toEqual(1);
+
     checkpoints.destroy();
-    expect(checkpoints.getStore().getListenerStats().cell).toEqual(0);
+    expect(store.getListenerStats().cell).toEqual(0);
+    expect(store.getListenerStats().value).toEqual(0);
+
+    const checkpoints2 = createCheckpoints(store);
+    expect(checkpoints2).toBe(checkpoints);
+    expect(store.getListenerStats().cell).toEqual(1);
+    expect(store.getListenerStats().value).toEqual(1);
+    checkpoints2.destroy();
+    expect(store.getListenerStats().cell).toEqual(0);
+    expect(store.getListenerStats().value).toEqual(0);
+  });
+
+  test('destroys idempotently', () => {
+    checkpoints.destroy();
+    checkpoints.destroy();
+    expect(store.getListenerStats().cell).toEqual(0);
+    expect(store.getListenerStats().value).toEqual(0);
   });
 });

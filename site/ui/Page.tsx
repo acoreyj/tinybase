@@ -6,6 +6,7 @@ import {
   usePageNode,
   useRootNode,
 } from 'tinydocs';
+import {getSummaryMarkdown} from '../thumbnail.ts';
 import {BuildContext} from './BuildContext.tsx';
 import {Footer} from './Footer.tsx';
 import {Header} from './Header.tsx';
@@ -34,8 +35,11 @@ export const Page: NoPropComponent = () => {
   const title =
     (pageNode.name != 'TinyBase' ? pageNode.name + ' | ' : '') + 'TinyBase';
   const description = isHome
-    ? 'A reactive data store and sync engine.'
-    : (NodeSummary({node: pageNode, asText: true}) as any);
+    ? 'A reactive in-memory data store with persistence and synchronization ' +
+      'for local-first JavaScript and TypeScript apps.'
+    : pageNode.reflection == null
+      ? getSummaryMarkdown(pageNode).replace(/\s+/g, ' ')
+      : (NodeSummary({node: pageNode, asText: true}) as unknown as string);
   const url = `${baseUrl}${pageNode.url}`;
 
   return (
@@ -82,11 +86,41 @@ export const Page: NoPropComponent = () => {
           <link rel="stylesheet" href="/css/index.css" />
           <link rel="canonical" href={url} />
 
+          {isHome ? (
+            <script
+              type="application/ld+json"
+              dangerouslySetInnerHTML={{
+                __html: JSON.stringify({
+                  '@context': 'https://schema.org',
+                  '@type': 'SoftwareSourceCode',
+                  name: 'TinyBase',
+                  description,
+                  url: baseUrl,
+                  codeRepository: 'https://github.com/tinyplex/tinybase',
+                  license: 'https://opensource.org/license/mit',
+                  programmingLanguage: ['JavaScript', 'TypeScript'],
+                  runtimePlatform: 'JavaScript',
+                  keywords: [
+                    'local-first',
+                    'offline-first',
+                    'in-memory database',
+                    'reactive database',
+                    'CRDT',
+                    'synchronization',
+                  ],
+                }),
+              }}
+            />
+          ) : null}
+
           <script
             src={`/js/${isHome ? 'home' : isSingle ? 'single' : 'app'}.js`}
           />
         </head>
-        <body>
+        <body className={isHome ? 'home' : undefined}>
+          <a className="skip" href={isHome ? '#home' : '#content'}>
+            Skip to content
+          </a>
           <Header />
           <Main />
           <Footer />

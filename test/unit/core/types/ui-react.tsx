@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-expressions */
 // NB: an exclamation mark after a line visually indicates an expected TS error
-import React from 'react';
 import {createFilePersister} from 'tinybase/persisters/persister-file/with-schemas';
 import * as UiReact from 'tinybase/ui-react/with-schemas';
 import type {Id, NoValuesSchema} from 'tinybase/with-schemas';
@@ -156,7 +155,7 @@ const Getters = () => {
   useTableIds().includes('t1');
   useTableIds().includes('t2'); // !
 
-  useHasTable('t1'); // !
+  useHasTable('t1');
   useHasTable('t2'); // !
 
   useTable('t1');
@@ -371,7 +370,7 @@ const Setters = () => {
     cell as number;
     cell as string; // !
     return 0;
-  }); // !
+  });
   useSetCellCallback('t1', 'r1', 'c1', () => () => ''); // !
   useSetCellCallback('t1', 'r1', 'c1', () => ''); // !
   useSetCellCallback('t1', 'r1', 'c2', () => 1); // !
@@ -447,7 +446,7 @@ const Setters = () => {
     value as number;
     value as string; // !
     return 0;
-  }); // !
+  });
   useSetValueCallback('v1', () => () => ''); // !
   useSetValueCallback('v1', () => ''); // !
   useSetValueCallback('v2', () => 1); // !
@@ -620,7 +619,7 @@ const Listeners = () => {
     (store, tableId) => {
       store.getTables().t1;
       tableId == 't1';
-      tableId == 't0';
+      tableId == 't0'; // !
       store.getTables().t2; // !
       tableId == 't2'; // !
     },
@@ -678,7 +677,7 @@ const Listeners = () => {
     (store, tableId) => {
       store.getTables().t1;
       tableId == 't1';
-      tableId == 't0';
+      tableId == 't0'; // !
       store.getTables().t2; // !
       tableId == 't2'; // !
     },
@@ -1661,3 +1660,36 @@ const App = () => (
     </Provider>
   </>
 );
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const SortedRowIdsSorterArgs = () => {
+  const stringOnlySorter = (sortKey1: string, sortKey2: string) =>
+    sortKey1.localeCompare(sortKey2);
+  const stringReturningSorter = () => 'sort';
+  const extraArgSorter = (
+    _sortKey1: unknown,
+    _sortKey2: unknown,
+    _extra: string,
+  ) => 0;
+
+  useSortedRowIds(
+    't1',
+    undefined,
+    false,
+    0,
+    undefined,
+    stringOnlySorter, // !
+  );
+  // prettier-ignore
+  useSortedRowIds({ // !
+    tableId: 't1',
+    sorter: stringReturningSorter,
+  });
+  useSortedRowIdsListener(
+    {
+      tableId: 't1',
+      sorter: extraArgSorter, // !
+    },
+    () => null,
+  );
+};

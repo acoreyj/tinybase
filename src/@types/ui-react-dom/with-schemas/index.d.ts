@@ -9,14 +9,16 @@ import type {
   CellPropsForTableIdAndCellId,
   ComponentReturnType,
   ExtraProps,
+  ResultCellProps,
+  RowProps,
+  ValueProps,
+} from '../../_internal/ui-react/with-schemas/index.d.ts';
+import type {
   IndexesOrIndexesId,
   QueriesOrQueriesId,
   RelationshipsOrRelationshipsId,
-  ResultCellProps,
-  RowProps,
   StoreOrStoreId,
-  ValueProps,
-} from '../../_internal/ui-react/with-schemas/index.d.ts';
+} from '../../_internal/ui/with-schemas/index.d.ts';
 import type {Id, Ids} from '../../common/with-schemas/index.d.ts';
 import type {NoSchemas} from '../../store/index.d.ts';
 import type {OptionalSchemas} from '../../store/with-schemas/index.d.ts';
@@ -96,9 +98,12 @@ export type TableInHtmlTableProps<
           | CellIdFromSchema<Schemas[0], TableId>[]
           | {
               [CellId in CellIdFromSchema<Schemas[0], TableId>]?:
-                | string
-                | CustomCell<Schemas, TableId, CellId>;
+                string | CustomCell<Schemas, TableId, CellId>;
             };
+        /// TableInHtmlTableProps.extraCellsBefore
+        readonly extraCellsBefore?: ExtraRowCell<Schemas, TableId>[];
+        /// TableInHtmlTableProps.extraCellsAfter
+        readonly extraCellsAfter?: ExtraRowCell<Schemas, TableId>[];
       }
     : never
   : never;
@@ -131,9 +136,12 @@ export type SortedTableInHtmlTableProps<
           | CellIdFromSchema<Schemas[0], TableId>[]
           | {
               [CellId in CellIdFromSchema<Schemas[0], TableId>]?:
-                | string
-                | CustomCell<Schemas, TableId, CellId>;
+                string | CustomCell<Schemas, TableId, CellId>;
             };
+        /// SortedTableInHtmlTableProps.extraCellsBefore
+        readonly extraCellsBefore?: ExtraRowCell<Schemas, TableId>[];
+        /// SortedTableInHtmlTableProps.extraCellsAfter
+        readonly extraCellsAfter?: ExtraRowCell<Schemas, TableId>[];
         /// SortedTableInHtmlTableProps.sortOnClick
         readonly sortOnClick?: boolean;
         /// SortedTableInHtmlTableProps.paginator
@@ -160,6 +168,10 @@ export type ValuesInHtmlTableProps<Schemas extends OptionalSchemas> = {
   readonly valueComponent?: ComponentType<ValueProps<Schemas>>;
   /// ValuesInHtmlTableProps.getValueComponentProps
   readonly getValueComponentProps?: (valueId: Id) => ExtraProps;
+  /// ValuesInHtmlTableProps.extraCellsBefore
+  readonly extraCellsBefore?: ExtraValueCell<Schemas>[];
+  /// ValuesInHtmlTableProps.extraCellsAfter
+  readonly extraCellsAfter?: ExtraValueCell<Schemas>[];
 };
 
 /// SliceInHtmlTableProps
@@ -174,8 +186,11 @@ export type SliceInHtmlTableProps<Schemas extends OptionalSchemas> = {
   readonly editable?: boolean;
   /// SliceInHtmlTableProps.customCells
   readonly customCells?:
-    | Ids
-    | {[cellId: Id]: string | CustomCell<NoSchemas, Id, Id>};
+    Ids | {[cellId: Id]: string | CustomCell<NoSchemas, Id, Id>};
+  /// SliceInHtmlTableProps.extraCellsBefore
+  readonly extraCellsBefore?: ExtraRowCell<NoSchemas, Id>[];
+  /// SliceInHtmlTableProps.extraCellsAfter
+  readonly extraCellsAfter?: ExtraRowCell<NoSchemas, Id>[];
 };
 
 /// RelationshipInHtmlTableProps
@@ -188,8 +203,11 @@ export type RelationshipInHtmlTableProps<Schemas extends OptionalSchemas> = {
   readonly editable?: boolean;
   /// RelationshipInHtmlTable.customCells
   readonly customCells?:
-    | Ids
-    | {[cellId: Id]: string | CustomCell<NoSchemas, Id, Id>};
+    Ids | {[cellId: Id]: string | CustomCell<NoSchemas, Id, Id>};
+  /// RelationshipInHtmlTable.extraCellsBefore
+  readonly extraCellsBefore?: ExtraRowCell<NoSchemas, Id>[];
+  /// RelationshipInHtmlTable.extraCellsAfter
+  readonly extraCellsAfter?: ExtraRowCell<NoSchemas, Id>[];
 };
 
 /// ResultTableInHtmlTableProps
@@ -200,8 +218,11 @@ export type ResultTableInHtmlTableProps<Schemas extends OptionalSchemas> = {
   readonly queries?: QueriesOrQueriesId<Schemas>;
   /// ResultTableInHtmlTableProps.customCells
   readonly customCells?:
-    | Ids
-    | {[cellId: Id]: string | CustomResultCell<Schemas>};
+    Ids | {[cellId: Id]: string | CustomResultCell<Schemas>};
+  /// ResultTableInHtmlTableProps.extraCellsBefore
+  readonly extraCellsBefore?: ExtraRowCell<NoSchemas, Id>[];
+  /// ResultTableInHtmlTableProps.extraCellsAfter
+  readonly extraCellsAfter?: ExtraRowCell<NoSchemas, Id>[];
 };
 
 /// ResultSortedTableInHtmlTableProps
@@ -221,8 +242,11 @@ export type ResultSortedTableInHtmlTableProps<Schemas extends OptionalSchemas> =
     readonly queries?: QueriesOrQueriesId<Schemas>;
     /// ResultSortedTableInHtmlTableProps.customCells
     readonly customCells?:
-      | Ids
-      | {[cellId: Id]: string | CustomResultCell<Schemas>};
+      Ids | {[cellId: Id]: string | CustomResultCell<Schemas>};
+    /// ResultSortedTableInHtmlTableProps.extraCellsBefore
+    readonly extraCellsBefore?: ExtraRowCell<NoSchemas, Id>[];
+    /// ResultSortedTableInHtmlTableProps.extraCellsAfter
+    readonly extraCellsAfter?: ExtraRowCell<NoSchemas, Id>[];
     /// ResultSortedTableInHtmlTableProps.sortOnClick
     readonly sortOnClick?: boolean;
     /// ResultSortedTableInHtmlTableProps.paginator

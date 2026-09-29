@@ -38,7 +38,7 @@
    * This example creates a Persister object against a newly-created Store and
    * then gets the database instance back out again.
    *
-   * ```js yolo
+   * ```js ignore
    * import {openDatabaseSync} from 'expo-sqlite';
    * import {createStore} from 'tinybase';
    * import {createExpoSqlitePersister} from 'tinybase/persisters/persister-expo-sqlite';
@@ -82,6 +82,10 @@
  *
  * See the documentation for the DpcJson and DpcTabular types for more
  * information on how both of those modes can be configured.
+ *
+ * Note: When using tabular mode, SQL NULL values are loaded as TinyBase null
+ * values, making tables dense (every Row has every Cell). See the Database
+ * Persistence guide for details.
  * @param store The Store or MergeableStore to persist.
  * @param db The database instance that was returned from
  * `SQLite.openDatabase(...)`.
@@ -101,7 +105,7 @@
  * table. It makes a change to the database directly and then reloads it back
  * into the Store.
  *
- * ```js yolo
+ * ```js ignore
  * import {openDatabaseSync} from 'expo-sqlite';
  * import {createStore} from 'tinybase';
  * import {createExpoSqlitePersister} from 'tinybase/persisters/persister-expo-sqlite';
@@ -138,7 +142,7 @@
  * This example creates a ExpoSqlitePersister object and persists the Store
  * to a local SQLite database with tabular mapping.
  *
- * ```js yolo
+ * ```js ignore
  * import {openDatabaseSync} from 'expo-sqlite';
  * import {createStore} from 'tinybase';
  * import {createExpoSqlitePersister} from 'tinybase/persisters/persister-expo-sqlite';

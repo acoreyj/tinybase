@@ -1,3 +1,5 @@
+import {beforeEach, describe, expect, test, vi} from 'vitest';
+
 import type {GetCell, Id, Indexes, SortKey, Store} from 'tinybase';
 import {createIndexes, createStore} from 'tinybase';
 import {expectChanges, expectNoChanges} from '../../common/expect.ts';
@@ -72,6 +74,38 @@ describe('Sets', () => {
     expect(getIndexesObject(indexes)['i1']).toEqualWithOrder({});
   });
 
+  test('object and array key index', () => {
+    store.setTable('t1', {
+      r1: {c1: {group: 'a'}, c2: ['a']},
+      r2: {c1: {group: 'a'}, c2: ['a']},
+      r3: {c1: {group: 'b'}, c2: ['b']},
+    });
+    indexes
+      .setIndexDefinition('i1', 't1', 'c1')
+      .setIndexDefinition('i2', 't1', 'c2');
+    expect(getIndexesObject(indexes)).toEqualWithOrder({
+      i1: {
+        '\uFFFD{"group":"a"}': ['r1', 'r2'],
+        '\uFFFD{"group":"b"}': ['r3'],
+      },
+      i2: {'\uFFFD["a"]': ['r1', 'r2'], '\uFFFD["b"]': ['r3']},
+    });
+
+    store
+      .setCell('t1', 'r1', 'c1', {group: 'b'})
+      .setCell('t1', 'r1', 'c2', ['b']);
+    expect(getIndexesObject(indexes)).toEqualWithOrder({
+      i1: {
+        '\uFFFD{"group":"a"}': ['r2'],
+        '\uFFFD{"group":"b"}': ['r3', 'r1'],
+      },
+      i2: {'\uFFFD["a"]': ['r2'], '\uFFFD["b"]': ['r3', 'r1']},
+    });
+
+    store.delTable('t1');
+    expect(getIndexesObject(indexes)).toEqual({i1: {}, i2: {}});
+  });
+
   test('string key index, sort sliceIds', () => {
     setCells();
     indexes.setIndexDefinition('i1', 't1', 'c2', undefined, ascend);
@@ -103,6 +137,44 @@ describe('Sets', () => {
     });
     delCells();
     expect(getIndexesObject(indexes)['i1']).toEqualWithOrder({});
+  });
+
+  test('string key index, custom sortKey sort with object and array', () => {
+    const objectSorter = vi.fn(
+      (sortKey1: any, sortKey2: any) => sortKey1.rank - sortKey2.rank,
+    );
+    const arraySorter = vi.fn((sortKey1: any, sortKey2: any) =>
+      sortKey1[0].localeCompare(sortKey2[0]),
+    );
+    store
+      .setTablesSchema({
+        t1: {
+          c1: {type: 'object'},
+          c2: {type: 'array'},
+          c3: {type: 'string'},
+          c4: {type: 'string'},
+        },
+      })
+      .setTable('t1', {
+        r1: {c1: {rank: 2}, c2: ['b'], c3: 'all'},
+        r2: {c1: {rank: 1}, c2: ['c'], c3: 'all'},
+        r3: {c1: {rank: 3}, c2: ['a'], c3: 'all'},
+      });
+    indexes.setIndexDefinition('i1', 't1', 'c3', 'c1', undefined, objectSorter);
+    expect(getIndexesObject(indexes)['i1']).toEqualWithOrder({
+      all: ['r2', 'r1', 'r3'],
+    });
+    objectSorter.mockClear();
+    store.setCell('t1', 'r1', 'c4', 'one');
+    expect(objectSorter).not.toHaveBeenCalled();
+
+    indexes.setIndexDefinition('i1', 't1', 'c3', 'c2', undefined, arraySorter);
+    expect(getIndexesObject(indexes)['i1']).toEqualWithOrder({
+      all: ['r3', 'r1', 'r2'],
+    });
+    arraySorter.mockClear();
+    store.setCell('t1', 'r1', 'c4', 'two');
+    expect(arraySorter).not.toHaveBeenCalled();
   });
 
   test('string key index, sorting sliceIds and sortKey sort', () => {
@@ -221,6 +293,18 @@ test('Listens to IndexIds', () => {
   indexes.delListener(listenerId);
 });
 
+test('Listens to HasIndex', () => {
+  const listener = createIndexesListener(indexes);
+  listener.listenToHasIndex('/i1', 'i1');
+  listener.listenToHasIndex('/i*', null);
+  indexes.setIndexDefinition('i1', 't1');
+  indexes.setIndexDefinition('i2', 't2');
+  indexes.delIndexDefinition('i1');
+  expectChanges(listener, '/i1', {i1: true}, {i1: false});
+  expectChanges(listener, '/i*', {i1: true}, {i2: true}, {i1: false});
+  expectNoChanges(listener);
+});
+
 describe('Listens to SliceIds when sets', () => {
   beforeEach(() => {
     listener = createIndexesListener(indexes);
@@ -231,7 +315,7 @@ describe('Listens to SliceIds when sets', () => {
   test('and callback with ids', () => {
     expect.assertions(3);
     indexes.setIndexDefinition('i1', 't1');
-    const listener = jest.fn((indexes2, indexId) => {
+    const listener = vi.fn((indexes2, indexId) => {
       expect(indexes2).toEqual(indexes);
       expect(indexId).toEqual('i1');
     });
@@ -580,6 +664,36 @@ describe('Listens to SliceIds when sets', () => {
   });
 });
 
+test('Listens to HasSlice', () => {
+  const listener = createIndexesListener(indexes);
+  indexes.setIndexDefinition('i1', 't1', 'c1');
+  listener.listenToHasSlice('/i1/1', 'i1', '1');
+  listener.listenToHasSlice('/i1/*', 'i1', null);
+  listener.listenToHasSlice('/i*/*', null, null);
+  store.setCell('t1', 'r1', 'c1', 1);
+  store.setCell('t1', 'r2', 'c1', 2);
+  store.delRow('t1', 'r1');
+  indexes.delIndexDefinition('i1');
+  expectChanges(listener, '/i1/1', {i1: {'1': true}}, {i1: {'1': false}});
+  expectChanges(
+    listener,
+    '/i1/*',
+    {i1: {'1': true}},
+    {i1: {'2': true}},
+    {i1: {'1': false}},
+    {i1: {'2': false}},
+  );
+  expectChanges(
+    listener,
+    '/i*/*',
+    {i1: {'1': true}},
+    {i1: {'2': true}},
+    {i1: {'1': false}},
+    {i1: {'2': false}},
+  );
+  expectNoChanges(listener);
+});
+
 describe('Listens to SliceRowIds when sets', () => {
   beforeEach(() => {
     listener = createIndexesListener(indexes);
@@ -588,7 +702,7 @@ describe('Listens to SliceRowIds when sets', () => {
   test('and callback with ids', () => {
     expect.assertions(4);
     indexes.setIndexDefinition('i1', 't1');
-    const listener = jest.fn((indexes2, indexId, sliceId) => {
+    const listener = vi.fn((indexes2, indexId, sliceId) => {
       expect(indexes2).toEqual(indexes);
       expect(indexId).toEqual('i1');
       expect(sliceId).toEqual('');
@@ -1759,7 +1873,7 @@ describe('Listens to SliceRowIds when sets', () => {
 
 describe('Miscellaneous', () => {
   test('Listener cannot mutate original store', () => {
-    const listener = jest.fn(() => {
+    const listener = vi.fn(() => {
       store.setValue('mutated', true);
     });
     indexes.setIndexDefinition('i1', 't1', 'c1');
@@ -1950,6 +2064,11 @@ describe('Miscellaneous', () => {
     expect(indexes.getStore().getListenerStats().row).toEqual(0);
     setCells();
     expect(getIndexesObject(indexes)['i1']).toBeUndefined();
+  });
+
+  test('removes missing index definition', () => {
+    expect(indexes.delIndexDefinition('i1')).toBe(indexes);
+    expect(indexes.getIndexIds()).toEqual([]);
   });
 
   test('destroys', () => {

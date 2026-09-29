@@ -3,6 +3,7 @@ import type {Store} from 'tinybase';
 import {createStore} from 'tinybase';
 import type {Persister} from 'tinybase/persisters';
 import {createAutomergePersister} from 'tinybase/persisters/persister-automerge';
+import {beforeEach, describe, expect, test, vi} from 'vitest';
 import {
   AutomergeTestNetworkAdapter,
   resetNetwork,
@@ -26,19 +27,19 @@ test('custom name', async () => {
   const docHandler = repo1.create();
   const persister = createAutomergePersister(store1, docHandler, 'test');
   await persister.save();
-  expect(await docHandler.doc()).toEqual({test: {t: {}, v: {}}});
+  expect(docHandler.doc()).toEqual({test: {t: {}, v: {}}});
 });
 
 describe('Save to empty doc', () => {
   test('nothing', async () => {
     await persister1.save();
-    expect(await docHandler1.doc()).toEqual({tinybase: {t: {}, v: {}}});
+    expect(docHandler1.doc()).toEqual({tinybase: {t: {}, v: {}}});
   });
 
   test('tables', async () => {
     store1.setTables({t1: {r1: {c1: 1}}});
     await persister1.save();
-    expect(await docHandler1.doc()).toEqual({
+    expect(docHandler1.doc()).toEqual({
       tinybase: {t: {t1: {r1: {c1: 1}}}, v: {}},
     });
   });
@@ -46,13 +47,13 @@ describe('Save to empty doc', () => {
   test('values', async () => {
     store1.setValues({v1: 1});
     await persister1.save();
-    expect(await docHandler1.doc()).toEqual({tinybase: {t: {}, v: {v1: 1}}});
+    expect(docHandler1.doc()).toEqual({tinybase: {t: {}, v: {v1: 1}}});
   });
 
   test('both', async () => {
     store1.setTables({t1: {r1: {c1: 1}}}).setValues({v1: 1});
     await persister1.save();
-    expect(await docHandler1.doc()).toEqual({
+    expect(docHandler1.doc()).toEqual({
       tinybase: {t: {t1: {r1: {c1: 1}}}, v: {v1: 1}},
     });
   });
@@ -103,6 +104,33 @@ describe('Load from doc', () => {
     expect(store1.getContent()).toEqual([{t1: {r1: {c1: 1}}}, {v1: 1}]);
   });
 
+  test('content with metadata', async () => {
+    docHandler1.change(
+      (doc: any) =>
+        (doc['tinybase'] = {
+          t: {t1: {r1: {c1: 1}}},
+          v: {v1: 1},
+          metadata: 'safe',
+        }),
+    );
+    await persister1.load();
+    expect(store1.getContent()).toEqual([{t1: {r1: {c1: 1}}}, {v1: 1}]);
+  });
+
+  test('malformed two-key content', async () => {
+    const ignoredError = vi.fn();
+    docHandler1.change((doc: any) => (doc['tinybase'] = {t: 1, v: {v1: 1}}));
+    const persister = createAutomergePersister(
+      store1,
+      docHandler1,
+      'tinybase',
+      ignoredError,
+    );
+    await persister.load();
+    expect(store1.getContent()).toEqual([{}, {}]);
+    expect(ignoredError).not.toHaveBeenCalled();
+  });
+
   test('persister after data', async () => {
     docHandler1.change(
       (doc: any) => (doc['tinybase'] = {t: {t1: {r1: {c1: 1}}}, v: {v1: 1}}),
@@ -111,6 +139,75 @@ describe('Load from doc', () => {
     const persister2 = createAutomergePersister(store2, docHandler1);
     await persister2.load();
     expect(store2.getContent()).toEqual([{t1: {r1: {c1: 1}}}, {v1: 1}]);
+  });
+});
+
+describe('Observe doc', () => {
+  test('contains ignored-error handler failures', async () => {
+    const ignoredError = vi.fn(() => {
+      throw new Error('ignored-error handler failed');
+    });
+    const persister = createAutomergePersister(
+      store1,
+      docHandler1,
+      'tinybase',
+      ignoredError,
+    );
+    store1.setCell('t1', 'r1', 'c1', 1);
+    await persister.save();
+    await persister.startAutoLoad();
+
+    docHandler1.change((doc: any) => (doc['tinybase'] = {t: {t1: 1}, v: {}}));
+    await pause();
+
+    expect(ignoredError).toHaveBeenCalledOnce();
+    expect(store1.getCell('t1', 'r1', 'c1')).toBe(1);
+    await persister.destroy();
+  });
+
+  test('reports malformed roots without changing the Store', async () => {
+    const ignoredErrors: Error[] = [];
+    const persister = createAutomergePersister(
+      store1,
+      docHandler1,
+      'tinybase',
+      (error) => ignoredErrors.push(error),
+    );
+    store1.setCell('t1', 'r1', 'c1', 1).setValue('v1', 1);
+    await persister.save();
+    await persister.startAutoLoad();
+
+    expect(() =>
+      docHandler1.change((doc: any) => (doc['tinybase'] = {t: 1, v: {v1: 2}})),
+    ).not.toThrow();
+    expect(() =>
+      docHandler1.change(
+        (doc: any) => (doc['tinybase'] = {t: {t1: {r1: {c1: 2}}}, v: 1}),
+      ),
+    ).not.toThrow();
+    expect(() =>
+      docHandler1.change((doc: any) => (doc['tinybase'] = {t: {t1: 1}, v: {}})),
+    ).not.toThrow();
+    expect(() =>
+      docHandler1.change(
+        (doc: any) => (doc['tinybase'] = {t: {t1: {r1: 1}}, v: {}}),
+      ),
+    ).not.toThrow();
+    await pause();
+
+    expect(ignoredErrors.map(({message}) => message)).toEqual([
+      'tinybase:1',
+      'tinybase:1',
+      'tinybase:1',
+      'tinybase:1',
+    ]);
+    expect(store1.getContent()).toEqual([{t1: {r1: {c1: 1}}}, {v1: 1}]);
+
+    docHandler1.change(
+      (doc: any) => (doc['tinybase'] = {t: {t1: {r1: {c1: 2}}}, v: {v1: 2}}),
+    );
+    await pause();
+    expect(store1.getContent()).toEqual([{t1: {r1: {c1: 2}}}, {v1: 2}]);
   });
 });
 
@@ -129,12 +226,44 @@ describe('Two stores, one doc', () => {
     expect(store2.getContent()).toEqual([{t1: {r1: {c1: 1}}}, {v1: 1}]);
   });
 
+  test('reserved identifiers', async () => {
+    await persister2.startAutoLoad();
+    store1
+      .setCell('__proto__', 'constructor', 'prototype', 'safe')
+      .setValue('__proto__', 'safe')
+      .setValue('\u0000__proto__', 'escaped');
+    await persister1.save();
+
+    const [tables, values] = store2.getContent();
+    expect(Object.hasOwn(tables, '__proto__')).toEqual(true);
+    expect(tables['__proto__']['constructor']['prototype']).toEqual('safe');
+    expect(Object.hasOwn(values, '__proto__')).toEqual(true);
+    expect(values['__proto__']).toEqual('safe');
+    expect(values['\u0000__proto__']).toEqual('escaped');
+  });
+
   test('autoSave1', async () => {
     await persister1.startAutoSave();
     store1.setTables({t1: {r1: {c1: 1}}}).setValues({v1: 1});
     await pause();
     await persister2.load();
     expect(store2.getContent()).toEqual([{t1: {r1: {c1: 1}}}, {v1: 1}]);
+  });
+
+  test('falls back when incremental containers are missing', async () => {
+    store1.setCell('t1', 'r1', 'c1', 1);
+    await persister1.save();
+    await persister1.startAutoSave();
+
+    docHandler1.change((doc: any) => delete doc.tinybase.t.t1.r1);
+    store1.setCell('t1', 'r1', 'c1', 2);
+    await pause();
+    expect(docHandler1.doc().tinybase.t.t1.r1).toEqual({c1: 2});
+
+    docHandler1.change((doc: any) => delete doc.tinybase.t.t1);
+    store1.setCell('t1', 'r1', 'c1', 3);
+    await pause();
+    expect(docHandler1.doc().tinybase.t.t1.r1).toEqual({c1: 3});
   });
 
   test('autoLoad2', async () => {
@@ -197,14 +326,14 @@ describe('Two stores, two docs', () => {
 
   const syncDocs = async () => {
     await pause();
-    await docHandler1.doc();
-    await docHandler2.doc();
+    docHandler1.doc();
+    docHandler2.doc();
     await pause();
   };
 
   beforeEach(async () => {
     const repo2 = new Repo({network: [new AutomergeTestNetworkAdapter()]});
-    docHandler2 = repo2.find(docHandler1.documentId);
+    docHandler2 = await repo2.find(docHandler1.documentId);
     await syncDocs();
     store2 = createStore();
     persister2 = createAutomergePersister(store2, docHandler2);

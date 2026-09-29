@@ -1,5 +1,4 @@
-import {MMKV} from 'react-native-mmkv';
-import type {Listener} from 'react-native-mmkv/lib/typescript/src/Types.d.ts';
+import type {MMKV} from 'react-native-mmkv';
 import type {MergeableStore} from '../../@types/mergeable-store/index.d.ts';
 import type {
   PersistedContent,
@@ -8,9 +7,18 @@ import type {
   Persists as PersistsType,
 } from '../../@types/persisters/index.d.ts';
 import type {Store} from '../../@types/store/index.d.ts';
+import {tryCatch, tryReturn} from '../../common/error.ts';
+import {
+  jsonParseWithUndefined,
+  jsonStringWithUndefined,
+} from '../../common/json.ts';
+import {isUndefined} from '../../common/other.ts';
+import {STORAGE} from '../../common/strings.ts';
 import {createCustomPersister} from '../common/create.ts';
 
-const STORAGE = 'storage';
+interface Listener {
+  remove: () => void;
+}
 
 export const createReactNativeMmkvPersister = (
   store: Store | MergeableStore,
@@ -22,9 +30,9 @@ export const createReactNativeMmkvPersister = (
     PersistedContent<PersistsType.StoreOrMergeableStore>
   > => {
     const data = storage.getString(storageName);
-    const value = data === undefined ? undefined : JSON.parse(data);
+    const value = isUndefined(data) ? undefined : jsonParseWithUndefined(data);
 
-    return Promise.resolve(value);
+    return value;
   };
 
   const setPersisted = async (
@@ -32,8 +40,8 @@ export const createReactNativeMmkvPersister = (
   ): Promise<void> => {
     const content = getContent();
 
-    if (content !== undefined) {
-      storage.set(storageName, JSON.stringify(content));
+    if (!isUndefined(content)) {
+      storage.set(storageName, jsonStringWithUndefined(content));
     }
   };
 
@@ -42,11 +50,15 @@ export const createReactNativeMmkvPersister = (
   ): Listener =>
     storage.addOnValueChangedListener((key) => {
       if (key === storageName) {
-        const value = storage.getString(storageName);
-
-        if (value) {
-          listener(JSON.parse(value));
-        }
+        void tryCatch(
+          async () => {
+            const value = storage.getString(storageName);
+            if (!isUndefined(value)) {
+              await listener(jsonParseWithUndefined(value));
+            }
+          },
+          (error) => tryReturn(() => onIgnoredError?.(error)),
+        );
       }
     });
 

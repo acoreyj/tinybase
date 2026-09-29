@@ -29,15 +29,15 @@
  * The DpcFragmented type represents the configuration for fragmented
  * persistence mode in a DurableObjectSqlStoragePersister.
  *
- * This mode stores each table, row, cell, and value as separate database rows,
- * avoiding Cloudflare's 2MB row limit that can be hit with large stores in JSON
- * mode. While this creates more database writes, it provides better scalability
- * for larger datasets.
+ * This mode stores each table's metadata, row data, and values as separate
+ * database rows, avoiding Cloudflare's 2MB row limit that can be hit with
+ * large stores in JSON mode. While this creates more database writes than JSON
+ * mode, it provides better scalability for larger datasets.
  * @example
  * This example shows how to configure a DurableObjectSqlStoragePersister to use
  * fragmented mode with a custom storage prefix.
  *
- * ```js yolo
+ * ```js ignore
  * import {createMergeableStore} from 'tinybase';
  * import {createDurableObjectSqlStoragePersister} from 'tinybase/persisters/persister-durable-object-sql-storage';
  * import {WsServerDurableObject} from 'tinybase/synchronizers/synchronizer-ws-server-durable-object';
@@ -78,8 +78,15 @@
    * This is useful when you have multiple stores or applications sharing the
    * same Durable Object SQL storage and want to avoid table name conflicts.
    *
-   * The prefix will be sanitized to only include alphanumeric characters and
-   * underscores. For example, a prefix of 'my-app!' becomes 'my_app_'.
+   * Empty prefixes and those containing only lower-case ASCII letters, digits,
+   * and underscores are used as-is. Other prefixes are encoded so that distinct
+   * prefixes cannot resolve to the same tables, including under SQLite's
+   * case-insensitive identifier rules.
+   *
+   * Tables created for prefixes that are now encoded, including uppercase
+   * prefixes and those previously changed by lossy sanitization, are not copied
+   * automatically because their names may legitimately belong to another
+   * prefix. Migrate those tables explicitly before using the new prefix.
    * @example
    * This example shows a configuration using the storagePrefix setting. With a
    * `storagePrefix` of 'user_data_', it creates `user_data_tinybase_tables` and
@@ -188,7 +195,7 @@
    * (within the createPersister method of a WsServerDurableObject instance) and
    * then gets the SQL storage reference back out again.
    *
-   * ```js yolo
+   * ```js ignore
    * import {createMergeableStore} from 'tinybase';
    * import {createDurableObjectSqlStoragePersister} from 'tinybase/persisters/persister-durable-object-sql-storage';
    * import {WsServerDurableObject} from 'tinybase/synchronizers/synchronizer-ws-server-durable-object';
@@ -300,10 +307,11 @@
  *   database row. This is efficient for smaller stores but may hit Cloudflare's
  *   2MB row limit for very large stores and uses fewer database writes.
  *
- * - **Fragmented Mode**: Stores each table, row, cell, and value as separate
- *   database rows. Use this mode if you're concerned about hitting Cloudflare's
- *   2MB row limit with large stores in JSON mode. This mode creates more
- *   database writes but avoids row size limitations.
+ * - **Fragmented Mode**: Stores each table's metadata, row data, and values as
+ *   separate database rows. Use this mode if you're concerned about hitting
+ *   Cloudflare's 2MB row limit with large stores in JSON mode. This mode
+ *   creates more database writes than JSON mode but avoids row size
+ *   limitations.
  *
  * The third argument is a DatabasePersisterConfig object that configures which
  * of those modes to use, and settings for each. If the third argument is simply
@@ -312,6 +320,10 @@
  *
  * See the documentation for the DpcJson, DpcFragmented, and DpcTabular types
  * for more information on how all of those modes can be configured.
+ *
+ * Note: When using tabular mode, SQL NULL values are loaded as TinyBase null
+ * values, making tables dense (every Row has every Cell). See the Database
+ * Persistence guide for details.
  *
  * As well as providing a reference to the Store or MergeableStore to persist,
  * you must provide a `sqlStorage` parameter which identifies the Durable Object
@@ -334,7 +346,7 @@
  * default `tinybase` table. It uses this within the createPersister method of a
  * WsServerDurableObject instance.
  *
- * ```js yolo
+ * ```js ignore
  * import {createMergeableStore} from 'tinybase';
  * import {createDurableObjectSqlStoragePersister} from 'tinybase/persisters/persister-durable-object-sql-storage';
  * import {WsServerDurableObject} from 'tinybase/synchronizers/synchronizer-ws-server-durable-object';
@@ -354,7 +366,7 @@
  * This example creates a DurableObjectSqlStoragePersister object with a custom
  * table name and SQL command logging for debugging.
  *
- * ```js yolo
+ * ```js ignore
  * import {createMergeableStore} from 'tinybase';
  * import {createDurableObjectSqlStoragePersister} from 'tinybase/persisters/persister-durable-object-sql-storage';
  * import {WsServerDurableObject} from 'tinybase/synchronizers/synchronizer-ws-server-durable-object';
@@ -377,7 +389,7 @@
  * This example creates a DurableObjectSqlStoragePersister object using
  * fragmented mode to avoid Cloudflare's 2MB row limit for large stores.
  *
- * ```js yolo
+ * ```js ignore
  * import {createMergeableStore} from 'tinybase';
  * import {createDurableObjectSqlStoragePersister} from 'tinybase/persisters/persister-durable-object-sql-storage';
  * import {WsServerDurableObject} from 'tinybase/synchronizers/synchronizer-ws-server-durable-object';
@@ -398,7 +410,7 @@
  * This example creates a DurableObjectSqlStoragePersister object using
  * fragmented mode with a custom storage prefix.
  *
- * ```js yolo
+ * ```js ignore
  * import {createMergeableStore} from 'tinybase';
  * import {createDurableObjectSqlStoragePersister} from 'tinybase/persisters/persister-durable-object-sql-storage';
  * import {WsServerDurableObject} from 'tinybase/synchronizers/synchronizer-ws-server-durable-object';

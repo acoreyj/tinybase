@@ -15,8 +15,8 @@ hierarchical structure:
 Once you have created a Store, you can write data to it with one of its setter
 methods, according to the level of the hierarchy that you want to set.
 
-For example, you can set the data for the keyed value structure of Store with the setValues
-method:
+For example, you can set the data for the keyed value structure of Store with
+the setValues method:
 
 ```js
 import {createStore} from 'tinybase';
@@ -25,8 +25,8 @@ const store = createStore();
 store.setValues({employees: 3, open: true});
 ```
 
-Similarly, you can set the data for the tabular structure of Store with the setTables
-method:
+Similarly, you can set the data for the tabular structure of Store with the
+setTables method:
 
 ```js
 store.setTables({pets: {fido: {species: 'dog'}}});
@@ -66,7 +66,27 @@ console.log(store.getTables());
 // -> {pets: {fido: {species: 'dog', color: 'brown'}}, species: {dog: {price: 5}, cat: {price: 4}}}
 ```
 
-The data in a Value or a Cell can be a string, a number, or a boolean type.
+The data in a Value or a Cell can be a string, a number, a boolean, or `null`.
+You can also store richer data as plain JavaScript objects or arrays, which
+TinyBase encodes internally as JSON strings.
+
+For reliable round trips, the contents of those objects and arrays should
+recursively use the same JSON-compatible types: strings, finite numbers,
+booleans, `null`, plain objects, and arrays. TinyBase validates the top-level
+object or array, but relies on `JSON.stringify` for its contents. This means
+that nested `undefined` values and functions are omitted from objects (or become
+`null` in arrays), non-finite numbers become `null`, and Dates become strings.
+BigInts and cyclic structures cannot be serialized, so the Cell or Value is
+invalid and the write is ignored silently.
+
+Because of this encoding, string Cells and Values must not start with the Unicode
+replacement character `U+FFFD`, which TinyBase reserves as an internal prefix
+for objects and arrays, or be the exact string `U+FFFC`, the Unicode object
+replacement character, which represents `undefined` in serialized data. These
+strings are invalid and writes that use them are ignored silently. `U+FFFD` is
+supported elsewhere in a string, longer strings containing `U+FFFC` are also
+supported, and both characters can be used within strings nested inside objects
+and arrays.
 
 It's worth mentioning here that there are two extra methods to manipulate Row
 objects. The addRow method is like the setRow method but automatically assigns

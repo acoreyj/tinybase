@@ -1,10 +1,12 @@
+import {beforeAll, beforeEach, describe, expect, test} from 'vitest';
+
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import type {
   MergeableChanges,
   MergeableContent,
   MergeableStore,
 } from 'tinybase';
-import {createMergeableStore} from 'tinybase';
+import {createMergeableStore, createMiddleware} from 'tinybase';
 import {
   getTimeFunctions,
   nullStamped,
@@ -34,6 +36,23 @@ beforeEach(() => {
 test('isMergeable', () => {
   const store = createMergeableStore();
   expect(store.isMergeable()).toEqual(true);
+});
+
+test('merges object and array cells', () => {
+  const store1 = createMergeableStore('s1', getNow);
+  store1.setCell('t1', 'r1', 'c1', {k1: 'v'});
+  pause(1);
+  const store2 = createMergeableStore('s2', getNow);
+  store2.setCell('t1', 'r1', 'c2', [1, 2, 3]);
+  store1.merge(store2);
+  expect(store1.getContent()).toEqual([
+    {t1: {r1: {c1: {k1: 'v'}, c2: [1, 2, 3]}}},
+    {},
+  ]);
+  expect(store2.getContent()).toEqual([
+    {t1: {r1: {c1: {k1: 'v'}, c2: [1, 2, 3]}}},
+    {},
+  ]);
 });
 
 test('Protocol basics', () => {
@@ -219,6 +238,40 @@ describe('getMergeableContent', () => {
   test('Empty transaction', () => {
     store.startTransaction().finishTransaction();
     expect(store.getMergeableContent()).toMatchSnapshot();
+  });
+
+  test('Rollback restores mergeable stamps', () => {
+    store.setContent([{t1: {r1: {c1: 1}}}, {v1: 1}]);
+    const content = store.getMergeableContent();
+    const error = new Error('transaction error');
+
+    expect(() =>
+      store.transaction(() => {
+        store.delCell('t1', 'r1', 'c1').setValue('v1', 2);
+        throw error;
+      }),
+    ).toThrow(error);
+    expect(store.getMergeableContent()).toEqual(content);
+
+    store.transaction(
+      () => store.setCell('t1', 'r1', 'c1', 2).delValue('v1'),
+      () => true,
+    );
+    expect(store.getMergeableContent()).toEqual(content);
+  });
+
+  test('Rollback finalizes mergeable changes before did listeners', () => {
+    let changesDuringDid: any;
+    store.addDidFinishTransactionListener(
+      () => (changesDuringDid = store.getTransactionMergeableChanges()),
+    );
+
+    store.transaction(
+      () => store.setCell('t1', 'r1', 'c1', 1),
+      () => true,
+    );
+
+    expect(changesDuringDid).toEqual(store.getTransactionMergeableChanges());
   });
 
   test('Immutability', () => {
@@ -571,6 +624,11 @@ describe('getTransactionMergeableChanges', () => {
     store.setValue('v1', 1);
     expect(store.getTransactionMergeableChanges()).toMatchSnapshot();
   });
+
+  test('With hashes', () => {
+    store.setCell('t1', 'r1', 'c1', 1).setValue('v1', 1);
+    expect(store.getTransactionMergeableChanges(true)).toMatchSnapshot();
+  });
 });
 
 describe('applyMergeableChanges/setMergeableContent', () => {
@@ -591,6 +649,53 @@ describe('applyMergeableChanges/setMergeableContent', () => {
     expect(store.getMergeableContent()).toMatchSnapshot();
   });
 
+  test('restores raw change listening after apply error', () => {
+    const error = new Error('listener error');
+    const listenerId = store.addValueListener('v1', () => {
+      throw error;
+    });
+    expect(() =>
+      store.applyMergeableChanges([
+        stamped(0, 0, {}),
+        stamped(0, 0, {v1: stamped(0, 0, 1)}),
+      ] as MergeableContent),
+    ).toThrow(error);
+    store.delListener(listenerId).setValue('v2', 2);
+    expect(store.getMergeableContent()[1][0].v2[0]).toEqual(2);
+  });
+
+  test('rolls back mergeable stamps after apply error', () => {
+    store.setValue('v0', 0);
+    const content = store.getMergeableContent();
+    const error = new Error('listener error');
+    const listenerId = store.addValueListener(
+      'v1',
+      () => {
+        throw error;
+      },
+      true,
+    );
+    expect(() =>
+      store.applyMergeableChanges([
+        stamped(0, 0, {}),
+        stamped(0, 0, {v1: stamped(0, 0, 1)}),
+      ] as MergeableContent),
+    ).toThrow(error);
+    expect(store.getMergeableContent()).toEqual(content);
+    store.delListener(listenerId).setValue('v2', 2);
+    expect(store.getMergeableContent()[1][0].v2[0]).toEqual(2);
+  });
+
+  test('apply with missing cell hlc', () => {
+    store.applyMergeableChanges([
+      // @ts-ignore
+      stamped(0, 0, {t1: stamped(0, 0, {r1: stamped(0, 0, {c1: [1]})})}),
+      // @ts-ignore
+      stamped(0, 0, {v1: [1]}),
+    ] as MergeableContent);
+    expect(store.getContent()).toEqual([{t1: {r1: {c1: 1}}}, {v1: 1}]);
+  });
+
   test('apply over existing content', () => {
     store.setContent([{t1: {r1: {c0: 0}}}, {v0: 0}]);
     store.applyMergeableChanges([
@@ -604,6 +709,96 @@ describe('applyMergeableChanges/setMergeableContent', () => {
       {v0: 0, v1: 1},
     ]);
     expect(store.getMergeableContent()).toMatchSnapshot();
+  });
+
+  test('reject invalid and overly future hlcs', () => {
+    store.setCell('t1', 'r1', 'c1', 1);
+    const content = store.getMergeableContent();
+
+    store.applyMergeableChanges([
+      [{t1: [{r1: [{c1: [2, '~~~~~~~~~~~~~~~~']}]}]}],
+      [{}],
+      1,
+    ] as MergeableChanges);
+    store.applyMergeableChanges([
+      [{t1: [{r1: [{c1: [3, time(300001, 0, 's2')]}]}]}],
+      [{}],
+      1,
+    ] as MergeableChanges);
+
+    expect(store.getCell('t1', 'r1', 'c1')).toEqual(1);
+    expect(store.getMergeableContent()).toEqual(content);
+  });
+
+  test('reject reserved strings before changing mergeable state', () => {
+    store.setCell('t1', 'r1', 'c1', 1).setValue('v1', 1);
+    const content = store.getMergeableContent();
+
+    ['\uFFFD{}', '\uFFFC'].forEach((reserved, index) =>
+      store.applyMergeableChanges([
+        [
+          {
+            t1: [
+              {
+                r1: [{c1: [reserved, time(index + 1, 0, 's2')]}],
+              },
+            ],
+          },
+        ],
+        [{v1: [reserved, time(index + 1, 0, 's2')]}],
+        1,
+      ] as MergeableChanges),
+    );
+
+    expect(store.getContent()).toEqual([{t1: {r1: {c1: 1}}}, {v1: 1}]);
+    expect(store.getMergeableContent()).toEqual(content);
+  });
+
+  test('carries a remote maximum counter into a local write', () => {
+    const remoteChanges: MergeableChanges = [
+      [
+        {
+          t1: [{r1: [{c1: [1, time(0, 2 ** 24 - 1, 's2')]}]}],
+        },
+      ],
+      [{}],
+      1,
+    ];
+    store.applyMergeableChanges(remoteChanges);
+    store.setCell('t1', 'r1', 'c1', 2);
+    store.applyMergeableChanges(remoteChanges);
+
+    const cellStamp = store.getMergeableContent()[0][0].t1[0].r1[0].c1;
+    expect(store.getCell('t1', 'r1', 'c1')).toEqual(2);
+    expect(cellStamp[0]).toEqual(2);
+    expect(cellStamp[1]).toEqual(time(1, 0));
+  });
+
+  test('does not diverge when the hlc range is exhausted', () => {
+    const maxHlc = 'zzzzzzzzzzzzzzzz';
+    const maxTime = 2 ** 42 - 1;
+    const cellStore = createMergeableStore('s1', () => maxTime);
+    const valueStore = createMergeableStore('s1', () => maxTime);
+
+    cellStore.applyMergeableChanges([
+      [{t1: [{r1: [{c1: [1, maxHlc]}]}]}],
+      [{}],
+      1,
+    ] as MergeableChanges);
+    valueStore.applyMergeableChanges([
+      [{}],
+      [{v1: [1, maxHlc]}],
+      1,
+    ] as MergeableChanges);
+
+    expect(() => cellStore.setCell('t1', 'r1', 'c1', 2)).toThrowError(
+      'tinybase:13',
+    );
+    expect(() => valueStore.setValue('v1', 2)).toThrowError('tinybase:13');
+    expect(cellStore.getCell('t1', 'r1', 'c1')).toEqual(1);
+    expect(valueStore.getValue('v1')).toEqual(1);
+    expect(cellStore.getMergeableContent()[0][0].t1[0].r1[0].c1[0]).toEqual(1);
+    expect(valueStore.getMergeableContent()[1][0].v1[0]).toEqual(1);
   });
 
   test('set into empty store', () => {
@@ -633,6 +828,46 @@ describe('applyMergeableChanges/setMergeableContent', () => {
     expect(store.getMergeableContent()).toMatchSnapshot();
   });
 
+  test('restores defaulting state after error', () => {
+    const error = new Error('middleware error');
+    createMiddleware(store).addWillSetContentCallback(() => {
+      throw error;
+    });
+    expect(() => store.setDefaultContent([{}, {v0: 0}])).toThrow(error);
+    store.setValue('v1', 1);
+    expect(store.getMergeableContent()[1][0].v1[1]).not.toEqual('');
+  });
+
+  test('set tables schema default', () => {
+    store.setTablesSchema({t0: {c0: {type: 'number', default: 0}}});
+    expect(store.getContent()).toEqual([{}, {}]);
+    store.setRow('t0', 'r0', {});
+    expect(store.getContent()).toEqual([{t0: {r0: {c0: 0}}}, {}]);
+    expect(store.getMergeableContent()[0][0].t0[0].r0[0].c0[1]).toEqual('');
+    store.setCell('t0', 'r0', 'c0', 1);
+    const writtenHlc = store.getMergeableContent()[0][0].t0[0].r0[0].c0[1];
+    expect(writtenHlc).not.toEqual('');
+    store.setRow('t0', 'r0', {});
+    expect(store.getContent()).toEqual([{t0: {r0: {c0: 0}}}, {}]);
+    expect(store.getMergeableContent()[0][0].t0[0].r0[0].c0[1]).not.toEqual('');
+    expect(store.getMergeableContent()[0][0].t0[0].r0[0].c0[1]).not.toEqual(
+      writtenHlc,
+    );
+  });
+
+  test('set values schema default', () => {
+    store.setValuesSchema({v0: {type: 'number', default: 0}});
+    expect(store.getContent()).toEqual([{}, {v0: 0}]);
+    expect(store.getMergeableContent()[1][0].v0[1]).toEqual('');
+    store.setValue('v0', 1);
+    const writtenHlc = store.getMergeableContent()[1][0].v0[1];
+    expect(writtenHlc).not.toEqual('');
+    store.setValues({});
+    expect(store.getContent()).toEqual([{}, {v0: 0}]);
+    expect(store.getMergeableContent()[1][0].v0[1]).not.toEqual('');
+    expect(store.getMergeableContent()[1][0].v0[1]).not.toEqual(writtenHlc);
+  });
+
   test('set over existing content', () => {
     store.setContent([{t1: {r1: {c0: 0}}}, {v0: 0}]);
     store.setMergeableContent([
@@ -640,7 +875,7 @@ describe('applyMergeableChanges/setMergeableContent', () => {
         {
           t1: [
             {
-              r1: [{c1: [1, 'Hc2DO@000018DKS9', 3207404266]}, '', 1254797189],
+              r1: [{c1: [1, 'Nn1JUF----07JQY8', 3207404266]}, '', 1254797189],
             },
             '',
             423436526,
@@ -649,7 +884,7 @@ describe('applyMergeableChanges/setMergeableContent', () => {
         '',
         639574078,
       ],
-      [{v1: [1, 'Hc2DO@000018DKS9', 3207404266]}, '', 2404136035],
+      [{v1: [1, 'Nn1JUF----07JQY8', 3207404266]}, '', 2404136035],
     ] as MergeableContent);
     expect(store.getContent()).toEqual([{t1: {r1: {c1: 1}}}, {v1: 1}]);
     expect(store.getMergeableContent()).toMatchSnapshot();
@@ -662,15 +897,55 @@ describe('applyMergeableChanges/setMergeableContent', () => {
     store.setMergeableContent([
       [
         {
-          t1: [{r1: [{c1: [1, 'Hc2DO@000018DKS9', 1]}, '0', 2]}, '', 3],
+          t1: [{r1: [{c1: [1, 'Nn1JUF----07JQY8', 1]}, '', 2]}, '', 3],
         },
         '',
         4,
       ],
-      [{v1: [1, 'Hc2DO@000018DKS9', 5]}, '', 6],
+      [{v1: [1, 'Nn1JUF----07JQY8', 5]}, '', 6],
     ] as MergeableContent);
     expect(store.getContent()).toEqual([{t1: {r1: {c1: 1}}}, {v1: 1}]);
     expect(store.getMergeableContent()).toMatchSnapshot();
+  });
+
+  test('rejects changes atomically without modifying them', () => {
+    store.setContent([{t0: {r0: {c0: 0}}}, {v0: 0}]);
+    const content = store.getMergeableContent();
+    const changes = [
+      stamped(1, 0, {
+        t1: stamped(1, 0, {
+          r1: stamped(1, 0, {
+            c1: stamped(1, 0, 1),
+            c2: stamped(1, 0, '\uFFFC'),
+          }),
+        }),
+      }),
+      stamped(1, 0, {v1: stamped(1, 0, 1)}),
+      1,
+    ] as MergeableChanges;
+    const originalChanges = structuredClone(changes);
+
+    store.applyMergeableChanges(changes);
+
+    expect(changes).toEqual(originalChanges);
+    expect(store.getMergeableContent()).toEqual(content);
+  });
+
+  test('rejects content atomically without modifying it', () => {
+    store.setContent([{t0: {r0: {c0: 0}}}, {v0: 0}]);
+    const content = store.getMergeableContent();
+    const incomingStore = createMergeableStore('s2', getNow).setContent([
+      {t1: {r1: {c1: 1, c2: 2}}},
+      {v1: 1},
+    ]);
+    const invalidContent = incomingStore.getMergeableContent();
+    invalidContent[0][0].t1[0].r1[0].c2[0] = '\uFFFC';
+    const originalInvalidContent = structuredClone(invalidContent);
+
+    store.setMergeableContent(invalidContent);
+
+    expect(invalidContent).toEqual(originalInvalidContent);
+    expect(store.getMergeableContent()).toEqual(content);
   });
 
   test.each([
@@ -700,6 +975,8 @@ describe('applyMergeableChanges/setMergeableContent', () => {
     store.setContent([{t1: {r1: {c1: 1}}}, {v1: 1}]);
     // @ts-ignore
     store.setMergeableContent(invalid);
+    // @ts-ignore
+    expect(store.applyMergeableChanges(invalid)).toBe(store);
     expect(store.getContent()).toEqual([{t1: {r1: {c1: 1}}}, {v1: 1}]);
   });
 });

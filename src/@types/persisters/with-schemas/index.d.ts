@@ -1,5 +1,8 @@
 /// persisters
-import type {TableIdFromSchema} from '../../_internal/store/with-schemas/index.d.ts';
+import type {
+  TableIdFromSchema,
+  ValueIdFromSchema,
+} from '../../_internal/store/with-schemas/index.d.ts';
 import type {
   MergeableChanges,
   MergeableContent,
@@ -10,6 +13,7 @@ import type {
   Content,
   OptionalSchemas,
   OptionalTablesSchema,
+  OptionalValuesSchema,
   Store,
 } from '../../store/with-schemas/index.d.ts';
 import type {Id} from '../../with-schemas/index.d.ts';
@@ -48,36 +52,39 @@ export type PersistedStore<
 export type PersistedContent<
   Schemas extends OptionalSchemas,
   Persist extends Persists = Persists.StoreOnly,
+  WhenSet extends boolean = false,
 > = Persist extends Persists.StoreOrMergeableStore
-  ? Content<Schemas> | MergeableContent<Schemas>
+  ? Content<Schemas, WhenSet> | MergeableContent<Schemas, WhenSet>
   : Persist extends Persists.MergeableStoreOnly
-    ? MergeableContent<Schemas>
-    : Content<Schemas>;
+    ? MergeableContent<Schemas, WhenSet>
+    : Content<Schemas, WhenSet>;
 
 /// PersistedChanges
 export type PersistedChanges<
   Schemas extends OptionalSchemas,
   Persist extends Persists = Persists.StoreOnly,
+  WhenSet extends boolean = false,
 > = Persist extends Persists.StoreOrMergeableStore
-  ? Changes<Schemas> | MergeableChanges<Schemas>
+  ? Changes<Schemas> | MergeableChanges<Schemas, false, WhenSet>
   : Persist extends Persists.MergeableStoreOnly
-    ? MergeableChanges<Schemas>
+    ? MergeableChanges<Schemas, false, WhenSet>
     : Changes<Schemas>;
 
 /// PersisterListener
 export type PersisterListener<
   Schemas extends OptionalSchemas,
   Persist extends Persists = Persists.StoreOnly,
+  WhenSet extends boolean = false,
 > = (
-  content?: PersistedContent<Schemas, Persist>,
-  changes?: PersistedChanges<Schemas, Persist>,
+  content?: PersistedContent<Schemas, Persist, WhenSet>,
+  changes?: PersistedChanges<Schemas, Persist, WhenSet>,
 ) => void;
 
 /// StatusListener
 export type StatusListener<
   Schemas extends OptionalSchemas,
-  Persist extends Persists = Persists.StoreOnly,
-> = (persister: Persister<Schemas, Persist>, status: Status) => void;
+  Persister extends AnyPersister<Schemas> = AnyPersister<Schemas>,
+> = (persister: Persister, status: Status) => void;
 
 /// PersisterStats
 export type PersisterStats = {
@@ -89,8 +96,7 @@ export type PersisterStats = {
 
 /// DatabasePersisterConfig
 export type DatabasePersisterConfig<Schemas extends OptionalSchemas> =
-  | DpcJson
-  | DpcTabular<Schemas[0]>;
+  DpcJson | DpcTabular<Schemas[0], Schemas[1]>;
 
 /// DpcJson
 export type DpcJson = {
@@ -109,18 +115,21 @@ export type DpcJson = {
 };
 
 /// DpcTabular
-export type DpcTabular<Schema extends OptionalTablesSchema> = {
+export type DpcTabular<
+  TablesSchema extends OptionalTablesSchema,
+  ValuesSchema extends OptionalValuesSchema = OptionalValuesSchema,
+> = {
   /// DpcTabular.mode
   mode: 'tabular';
   /// DpcTabular.tables
   tables?: {
     /// DpcTabular.tables.load
-    load?: DpcTabularLoad<Schema>;
+    load?: DpcTabularLoad<TablesSchema>;
     /// DpcTabular.tables.save
-    save?: DpcTabularSave<Schema>;
+    save?: DpcTabularSave<TablesSchema>;
   };
   /// DpcTabular.values
-  values?: DpcTabularValues;
+  values?: DpcTabularValues<ValuesSchema>;
   /// DatabasePersisterConfig.autoLoadIntervalSeconds
   autoLoadIntervalSeconds?: number;
 };
@@ -161,14 +170,21 @@ export type DpcTabularSave<Schema extends OptionalTablesSchema> = {
 };
 
 /// DpcTabularValues
-export type DpcTabularValues = {
+export type DpcTabularValues<
+  Schema extends OptionalValuesSchema = OptionalValuesSchema,
+> = {
   /// DpcTabularValues.load
-  load?: boolean;
+  load?: boolean | DpcTabularValuesIn<Schema>;
   /// DpcTabularValues.save
-  save?: boolean;
+  save?: boolean | DpcTabularValuesIn<Schema>;
   /// DpcTabularValues.tableName
   tableName?: string;
 };
+
+/// DpcTabularValuesIn
+export type DpcTabularValuesIn<
+  Schema extends OptionalValuesSchema = OptionalValuesSchema,
+> = ValueIdFromSchema<Schema>[];
 
 /// Persister
 export interface Persister<
@@ -216,7 +232,7 @@ export interface Persister<
   getStatus(): Status;
 
   /// Persister.addStatusListener
-  addStatusListener(listener: StatusListener<Schemas, Persist>): Id;
+  addStatusListener(listener: StatusListener<Schemas, this>): Id;
 
   /// Persister.delListener
   delListener(listenerId: Id): this;
@@ -256,13 +272,15 @@ export function createCustomPersister<
   Persist extends Persists = Persists.StoreOnly,
 >(
   store: PersistedStore<Schemas, Persist>,
-  getPersisted: () => Promise<PersistedContent<Schemas, Persist> | undefined>,
+  getPersisted: () => Promise<
+    PersistedContent<Schemas, Persist, true> | undefined
+  >,
   setPersisted: (
     getContent: () => PersistedContent<Schemas, Persist>,
     changes?: PersistedChanges<Schemas, Persist>,
   ) => Promise<void>,
   addPersisterListener: (
-    listener: PersisterListener<Schemas, Persist>,
+    listener: PersisterListener<Schemas, Persist, true>,
   ) => ListenerHandle | Promise<ListenerHandle>,
   delPersisterListener: (
     listenerHandle: ListenerHandle,
@@ -281,7 +299,23 @@ export function createCustomSqlitePersister<
   configOrStoreTableName: DatabasePersisterConfig<Schemas> | string | undefined,
   executeCommand: DatabaseExecuteCommand,
   addChangeListener: (listener: DatabaseChangeListener) => ListenerHandle,
-  delChangeListener: (listenerHandle: ListenerHandle) => void,
+  delChangeListener: (listenerHandle: ListenerHandle) => void | Promise<void>,
+  onSqlCommand: ((sql: string, params?: any[]) => void) | undefined,
+  onIgnoredError: ((error: any) => void) | undefined,
+  destroy: () => void,
+  persist: Persist,
+  thing: any,
+  getThing?: string,
+): Persister<Schemas, Persist>;
+
+/// createCustomMsSqlPersister
+export function createCustomMsSqlPersister<
+  Schemas extends OptionalSchemas,
+  Persist extends Persists = Persists.StoreOnly,
+>(
+  store: PersistedStore<Schemas, Persist>,
+  configOrStoreTableName: DatabasePersisterConfig<Schemas> | string | undefined,
+  executeCommand: DatabaseExecuteCommand,
   onSqlCommand: ((sql: string, params?: any[]) => void) | undefined,
   onIgnoredError: ((error: any) => void) | undefined,
   destroy: () => void,

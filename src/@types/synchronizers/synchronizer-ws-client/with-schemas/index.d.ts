@@ -1,5 +1,6 @@
 /// synchronizer-ws-client
 import type {WebSocket as WsWebSocket} from 'ws';
+import type {Id} from '../../../common/index.d.ts';
 import type {MergeableStore} from '../../../mergeable-store/with-schemas/index.d.ts';
 import type {OptionalSchemas} from '../../../store/with-schemas/index.d.ts';
 import type {Receive, Send, Synchronizer} from '../../with-schemas/index.d.ts';
@@ -16,7 +17,7 @@ export interface WsSynchronizer<
   getWebSocket(): WebSocketType;
 }
 
-/// createWsSynchronizer
+/// createWsSynchronizer.1
 export function createWsSynchronizer<
   Schemas extends OptionalSchemas,
   WebSocketType extends WebSocketTypes,
@@ -27,4 +28,20 @@ export function createWsSynchronizer<
   onSend?: Send,
   onReceive?: Receive,
   onIgnoredError?: (error: any) => void,
+  fragmentSize?: number,
+): Promise<WsSynchronizer<Schemas, WebSocketType>>;
+
+/// createWsSynchronizer.2
+export function createWsSynchronizer<
+  Schemas extends OptionalSchemas,
+  WebSocketType extends WebSocketTypes,
+>(
+  store: MergeableStore<Schemas>,
+  webSocket: WebSocketType,
+  channelId: Id,
+  requestTimeoutSeconds?: number,
+  onSend?: Send,
+  onReceive?: Receive,
+  onIgnoredError?: (error: any) => void,
+  fragmentSize?: number,
 ): Promise<WsSynchronizer<Schemas, WebSocketType>>;

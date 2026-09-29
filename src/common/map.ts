@@ -1,16 +1,30 @@
 import type {Id} from '../@types/common/index.d.ts';
-import {arrayMap} from './array.ts';
-import {collDel, collForEach, collHas, collIsEmpty} from './coll.ts';
-import {IdObj, objHas, objIsEmpty, objMap} from './obj.ts';
-import {ifNotUndefined, isUndefined, size} from './other.ts';
+import {arrayPush} from './array.ts';
+import {
+  collDel,
+  collEvery,
+  collForEach,
+  collHas,
+  collIsEmpty,
+  collSize,
+} from './coll.ts';
+import {IdObj, objForEach, objHas, objIsEmpty, objNew, objSet} from './obj.ts';
+import {ifNotUndefined, isInstanceOf, isUndefined, size} from './other.ts';
 
 export type IdMap<Value> = Map<Id, Value>;
 export type IdMap2<Value> = IdMap<IdMap<Value>>;
 export type IdMap3<Value> = IdMap<IdMap2<Value>>;
 
-export const mapNew = /* @__PURE__ */ <Key, Value>(
-  entries?: [Key, Value][],
-): Map<Key, Value> => new Map(entries);
+const map = Map;
+
+const isMap = (value: unknown): value is Map<unknown, unknown> =>
+  isInstanceOf(value, map);
+
+export const mapNew = <Key, Value>(entries?: [Key, Value][]): Map<Key, Value> =>
+  new map(entries);
+
+export const weakMapNew = <Key extends WeakKey, Value>(): WeakMap<Key, Value> =>
+  new WeakMap();
 
 export const mapKeys = <Key>(map: Map<Key, unknown> | undefined): Key[] => [
   ...(map?.keys() ?? []),
@@ -29,8 +43,11 @@ export const mapForEach = <Key, Value>(
 export const mapMap = <Key, Value, Return>(
   coll: Map<Key, Value> | undefined,
   cb: (value: Value, key: Key) => Return,
-): Return[] =>
-  arrayMap([...(coll?.entries() ?? [])], ([key, value]) => cb(value, key));
+): Return[] => {
+  const mapped: Return[] = [];
+  mapForEach(coll, (key, value) => arrayPush(mapped, cb(value, key)));
+  return mapped;
+};
 
 export const mapSet = <Key, Value>(
   map: Map<Key, Value> | undefined,
@@ -39,18 +56,31 @@ export const mapSet = <Key, Value>(
 ): Map<Key, Value> | undefined =>
   isUndefined(value) ? (collDel(map, key), map) : map?.set(key, value);
 
+export const mapEquals = <Key, Value>(
+  map1: Map<Key, Value>,
+  map2: Map<Key, Value>,
+): boolean =>
+  collSize(map1) === collSize(map2) &&
+  collEvery(map1, (value1, key) => {
+    const value2 = mapGet(map2, key);
+    return isMap(value1) && isMap(value2)
+      ? mapEquals(value1, value2)
+      : value1 === value2;
+  });
+
 export const mapEnsure = <Key, Value>(
   map: Map<Key, Value>,
   key: Key,
   getDefaultValue: () => Value,
   hadExistingValue?: (value: Value) => void,
 ): Value => {
-  if (!collHas(map, key)) {
-    mapSet(map, key, getDefaultValue());
+  let value = mapGet(map, key) as Value;
+  if (collHas(map, key)) {
+    hadExistingValue?.(value);
   } else {
-    hadExistingValue?.(mapGet(map, key) as Value);
+    mapSet(map, key, (value = getDefaultValue()));
   }
-  return mapGet(map, key) as Value;
+  return value;
 };
 
 export const mapMatch = <MapValue, ObjValue>(
@@ -59,7 +89,7 @@ export const mapMatch = <MapValue, ObjValue>(
   set: (map: IdMap<MapValue>, id: Id, value: ObjValue) => void,
   del: (map: IdMap<MapValue>, id: Id) => void = mapSet,
 ): IdMap<MapValue> => {
-  objMap(obj, (value, id) => set(map, id, value));
+  objForEach(obj, (value, id) => set(map, id, value));
   mapForEach(map, (id) => (objHas(obj, id) ? 0 : del(map, id)));
   return map;
 };
@@ -70,14 +100,14 @@ export const mapToObj = <MapValue, ObjValue = MapValue>(
   excludeMapValue?: (mapValue: MapValue, id: Id) => boolean,
   excludeObjValue?: (objValue: ObjValue) => boolean,
 ): IdObj<ObjValue> => {
-  const obj: IdObj<ObjValue> = {};
+  const obj = objNew<ObjValue>();
   collForEach(map, (mapValue, id) => {
     if (!excludeMapValue?.(mapValue, id)) {
       const objValue = valueMapper
         ? valueMapper(mapValue, id)
         : (mapValue as any as ObjValue);
       if (!excludeObjValue?.(objValue)) {
-        obj[id] = objValue;
+        objSet(obj, id, objValue);
       }
     }
   });

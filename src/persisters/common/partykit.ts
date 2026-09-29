@@ -1,5 +1,9 @@
-import {jsonParse, jsonStringWithMap} from '../../common/json.ts';
-import {isString, size, slice} from '../../common/other.ts';
+import {tryReturn} from '../../common/error.ts';
+import {
+  jsonParseWithUndefined,
+  jsonStringWithUndefined,
+} from '../../common/json.ts';
+import {isString, size, slice, string} from '../../common/other.ts';
 import {T, V, strStartsWith} from '../../common/strings.ts';
 
 type MessageType = typeof SET_CHANGES;
@@ -15,7 +19,9 @@ export const construct = (
   type: MessageType | StorageKeyType,
   payload: any,
 ): string =>
-  prefix + type + (isString(payload) ? payload : jsonStringWithMap(payload));
+  prefix +
+  type +
+  (isString(payload) ? payload : jsonStringWithUndefined(payload));
 
 export const deconstruct = (
   prefix: string,
@@ -23,10 +29,20 @@ export const deconstruct = (
   stringified?: 1,
 ): [type: MessageType | StorageKeyType, payload: string | any] | undefined => {
   const prefixSize = size(prefix);
-  return strStartsWith(message, prefix)
-    ? [
-        message[prefixSize] as MessageType | StorageKeyType,
-        (stringified ? jsonParse : String)(slice(message, prefixSize + 1)),
-      ]
+  return isString(message) &&
+    size(message) > prefixSize &&
+    strStartsWith(message, prefix)
+    ? stringified
+      ? tryReturn(
+          () =>
+            [
+              message[prefixSize] as MessageType | StorageKeyType,
+              jsonParseWithUndefined(slice(message, prefixSize + 1)),
+            ] as [MessageType | StorageKeyType, any],
+        )
+      : [
+          message[prefixSize] as MessageType | StorageKeyType,
+          string(slice(message, prefixSize + 1)),
+        ]
     : undefined;
 };

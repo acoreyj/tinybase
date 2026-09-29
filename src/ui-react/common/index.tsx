@@ -1,6 +1,6 @@
 import type {ReactElement} from 'react';
-import type {CheckpointIds} from '../../@types/checkpoints/index.js';
-import type {Id, Ids} from '../../@types/common/index.js';
+import type {CheckpointIds} from '../../@types/checkpoints/index.d.ts';
+import type {Id, Ids} from '../../@types/common/index.d.ts';
 import type {
   BackwardCheckpointsProps,
   CurrentCheckpointProps,
@@ -11,7 +11,7 @@ import type {
   RemoteRowProps,
   ResultTableProps,
   TableProps,
-} from '../../@types/ui-react/index.js';
+} from '../../@types/ui-react/index.d.ts';
 import {arrayMap} from '../../common/array.ts';
 import {getProps, getRelationshipsStoreTableIds} from '../../common/react.ts';
 import {CheckpointView} from '../CheckpointView.tsx';
@@ -23,7 +23,7 @@ import {
 } from '../hooks.ts';
 import {ResultRowView} from '../ResultRowView.tsx';
 import {RowView} from '../RowView.tsx';
-import {wrap} from './wrap.tsx';
+import {Wrap} from './Wrap.tsx';
 
 export type ThingsById<ThingsByOffset> = {
   [Offset in keyof ThingsByOffset]: {[id: Id]: ThingsByOffset[Offset]};
@@ -41,9 +41,9 @@ export const tableView = (
     debugIds,
   }: TableProps,
   rowIds: Ids,
-): any =>
-  wrap(
-    arrayMap(rowIds, (rowId) => (
+): any => (
+  <Wrap separator={separator} debugIds={debugIds} id={tableId}>
+    {arrayMap(rowIds, (rowId) => (
       <Row
         key={rowId}
         {...getProps(getRowComponentProps, rowId)}
@@ -53,11 +53,9 @@ export const tableView = (
         store={store}
         debugIds={debugIds}
       />
-    )),
-    separator,
-    debugIds,
-    tableId,
-  );
+    ))}
+  </Wrap>
+);
 
 export const resultTableView = (
   {
@@ -69,9 +67,9 @@ export const resultTableView = (
     debugIds,
   }: ResultTableProps,
   rowIds: Ids,
-): any =>
-  wrap(
-    arrayMap(rowIds, (rowId) => (
+): any => (
+  <Wrap separator={separator} debugIds={debugIds} id={queryId}>
+    {arrayMap(rowIds, (rowId) => (
       <ResultRow
         key={rowId}
         {...getProps(getResultRowComponentProps, rowId)}
@@ -80,11 +78,9 @@ export const resultTableView = (
         queries={queries}
         debugIds={debugIds}
       />
-    )),
-    separator,
-    debugIds,
-    queryId,
-  );
+    ))}
+  </Wrap>
+);
 
 export const useComponentPerRow = (
   {
@@ -110,20 +106,19 @@ export const useComponentPerRow = (
       relationshipId,
     );
   const rowIds = getRowIdsHook(relationshipId, rowId, resolvedRelationships);
-  return wrap(
-    arrayMap(rowIds, (rowId) => (
-      <Row
-        key={rowId}
-        {...getProps(getRowComponentProps, rowId)}
-        tableId={localTableId as Id}
-        rowId={rowId}
-        store={store}
-        debugIds={debugIds}
-      />
-    )),
-    separator,
-    debugIds,
-    rowId,
+  return (
+    <Wrap separator={separator} debugIds={debugIds} id={rowId}>
+      {arrayMap(rowIds, (rowId) => (
+        <Row
+          key={rowId}
+          {...getProps(getRowComponentProps, rowId)}
+          tableId={localTableId as Id}
+          rowId={rowId}
+          store={store}
+          debugIds={debugIds}
+        />
+      ))}
+    </Wrap>
   );
 };
 
@@ -136,26 +131,25 @@ export const getUseCheckpointView =
     separator,
     debugIds,
   }: (
-    | BackwardCheckpointsProps
-    | CurrentCheckpointProps
-    | ForwardCheckpointsProps
+    BackwardCheckpointsProps | CurrentCheckpointProps | ForwardCheckpointsProps
   ) & {
-    separator?: ReactElement | string;
+    readonly separator?: ReactElement | string;
   }): any => {
     const resolvedCheckpoints = useCheckpointsOrCheckpointsById(checkpoints);
-    return wrap(
-      arrayMap(
-        getCheckpoints(useCheckpointIds(resolvedCheckpoints)),
-        (checkpointId: Id) => (
-          <Checkpoint
-            key={checkpointId}
-            {...getProps(getCheckpointComponentProps, checkpointId as Id)}
-            checkpoints={resolvedCheckpoints}
-            checkpointId={checkpointId}
-            debugIds={debugIds}
-          />
-        ),
-      ),
-      separator,
+    return (
+      <Wrap separator={separator}>
+        {arrayMap(
+          getCheckpoints(useCheckpointIds(resolvedCheckpoints)),
+          (checkpointId: Id) => (
+            <Checkpoint
+              key={checkpointId}
+              {...getProps(getCheckpointComponentProps, checkpointId as Id)}
+              checkpoints={resolvedCheckpoints}
+              checkpointId={checkpointId}
+              debugIds={debugIds}
+            />
+          ),
+        )}
+      </Wrap>
     );
   };

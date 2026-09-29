@@ -1,4 +1,4 @@
-import {size} from './other.ts';
+import {infinity, isArray, mathMax, mathMin, size} from './other.ts';
 import {EMPTY_STRING} from './strings.ts';
 
 export const arrayNew = <Value>(
@@ -6,17 +6,30 @@ export const arrayNew = <Value>(
   cb: (index: number) => Value,
 ): Value[] => arrayMap(new Array(size).fill(0), (_, index) => cb(index));
 
-export const arrayHas = <Value>(array: Value[], value: Value): boolean =>
-  array.includes(value);
+export const arrayHas = <Value>(
+  array: readonly Value[],
+  value: unknown,
+): value is Value => array.includes(value as Value);
+
+export const arrayIndexOf = <Value>(array: Value[], value: Value): number =>
+  array.indexOf(value);
 
 export const arrayEvery = <Value>(
-  array: Value[],
+  array: readonly Value[],
   cb: (value: Value, index: number) => boolean | 0 | 1,
 ): boolean => array.every(cb);
 
-export const arrayIsEqual = (array1: unknown[], array2: unknown[]): boolean =>
+export const arrayIsEqual = (
+  array1: readonly unknown[],
+  array2: readonly unknown[],
+): boolean =>
   size(array1) === size(array2) &&
   arrayEvery(array1, (value1, index) => array2[index] === value1);
+
+export const arrayOrValueEqual = (value1: any, value2: any): boolean =>
+  isArray(value1) && isArray(value2)
+    ? arrayIsEqual(value1, value2)
+    : value1 === value2;
 
 export const arrayIsSorted = <Value>(
   array: Value[],
@@ -41,14 +54,26 @@ export const arrayJoin = (array: (string | number)[], sep = EMPTY_STRING) =>
   array.join(sep);
 
 export const arrayMap = <Value, Return>(
-  array: Value[],
-  cb: (value: Value, index: number, array: Value[]) => Return,
+  array: readonly Value[],
+  cb: (value: Value, index: number, array: readonly Value[]) => Return,
 ): Return[] => array.map(cb);
 
 export const arraySum = (array: number[]): number =>
   arrayReduce<number, number>(array, (i, j) => i + j, 0);
 
-export const arrayIsEmpty = (array: unknown[]): boolean => size(array) == 0;
+export const arrayMax = (array: number[]): number =>
+  arrayReduce<number, number>(
+    array,
+    (maximum, value) => mathMax(maximum, value),
+    -infinity,
+  );
+
+export const arrayMin = (array: number[]): number =>
+  arrayReduce<number, number>(
+    array,
+    (minimum, value) => mathMin(minimum, value),
+    infinity,
+  );
 
 export const arrayReduce = <Value, Result>(
   array: Value[],
@@ -56,12 +81,31 @@ export const arrayReduce = <Value, Result>(
   initial: Result,
 ): Result => array.reduce(cb, initial);
 
-export const arrayFilter = <Value>(
+export const arrayFilter: {
+  <Value, FilteredValue extends Value>(
+    array: Value[],
+    cb: (value: Value, index: number, array: Value[]) => value is FilteredValue,
+  ): FilteredValue[];
+  <Value>(
+    array: Value[],
+    cb: (value: Value, index: number, array: Value[]) => boolean,
+  ): Value[];
+} = <Value>(
   array: Value[],
-  cb: (value: Value) => boolean,
+  cb: (value: Value, index: number, array: Value[]) => boolean,
 ): Value[] => array.filter(cb);
 
-export const arrayClear = <Value>(array: Value[], to?: number): Value[] =>
+export const arrayFind = <Value>(
+  array: Value[],
+  cb: (value: Value, index: number) => boolean,
+): Value | undefined => array.find(cb);
+
+export const arrayFindIndex = <Value>(
+  array: Value[],
+  cb: (value: Value, index: number) => boolean,
+): number => array.findIndex(cb);
+
+export const arrayClear = <Value>(array: Value[], to = size(array)): Value[] =>
   array.splice(0, to);
 
 export const arrayPush = <Value>(array: Value[], ...values: Value[]): number =>
