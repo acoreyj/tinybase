@@ -1,5 +1,6 @@
 import {DurableObject} from 'cloudflare:workers';
 import type {Id, Ids} from '../../@types/common/index.d.ts';
+import type {MergeableStore} from '../../@types/mergeable-store/index.d.ts';
 import type {Persister, Persists} from '../../@types/persisters/index.d.ts';
 import type {IdAddedOrRemoved} from '../../@types/store/index.d.ts';
 import type {Receive} from '../../@types/synchronizers/index.d.ts';
@@ -26,6 +27,11 @@ import {
 } from '../common.ts';
 import {createCustomSynchronizer} from '../index.ts';
 
+export type AuthContext = {
+  userId?: string;
+  [key: string]: unknown;
+};
+
 const PATH_REGEX = /\/([^?]*)/;
 const SERVER_CLIENT_ID = 'S';
 
@@ -41,7 +47,16 @@ const createResponse = (
   status: number,
   webSocket: WebSocket | null = null,
   body: string | null = null,
-): Response => new Response(body, {status, webSocket});
+): Response => {
+  const response = new Response(body, {status, webSocket} as any);
+  if (webSocket) {
+    Object.defineProperty(response, 'webSocket', {
+      value: webSocket,
+      configurable: true,
+    });
+  }
+  return response;
+};
 
 const createUpgradeRequiredResponse = (): Response =>
   createResponse(426, null, 'Upgrade required');
@@ -53,6 +68,8 @@ export class WsServerDurableObject<Env = unknown>
   // @ts-expect-error See blockConcurrencyWhile
   serverClientSend: (payload: string) => void;
   #payloadDecoders = weakMapNew<WebSocket, PayloadDecoder>();
+  store?: MergeableStore;
+  persister?: Persister<Persists.MergeableStoreOnly>;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -61,9 +78,12 @@ export class WsServerDurableObject<Env = unknown>
         await ifNotUndefined(
           await this.createPersister(),
           async (persister) => {
+            this.persister = persister;
+            const store = persister.getStore();
+            this.store = store;
             const requestTimeoutSeconds = this.getRequestTimeoutSeconds();
             const synchronizer = createCustomSynchronizer(
-              persister.getStore(),
+              store,
               (toClientId, requestId, message, body) =>
                 arrayForEach(
                   createPayloads(
@@ -73,7 +93,7 @@ export class WsServerDurableObject<Env = unknown>
                     body,
                     this.getFragmentSize(),
                   ),
-                  (payload) => this.#handleMessage(SERVER_CLIENT_ID, payload),
+                  (payload) => this.handleMessage(SERVER_CLIENT_ID, payload),
                 ),
               (receive: Receive) =>
                 (this.serverClientSend = createPayloadReceiver(
@@ -92,23 +112,37 @@ export class WsServerDurableObject<Env = unknown>
     );
   }
 
-  fetch(request: Request): Response {
+  async fetch(request: Request): Promise<Response> {
+    const clientId = getClientId(request);
+    if (clientId == null) {
+      return createUpgradeRequiredResponse();
+    }
     const pathId = getPathId(request);
-    return ifNotUndefined(
-      getClientId(request),
-      (clientId) => {
-        const [webSocket, client] = objValues(new WebSocketPair());
-        if (isEmpty(this.#getClients())) {
-          this.onPathId(pathId, 1);
-        }
-        this.ctx.acceptWebSocket(client, [clientId, pathId]);
-        this.onClientId(pathId, clientId, 1);
-        this.onFetch(request, pathId, clientId);
-        client.send(createPayload(SERVER_CLIENT_ID, null, 1, EMPTY_STRING));
-        return createResponse(101, webSocket);
-      },
-      createUpgradeRequiredResponse,
-    ) as Response;
+    const auth = await this.onAuthenticate(request, pathId);
+    if (auth instanceof Response) {
+      return auth;
+    }
+    if (auth === false || auth === null) {
+      return createResponse(401, null, 'Unauthorized');
+    }
+    const userId =
+      typeof auth === 'object' && auth && 'userId' in auth && auth.userId
+        ? String(auth.userId)
+        : undefined;
+
+    const [webSocket, client] = objValues(new WebSocketPair());
+    if (isEmpty(this.getClients())) {
+      this.onPathId(pathId, 1);
+    }
+    const tags = [clientId, pathId];
+    if (userId) {
+      tags.push(userId);
+    }
+    this.ctx.acceptWebSocket(client, tags);
+    this.onClientId(pathId, clientId, 1);
+    this.onFetch(request, pathId, clientId);
+    client.send(createPayload(SERVER_CLIENT_ID, null, 1, EMPTY_STRING));
+    return createResponse(101, webSocket);
   }
 
   webSocketMessage(client: WebSocket, message: ArrayBuffer | string) {
@@ -118,7 +152,7 @@ export class WsServerDurableObject<Env = unknown>
         decode = createPayloadDecoder(
           (toClientId, remainders) =>
             arrayForEach(remainders, (remainder) =>
-              this.#handleMessage(
+              this.handleMessage(
                 clientId,
                 createRawPayload(toClientId, remainder),
                 client,
@@ -140,93 +174,61 @@ export class WsServerDurableObject<Env = unknown>
     this.#payloadDecoders.delete(client);
     const [clientId, pathId] = this.ctx.getTags(client);
     this.onClientId(pathId, clientId, -1);
-    if (size(this.#getClients()) == 1) {
+    if (size(this.getClients()) == 1) {
       this.onPathId(pathId, -1);
     }
   }
-  // #handleMessage(fromClientId: Id, message: string, fromClient?: WebSocket) {
-  //   ifPayloadValid(message.toString(), (toClientId, remainder) => {
-  //     console.log('handleMessage original', {
-  //       fromClientId,
-  //       message,
-  //       fromClient,
-  //       toClientId,
-  //     });
-  //     const forwardedPayload = createRawPayload(fromClientId, remainder);
-  //     this.onMessage(fromClientId, toClientId, remainder);
-  //     if (toClientId == EMPTY_STRING) {
-  //       if (fromClientId != SERVER_CLIENT_ID) {
-  //         this.serverClientSend?.(forwardedPayload);
-  //       }
-  //       arrayForEach(this.#getClients(), (otherClient) => {
-  //         if (otherClient != fromClient) {
-  //           otherClient.send(forwardedPayload);
-  //         }
-  //       });
-  //     } else if (toClientId == SERVER_CLIENT_ID) {
-  //       this.serverClientSend?.(forwardedPayload);
-  //     } else if (toClientId != fromClientId) {
-  //       this.#getClients(toClientId)[0]?.send(forwardedPayload);
-  //     }
-  //   });
-  // }
 
-  #handleMessage(fromClientId: Id, message: string, fromClient?: WebSocket) {
+  handleMessage(fromClientId: Id, message: string, fromClient?: WebSocket) {
     ifPayloadValid(message.toString(), (toClientId, remainder) => {
-      // console.log('handleMessage original', {
-      //   fromClientId,
-      //   message,
-      //   fromClient,
-      //   toClientId,
-      // });
-      if (toClientId == EMPTY_STRING) {
-        let result: boolean | string = true;
-        if (fromClientId != SERVER_CLIENT_ID) {
-          result = this.#sendMessageToServer(
-            SERVER_CLIENT_ID,
-            fromClientId,
-            remainder,
-          );
-        }
-        if (result !== false) {
-          this.#sendMessageToClients(
-            this.#getClients(),
-            fromClientId,
-            fromClient,
-            remainder,
-          );
-        }
-      } else if (toClientId == SERVER_CLIENT_ID) {
-        this.#sendMessageToServer(toClientId, fromClientId, remainder);
-      } else if (toClientId != fromClientId) {
-        this.#sendMessageToClients(
-          [this.#getClients(toClientId)[0]],
+      this.sendMessage(fromClientId, toClientId, remainder, fromClient);
+    });
+  }
+
+  sendMessage(
+    fromClientId: Id,
+    toClientId: Id,
+    remainder: string,
+    fromClient?: WebSocket,
+  ) {
+    if (toClientId == EMPTY_STRING) {
+      let result: boolean | string = true;
+      if (fromClientId != SERVER_CLIENT_ID) {
+        result = this.sendMessageToServer(
+          SERVER_CLIENT_ID,
+          fromClientId,
+          remainder,
+        );
+      }
+      if (result !== false) {
+        this.sendMessageToClients(
+          this.getClients(),
           fromClientId,
           fromClient,
           remainder,
         );
       }
-    });
+    } else if (toClientId == SERVER_CLIENT_ID) {
+      this.sendMessageToServer(toClientId, fromClientId, remainder);
+    } else if (toClientId != fromClientId) {
+      this.sendMessageToClients(
+        this.getClients(toClientId),
+        fromClientId,
+        fromClient,
+        remainder,
+      );
+    }
   }
-  #sendMessageToServer(toClientId: Id, fromClientId: Id, remainder: string) {
+
+  sendMessageToServer(toClientId: Id, fromClientId: Id, remainder: string) {
     const result = this.onMessageMutator(
       fromClientId,
       toClientId,
       remainder,
       true,
     );
-    // console.log('sendMessageToServer result', {
-    //   fromClientId,
-    //   toClientId,
-    //   result,
-    // });
     if (result !== false) {
       if (typeof result === 'string') {
-        // console.log('sendMessageToServer result is a string', {
-        //   result: JSON.stringify(result),
-        //   remainder: JSON.stringify(remainder),
-        //   same: JSON.stringify(result) === JSON.stringify(remainder),
-        // });
         remainder = result;
       }
       const forwardedPayload = createRawPayload(fromClientId, remainder);
@@ -236,13 +238,13 @@ export class WsServerDurableObject<Env = unknown>
     return result;
   }
 
-  #sendMessageToClients(
+  sendMessageToClients(
     clients: WebSocket[],
     fromClientId: Id,
     fromClient: WebSocket | null | undefined,
     remainder: string,
   ) {
-    clients.map((otherClient) => {
+    arrayForEach(clients, (otherClient) => {
       if (otherClient != fromClient) {
         const toClientId = this.ctx.getTags(otherClient)[0];
 
@@ -252,31 +254,29 @@ export class WsServerDurableObject<Env = unknown>
           remainder,
           false,
         );
-        // console.log('sendMessageToClients result', {
-        //   fromClientId,
-        //   toClientId,
-        //   result,
-        // });
         if (result !== false) {
           if (typeof result === 'string') {
-            // console.log('sendMessageToClients result is a string', {
-            //   result: JSON.stringify(result),
-            //   remainder: JSON.stringify(remainder),
-            //   same: JSON.stringify(result) === JSON.stringify(remainder),
-            // });
             remainder = result;
           }
           const forwardedPayload = createRawPayload(fromClientId, remainder);
           this.onMessage(fromClientId, toClientId, remainder);
 
-          return otherClient.send(forwardedPayload);
+          otherClient.send(forwardedPayload);
         }
       }
     });
   }
 
-  #getClients(tag?: Id) {
+  getClients(tag?: Id): WebSocket[] {
     return this.ctx.getWebSockets(tag);
+  }
+
+  getStore(): MergeableStore | undefined {
+    return this.store;
+  }
+
+  getPersister(): Persister<Persists.MergeableStoreOnly> | undefined {
+    return this.persister;
   }
 
   // --
@@ -291,17 +291,14 @@ export class WsServerDurableObject<Env = unknown>
   getPathId(): Id {
     return (
       ifNotUndefined(
-        this.#getClients()[0],
+        this.getClients()[0],
         (client) => this.ctx.getTags(client)?.[1] ?? EMPTY_STRING,
       ) ?? EMPTY_STRING
     );
   }
 
   getClientIds(): Ids {
-    return arrayMap(
-      this.#getClients(),
-      (client) => this.ctx.getTags(client)[0],
-    );
+    return arrayMap(this.getClients(), (client) => this.ctx.getTags(client)[0]);
   }
 
   getFragmentSize(): number | undefined {
@@ -315,6 +312,26 @@ export class WsServerDurableObject<Env = unknown>
   onIgnoredError(_error: any) {}
 
   onPathId(_pathId: Id, _addedOrRemoved: IdAddedOrRemoved) {}
+
+  getUserId(client: WebSocket): Id | undefined {
+    return this.ctx.getTags(client)?.[2];
+  }
+
+  getUserClients(userId: Id): WebSocket[] {
+    return this.getClients(userId);
+  }
+
+  onAuthenticate(
+    _request: Request,
+    _pathId: Id,
+  ):
+    | Promise<AuthContext | boolean | null | Response>
+    | AuthContext
+    | boolean
+    | null
+    | Response {
+    return true;
+  }
 
   onClientId(_pathId: Id, _clientId: Id, _addedOrRemoved: IdAddedOrRemoved) {}
   onFetch(_request: Request, _pathId: Id, _clientId: Id) {}

@@ -289,6 +289,20 @@
    */
   /// WsServerDurableObject.onFetch
   /**
+   * The onAuthenticate method is called before a WebSocket connection is upgraded,
+   * allowing the server to authenticate the request and authorize access to the path.
+   *
+   * Return a truthy value (or AuthContext object) to allow the connection, or null /
+   * false to reject it with an HTTP 401 Unauthorized response. You may also return a
+   * custom Response object (such as HTTP 403 Forbidden).
+   * @param request The HTTP Request requesting the WebSocket upgrade.
+   * @param pathId The Id of the path being served by the Durable Object.
+   * @returns An AuthContext, boolean, Response, or null.
+   * @category Event
+   * @since v5.4.0
+   */
+  /// WsServerDurableObject.onAuthenticate
+  /**
    * The onMessageMutator method is called before a message is forwarded by the
    * server.
    *

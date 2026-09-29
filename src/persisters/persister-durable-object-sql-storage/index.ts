@@ -167,7 +167,7 @@ const createDurableObjectFragmentedSqlStoragePersister = ((
   };
 
   options?.log?.('Initialized tables');
- 
+
   initializeTables();
 
   const getCondition = (params: any[], column: string, value: any): string =>
@@ -339,23 +339,20 @@ const createDurableObjectFragmentedSqlStoragePersister = ((
     options?.log?.('Loaded tables');
 
     // Load values data
-    arrayForEach(
-      execSql(`SELECT * FROM ${valuesTable}`).toArray(),
-      (row) => {
-        const value_id = isNullish(row.value_id) ? null : string(row.value_id);
-        const value_data = string(row.value_data);
-        const timestamp = string(row.timestamp);
-        const hash = number(row.hash);
+    arrayForEach(execSql(`SELECT * FROM ${valuesTable}`).toArray(), (row) => {
+      const value_id = isNullish(row.value_id) ? null : string(row.value_id);
+      const value_data = string(row.value_data);
+      const timestamp = string(row.timestamp);
+      const hash = number(row.hash);
 
-        const [zeroOrCellOrValue] = jsonParseWithUndefined(value_data);
+      const [zeroOrCellOrValue] = jsonParseWithUndefined(value_data);
 
-        if (!isNull(value_id)) {
-          objSet(values[0], value_id, [zeroOrCellOrValue, timestamp, hash]);
-        } else {
-          stampUpdate(values, timestamp, hash);
-        }
-      },
-    );
+      if (!isNull(value_id)) {
+        objSet(values[0], value_id, [zeroOrCellOrValue, timestamp, hash]);
+      } else {
+        stampUpdate(values, timestamp, hash);
+      }
+    });
     options?.log?.('Loaded values');
 
     return [tables, values];

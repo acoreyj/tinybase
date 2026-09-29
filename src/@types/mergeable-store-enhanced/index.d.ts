@@ -20,14 +20,13 @@ import type {
  * Enhanced version of MergeableStore that adds async authorization capabilities
  * to the diff methods.
  */
-export interface MergeableStoreEnhanced
-  extends Omit<
-    MergeableStore,
-    | 'getMergeableTableDiff'
-    | 'getMergeableRowDiff'
-    | 'getMergeableCellDiff'
-    | 'getTransactionMergeableChanges'
-  > {
+export interface MergeableStoreEnhanced extends Omit<
+  MergeableStore,
+  | 'getMergeableTableDiff'
+  | 'getMergeableRowDiff'
+  | 'getMergeableCellDiff'
+  | 'getTransactionMergeableChanges'
+> {
   /**
    * Get mergeable table diff with async authorization support.
    *

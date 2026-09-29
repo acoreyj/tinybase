@@ -243,10 +243,10 @@
    *       store,
    *       this.ctx.storage.sql,
    *     );
-   *     
+   *
    *     // Perform some operations
    *     await persister.save();
-   *     
+   *
    *     // Get the log of SQL operations
    *     const log = persister.getLog();
    *     console.log(log);

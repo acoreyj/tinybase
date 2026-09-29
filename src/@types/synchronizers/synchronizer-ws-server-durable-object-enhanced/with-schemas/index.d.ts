@@ -1,27 +1,27 @@
 /// synchronizer-ws-server-durable-object-enhanced
-import {DurableObject} from 'cloudflare:workers';
 import type {
   AuthContext,
   SchemaDefinition,
 } from '../../../expanded-schema/with-schemas/index.d.ts';
-import type {MergeableStoreEnhanced} from '../../../mergeable-store-enhanced/index.d.ts';
 import type {
   Id,
   IdAddedOrRemoved,
-  MergeableStore,
   OptionalSchemas,
 } from '../../../with-schemas/index.d.ts';
+import {DurableObject} from 'cloudflare:workers';
+
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 export type Logger = (
   level: LogLevel,
   message: string,
   context?: Record<string, unknown>,
 ) => void;
+
 /// WsServerDurableObjectEnhanced
 export class WsServerDurableObjectEnhanced<
+  Schemas extends OptionalSchemas,
   Env = unknown,
 > extends DurableObject<Env> {
-  store: MergeableStoreEnhanced | MergeableStore<any> | null;
   setExpandedSchema(
     expandedSchema: Record<string, SchemaDefinition<any, any>>,
   ): void;
@@ -59,4 +59,4 @@ export function getWsServerDurableObjectEnhancedFetch<
       WsServerDurableObjectEnhanced<Schemas>
     >;
   },
-) => Response;
+) => Response | Promise<Response>;

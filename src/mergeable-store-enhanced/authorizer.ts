@@ -1,5 +1,5 @@
 /* eslint-disable max-len */
-import type { MergeableStoreEnhanced } from "../@types/index.d.ts";
+import type {MergeableStoreEnhanced} from '../@types/mergeable-store-enhanced/index.d.ts';
 import type {
 	CellStamp,
 	MergeableChanges,

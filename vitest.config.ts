@@ -6,6 +6,14 @@ import solid from 'vite-plugin-solid';
 import {coverageConfigDefaults, defineConfig} from 'vitest/config';
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      'cloudflare:workers': resolve(
+        import.meta.dirname,
+        'test/unit/common/cloudflare-workers-mock.ts',
+      ),
+    },
+  },
   test: {
     environment: 'happy-dom',
     execArgv: [

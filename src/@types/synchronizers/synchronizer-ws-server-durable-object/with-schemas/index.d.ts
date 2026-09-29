@@ -49,6 +49,12 @@ export class WsServerDurableObject<
   /// WsServerDurableObject.onFetch
   onFetch(request: Request, pathId: Id, clientId: Id): void;
 
+  /// WsServerDurableObject.onAuthenticate
+  onAuthenticate(
+    request: Request,
+    pathId: Id,
+  ): Promise<any> | any;
+
   /// WsServerDurableObject.onMessageMutator
   onMessageMutator(
     fromClientId: Id,
